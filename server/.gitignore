@@ -1,0 +1,8 @@
+# IDE & Editor folders
+.vscode/
+.idea/
+
+# Operating System files
+.DS_Store
+Thumbs.db
+.env
