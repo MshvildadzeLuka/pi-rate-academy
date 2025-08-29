@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instructor Profile | Pi-Rate Academy</title>
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <script src="../assets/js/auth.js" defer></script>
+    <link rel="stylesheet" href="../header/header.css">
+    <link rel="stylesheet" href="instructor-profile.css">
+</head>
+<body>
+
+    <div id="header-placeholder"></div>
+
+    <main class="profile-container">
+        <div class="profile-card">
+            <div class="profile-header">
+                <img src="" alt="Instructor Photo" id="instructor-photo" class="profile-photo">
+                <div class="profile-header-info">
+                    <h1 id="instructor-name" class="profile-name"></h1>
+                    <p id="instructor-role" class="profile-role"></p>
+                    <div id="instructor-socials" class="social-links"></div>
+                </div>
+            </div>
+
+            <div class="profile-body">
+                <h2>About Me</h2>
+                <p id="instructor-about"></p>
+            </div>
+
+            <div class="rating-container">
+                <div class="average-rating-display">
+                    <h2>Average Rating</h2>
+                    <div class="rating-summary">
+                        <span class="avg-rating-score" id="avg-rating-score">--</span>
+                        <div class="stars" id="avg-stars"></div>
+                        <span class="total-ratings" id="total-ratings">(0 ratings)</span>
+                    </div>
+                </div>
+                <div class="user-rating-section" id="user-rating-section" style="display: none;">
+                    <h3>Your Rating</h3>
+                    <p id="rating-prompt"></p>
+                    <div class="star-rating-interactive" id="interactive-stars"></div>
+                    <button id="submit-rating-btn" class="btn btn--primary" disabled>Submit Rating</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../header/header.js"></script>
+    <script src="instructor-profile.js"></script>
+</body>
+</html>

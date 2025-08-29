@@ -1,0 +1,267 @@
+/**
+ * ===================================================================
+ * HOME PAGE SCRIPT (v3.0 - Professional & Final)
+ * for Pi-Rate Academy
+ * ===================================================================
+ * - Handles all dynamic content for the home page.
+ * - Features instructor pagination with asynchronous rating fetching.
+ * - Redirects to a dedicated page for detailed instructor profiles.
+ * - Implements a "Join Call" modal for student group calls.
+ * - Automatically refreshes data when the page is loaded from cache.
+ * ===================================================================
+ */
+document.addEventListener('DOMContentLoaded', () => {
+    // ======================================================
+    // =============== CONFIG & STATE MANAGEMENT ============
+    // ======================================================
+    const API_BASE_URL = 'http://localhost:5001';
+    const TEACHERS_PER_PAGE = 5;
+
+    let state = {
+        currentUser: null,
+        teachers: [],
+        myGroups: [],
+        currentPage: 1,
+        totalPages: 1,
+    };
+
+    // ======================================================
+    // =============== DOM ELEMENT SELECTORS ================
+    // ======================================================
+    const teacherGrid = document.getElementById('teacher-grid');
+    const prevPageBtn = document.getElementById('prev-page-btn');
+    const nextPageBtn = document.getElementById('next-page-btn');
+    const pageInfo = document.getElementById('page-info');
+    const joinCallBtn = document.getElementById('join-call-btn');
+    const zoomModal = document.getElementById('zoom-modal');
+
+    // ======================================================
+    // =============== API HELPER ===========================
+    // ======================================================
+    /**
+     * A robust helper function for making authenticated API requests.
+     * @param {string} endpoint - The API endpoint to call.
+     * @param {object} options - The options for the fetch call.
+     * @returns {Promise<any>} The JSON response from the server.
+     */
+    async function apiFetch(endpoint, options = {}) {
+        const token = localStorage.getItem('piRateToken');
+        const headers = { 'Content-Type': 'application/json', ...options.headers };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || 'An API error occurred');
+        }
+        return response.status === 204 ? null : response.json();
+    }
+
+    // ======================================================
+    // =============== INITIALIZATION =======================
+    // ======================================================
+    /**
+     * Fetches all necessary data from the server and initializes the page.
+     */
+    async function initializeApp() {
+        try {
+            const token = localStorage.getItem('piRateToken');
+            const promises = [
+                apiFetch('/api/users/teachers'),
+                token ? apiFetch('/api/users/profile') : Promise.resolve(null),
+                token ? apiFetch('/api/groups/my-groups') : Promise.resolve([])
+            ];
+
+            const [teachers, user, groups] = await Promise.all(promises);
+            
+            state.teachers = teachers;
+            state.currentUser = user;
+            state.myGroups = groups;
+            state.totalPages = Math.ceil(teachers.length / TEACHERS_PER_PAGE) || 1;
+
+            renderTeachersPage();
+            setupEventListeners();
+            setupScrollAnimations();
+        } catch (error) {
+            console.error('Failed to initialize home page:', error);
+            if (teacherGrid) {
+                teacherGrid.innerHTML = `<p style="text-align:center; color: var(--text-secondary);">Could not load instructor data.</p>`;
+            }
+        }
+    }
+
+    // ======================================================
+    // =============== RENDERING FUNCTIONS ==================
+    // ======================================================
+    /**
+     * Renders the correct slice of instructors based on the current page.
+     */
+    function renderTeachersPage() {
+        if (!teacherGrid) return;
+        const start = (state.currentPage - 1) * TEACHERS_PER_PAGE;
+        const end = start + TEACHERS_PER_PAGE;
+        const paginatedTeachers = state.teachers.slice(start, end);
+
+        teacherGrid.innerHTML = paginatedTeachers.map(teacher => {
+            const fullName = `${teacher.firstName} ${teacher.lastName}`;
+            const photoUrl = teacher.photoUrl || `https://placehold.co/240x240/1E1E1E/00A8FF?text=${teacher.firstName[0]}${teacher.lastName[0]}`;
+            return `
+                <div class="teacher-card" data-teacher-id="${teacher._id}" role="button" tabindex="0">
+                    <img src="${photoUrl}" alt="Photo of ${fullName}" class="teacher-photo">
+                    <h3 class="teacher-name">${fullName}</h3>
+                    <p class="teacher-role">${teacher.role}</p>
+                    <div class="star-rating-summary" id="rating-summary-${teacher._id}">
+                        <span class="average-rating">Loading rating...</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        paginatedTeachers.forEach(t => fetchAndRenderAverageRating(t._id));
+        updatePaginationControls();
+    }
+
+    /**
+     * Asynchronously fetches and renders the average rating for a single instructor.
+     * @param {string} teacherId - The ID of the teacher to fetch ratings for.
+     */
+    async function fetchAndRenderAverageRating(teacherId) {
+        try {
+            const teacherData = await apiFetch(`/api/users/teacher/${teacherId}`);
+            const ratingContainer = document.getElementById(`rating-summary-${teacherId}`);
+            if (ratingContainer) {
+                if (teacherData.totalRatings > 0) {
+                    ratingContainer.innerHTML = `
+                        <div class="stars">${generateStarsHTML(teacherData.averageRating)}</div>
+                        <span class="average-rating">${teacherData.averageRating} (${teacherData.totalRatings} ratings)</span>
+                    `;
+                } else {
+                    ratingContainer.innerHTML = `<div class="stars">${generateStarsHTML(0)}</div><span class="average-rating">No ratings yet</span>`;
+                }
+            }
+        } catch (error) {
+            console.error(`Could not fetch rating for ${teacherId}`, error);
+            const ratingContainer = document.getElementById(`rating-summary-${teacherId}`);
+            if(ratingContainer) ratingContainer.innerHTML = `<span class="average-rating">Could not load rating</span>`;
+        }
+    }
+
+    /**
+     * Updates the text and disabled state of the pagination controls.
+     */
+    function updatePaginationControls() {
+        if (!pageInfo || !prevPageBtn || !nextPageBtn) return;
+        pageInfo.textContent = `Page ${state.currentPage} of ${state.totalPages}`;
+        prevPageBtn.disabled = state.currentPage === 1;
+        nextPageBtn.disabled = state.currentPage === state.totalPages;
+    }
+
+    /**
+     * Generates the HTML for the static star rating display.
+     * @param {number} rating - The average rating (e.g., 4.5).
+     * @returns {string} The HTML string for the star icons.
+     */
+    function generateStarsHTML(rating) {
+        let starsHtml = `<svg width="0" height="0"><defs><linearGradient id="half-star-gradient"><stop offset="50%" stop-color="#ffc107"/><stop offset="50%" stop-color="#4a4a4a" /></linearGradient></defs></svg>`;
+        for (let i = 1; i <= 5; i++) {
+            if (i <= rating) {
+                starsHtml += `<svg class="star-icon" fill="#ffc107" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`;
+            } else if (i - 0.5 <= rating) {
+                starsHtml += `<svg class="star-icon" fill="url(#half-star-gradient)" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`;
+            } else {
+                starsHtml += `<svg class="star-icon" fill="#4a4a4a" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`;
+            }
+        }
+        return starsHtml;
+    }
+
+    // ======================================================
+    // =============== EVENT LISTENERS ======================
+    // ======================================================
+    /**
+     * Sets up all the primary event listeners for the page.
+     */
+    function setupEventListeners() {
+        // Pagination buttons
+        prevPageBtn?.addEventListener('click', () => {
+            if (state.currentPage > 1) {
+                state.currentPage--;
+                renderTeachersPage();
+            }
+        });
+        nextPageBtn?.addEventListener('click', () => {
+            if (state.currentPage < state.totalPages) {
+                state.currentPage++;
+                renderTeachersPage();
+            }
+        });
+
+        // Event delegation for clicking on teacher cards
+        teacherGrid?.addEventListener('click', (e) => {
+            const card = e.target.closest('.teacher-card');
+            if (card && card.dataset.teacherId) {
+                // Redirect to the dedicated instructor profile page
+                window.location.href = `../instructor-profile/instructor-profile.html?id=${card.dataset.teacherId}`;
+            }
+        });
+
+        // "Join Call" button and modal
+        joinCallBtn?.addEventListener('click', () => {
+            if (!state.myGroups || state.myGroups.length === 0) {
+                return alert('You are not currently enrolled in any groups.');
+            }
+            if (state.myGroups.length === 1 && state.myGroups[0].zoomLink) {
+                window.open(state.myGroups[0].zoomLink, '_blank');
+            } else {
+                const groupList = zoomModal.querySelector('#group-list');
+                groupList.innerHTML = '';
+                state.myGroups.forEach(group => {
+                    if (group.zoomLink) {
+                        const btn = document.createElement('button');
+                        btn.textContent = group.name;
+                        btn.onclick = () => window.open(group.zoomLink, '_blank');
+                        groupList.appendChild(btn);
+                    }
+                });
+                zoomModal.classList.remove('hidden');
+            }
+        });
+
+        // Listeners for closing modals
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', (e) => { if(e.target === modal) modal.classList.add('hidden'); });
+            modal.querySelector('.close-modal')?.addEventListener('click', () => modal.classList.add('hidden'));
+        });
+    }
+    
+    /**
+     * Sets up the IntersectionObserver for scroll-triggered animations.
+     */
+    function setupScrollAnimations() {
+        const hiddenSections = document.querySelectorAll('.hidden-section');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible-section');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.15 });
+        hiddenSections.forEach((section) => observer.observe(section));
+    }
+
+    // --- Start the application ---
+    initializeApp();
+
+    /**
+     * This event listener ensures that if a user navigates back to the home page,
+     * the instructor data is refreshed from the server to show any updates.
+     */
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            console.log('Page loaded from cache. Re-fetching data...');
+            initializeApp();
+        }
+    });
+});

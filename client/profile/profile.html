@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile | Pi-Rate Academy</title>
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <script src="../assets/js/auth.js" defer></script>
+    <link rel="stylesheet" href="../header/header.css">
+    <link rel="stylesheet" href="profile.css">
+</head>
+<body>
+
+    <div id="header-placeholder"></div>
+
+    <main class="profile-container">
+        <aside class="sidebar">
+            <div class="profile-summary">
+                <div class="avatar-container" id="avatar-container">
+                    <img src="" alt="Profile Picture" class="profile-avatar" id="profile-img-display">
+                    <div class="avatar-overlay">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4h-3.17L15 2H9L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h4.05l1.83-2h4.24l1.83 2H20v12zM12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3z"/></svg>
+                        <span>Change Photo</span>
+                    </div>
+                    <input type="file" id="picture-upload-input" class="hidden" accept="image/*">
+                </div>
+                <h1 id="profile-full-name"></h1>
+                <p id="profile-email"></p>
+                <div class="role-badge" id="profile-role-badge"></div>
+
+                <div class="profile-completion">
+                    <div class="completion-header">
+                        <span>Profile Completion</span>
+                        <span id="completion-percentage">0%</span>
+                    </div>
+                    <div class="completion-bar">
+                        <div id="completion-progress" class="completion-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <div class="content">
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="info">Profile Information</button>
+                <button class="tab-btn" data-tab="security">Security</button>
+            </div>
+
+            <div class="tab-content active" id="info-tab">
+                <div class="card">
+                    <h2>Personal Information</h2>
+                    <form id="info-form" class="profile-form">
+                        <div class="form-row">
+                            <div class="input-group">
+                                <label for="info-first-name">First Name</label>
+                                <input type="text" id="info-first-name" name="firstName">
+                            </div>
+                            <div class="input-group">
+                                <label for="info-last-name">Last Name</label>
+                                <input type="text" id="info-last-name" name="lastName">
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="info-email">Email Address</label>
+                            <input type="email" id="info-email" name="email" readonly>
+                        </div>
+                        <div class="input-group hidden" id="teacher-fields">
+                            <label for="info-about">About Me</label>
+                            <textarea id="info-about" name="aboutMe" rows="4"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn--primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="tab-content" id="security-tab">
+                <div class="card">
+                    <h2>Password & Security</h2>
+                    <form id="password-form" class="profile-form">
+                        <div class="input-group">
+                            <label for="password-current">Current Password</label>
+                            <input type="password" id="password-current" name="passwordCurrent" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="input-group">
+                                <label for="password-new">New Password</label>
+                                <input type="password" id="password-new" name="passwordNew" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="password-confirm">Confirm Password</label>
+                                <input type="password" id="password-confirm" name="passwordConfirm" required>
+                            </div>
+                        </div>
+                        <div class="password-strength">
+                            <div class="strength-bar"><div class="strength-level"></div></div>
+                            <div class="strength-text"></div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn--primary">Update Password</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../header/header.js"></script>
+    <script src="profile.js"></script>
+</body>
+</html>

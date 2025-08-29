@@ -1,0 +1,996 @@
+/* =========================================================================
+// FILE: assignments.css (Completely Rewritten - Professional v2.0)
+// - A comprehensive, Microsoft Teams-inspired stylesheet.
+// - Implements a full design system for the assignments feature.
+// - Covers all states, roles, and components with meticulous detail.
+// ========================================================================= */
+
+/* ===== ROOT VARIABLES (DESIGN SYSTEM) ===== */
+:root {
+    /* Maintained from global.css */
+    --background-primary: #121212;
+    --background-secondary: #1e1e1e;
+    --background-tertiary: #2a2a2a;
+    --primary-accent: #007BFF;
+    --primary-accent-hover: #0066cc;
+    --primary-accent-light: rgba(0, 123, 255, 0.15);
+    --text-primary: #FFFFFF;
+    --text-secondary: #b3b3b3;
+    --border-radius-main: 8px;
+    --danger-accent: #dc3545;
+    --danger-accent-hover: #c82333;
+    --success-accent: #28a745;
+    --warning-accent: #ffc107;
+
+    /* New variables for this module */
+    --border-color: rgba(255, 255, 255, 0.1);
+    --shadow-light: 0 4px 15px rgba(0, 0, 0, 0.2);
+    --shadow-strong: 0 8px 30px rgba(0, 0, 0, 0.4);
+    --transition-fast: 0.2s ease-in-out;
+    --transition-medium: 0.3s ease-in-out;
+}
+
+/* ===== MAIN LAYOUT & STRUCTURE ===== */
+.assignments-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 25px 30px;
+    height: calc(100vh - var(--header-height));
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    animation: fadeIn 0.5s var(--transition-medium);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.assignments-main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.assignments-main-header h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.content-area {
+    flex-grow: 1;
+    overflow-y: auto;
+    position: relative;
+}
+
+/* Custom Scrollbar for Content Area */
+.content-area::-webkit-scrollbar { width: 8px; }
+.content-area::-webkit-scrollbar-track { background: transparent; }
+.content-area::-webkit-scrollbar-thumb { background-color: var(--background-tertiary); border-radius: 4px; }
+.content-area::-webkit-scrollbar-thumb:hover { background-color: #555; }
+
+
+/* ===== TABS NAVIGATION ===== */
+.tabs-nav {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tab-btn {
+    padding: 10px 18px;
+    background-color: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    position: relative;
+    border-bottom: 3px solid transparent;
+    transition: all var(--transition-fast);
+}
+
+.tab-btn:hover {
+    color: var(--text-primary);
+    background-color: var(--background-tertiary);
+}
+
+.tab-btn.active {
+    color: var(--primary-accent);
+    font-weight: 600;
+    border-bottom-color: var(--primary-accent);
+}
+
+/* ===== BUTTONS & FORMS (GLOBAL STYLES) ===== */
+.btn {
+    padding: 9px 18px;
+    border: 1px solid transparent;
+    border-radius: var(--border-radius-main);
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all var(--transition-fast);
+}
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+.btn-primary {
+    background-color: var(--primary-accent);
+    color: white;
+    border-color: var(--primary-accent);
+}
+.btn-primary:hover:not(:disabled) {
+    background-color: var(--primary-accent-hover);
+    border-color: var(--primary-accent-hover);
+    transform: translateY(-2px);
+}
+.btn-secondary {
+    background-color: var(--background-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+.btn-secondary:hover:not(:disabled) {
+    background-color: #3a3a3a;
+    border-color: #555;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.form-group label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+.form-group input, .form-group textarea, .form-group select {
+    width: 100%;
+    padding: 10px 12px;
+    background-color: var(--background-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-main);
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: all var(--transition-fast);
+}
+.form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+    outline: none;
+    border-color: var(--primary-accent);
+    box-shadow: 0 0 0 3px var(--primary-accent-light);
+}
+.form-row {
+    display: flex;
+    gap: 15px;
+}
+.form-row > .form-group {
+    flex: 1;
+}
+
+/* ===== ASSIGNMENT LIST VIEW ===== */
+.list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.date-group-header {
+    padding: 10px 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border-color);
+    margin-top: 20px;
+}
+.date-group-header:first-child {
+    margin-top: 0;
+}
+
+.assignment-item {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 18px 20px;
+    background-color: var(--background-secondary);
+    border-radius: var(--border-radius-main);
+    border-left: 5px solid transparent;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow-light);
+}
+.assignment-item:hover {
+    background-color: var(--background-tertiary);
+    transform: translateX(5px);
+    border-left-color: var(--primary-accent);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.assignment-item-icon {
+    font-size: 1.8rem;
+    color: var(--primary-accent);
+    width: 40px;
+    text-align: center;
+}
+
+.assignment-item-info {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.assignment-item-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.assignment-item-meta {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.assignment-item-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    min-width: 120px;
+    justify-content: flex-end;
+}
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+}
+.status-badge.new { background-color: var(--warning-accent); color: #000; }
+.status-badge.graded { background-color: var(--success-accent); color: #fff; }
+.status-badge.completed { background-color: var(--primary-accent); color: #fff; }
+.status-badge.past-due { background-color: var(--danger-accent); color: #fff; }
+
+.empty-state {
+    text-align: center;
+    padding: 50px;
+    color: var(--text-secondary);
+}
+.empty-state .fas {
+    font-size: 3rem;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+/* ===== MODAL STYLES (Create/Edit, Viewer, etc.) ===== */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s;
+}
+
+.modal {
+    background-color: var(--background-secondary);
+    border-radius: var(--border-radius-main);
+    width: 90%;
+    max-width: 700px;
+    box-shadow: var(--shadow-strong);
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+    animation: modalScaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes modalScaleIn {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.modal-header {
+    padding: 15px 25px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+.modal-header h2 { font-size: 1.3rem; margin: 0; }
+.close-modal-btn { background: none; border: none; font-size: 1.5rem; color: var(--text-secondary); cursor: pointer; }
+
+.modal-body {
+    padding: 25px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.modal-footer {
+    padding: 15px 25px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+/* File Uploader in Modal */
+.file-uploader {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--border-radius-main);
+    padding: 30px;
+    text-align: center;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+.file-uploader:hover, .file-uploader.drag-over {
+    border-color: var(--primary-accent);
+    background-color: var(--primary-accent-light);
+    color: var(--primary-accent);
+}
+.file-uploader .fas { font-size: 2rem; margin-bottom: 10px; }
+
+.file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+}
+.file-list-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background-color: var(--background-tertiary);
+    border-radius: var(--border-radius-main);
+}
+.file-info { flex-grow: 1; }
+.file-name { font-size: 0.9rem; color: var(--text-primary); }
+.progress-bar-container {
+    height: 6px;
+    background-color: var(--background-primary);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 5px;
+}
+.progress-bar {
+    height: 100%;
+    background-color: var(--success-accent);
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 3px;
+}
+.remove-file-btn {
+    background: none;
+    border: none;
+    color: var(--danger-accent);
+    cursor: pointer;
+    font-size: 1.2rem;
+}
+
+/* ===== ASSIGNMENT DETAIL VIEW ===== */
+.detail-view {
+    animation: fadeIn 0.4s;
+}
+.detail-panel, .detail-panel-grading {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+.detail-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+.back-btn { font-size: 1rem; }
+.assignment-title-detail { font-size: 1.8rem; margin: 0; flex-grow: 1; }
+
+.detail-content, .grading-layout {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 25px;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+.grading-layout { grid-template-columns: 300px 1fr; }
+
+.assignment-meta-detail {
+    display: flex;
+    gap: 20px;
+    color: var(--text-secondary);
+    margin-top: 10px;
+}
+.instructions-container, .attachments-container {
+    margin-top: 25px;
+}
+h3 { font-size: 1.1rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 10px; }
+.instructions-text { line-height: 1.7; }
+
+.submission-sidebar {
+    position: sticky;
+    top: 0;
+}
+.submission-box {
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-main);
+    padding: 20px;
+    box-shadow: var(--shadow-strong);
+}
+.submission-box h3 {
+    font-size: 1.25rem;
+    color: var(--text-primary);
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+.submission-actions {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.hand-in-btn:not(:disabled) {
+    background-color: var(--primary-accent);
+    border-color: var(--primary-accent);
+    box-shadow: 0 0 12px rgba(0, 123, 255, 0.6);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s ease;
+}
+.hand-in-btn:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(0, 123, 255, 0.4);
+}
+.hand-in-btn:not(:disabled)::after {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+        to right,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.15) 50%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    transform: rotate(30deg);
+    animation: buttonShine 3s infinite linear;
+}
+@keyframes buttonShine {
+    0% { transform: translateX(-100%) rotate(30deg); }
+    100% { transform: translateX(100%) rotate(30deg); }
+}
+
+/* Teacher Grading View */
+.student-list-sidebar {
+    background-color: var(--background-secondary);
+    border-radius: var(--border-radius-main);
+    padding: 10px;
+    overflow-y: auto;
+}
+.student-list-item {
+    padding: 12px 15px;
+}
+.student-list-item.active {
+    background-color: var(--primary-accent-light);
+    border-left-color: var(--primary-accent);
+}
+.grading-main-content {
+    padding: 20px;
+}
+.grading-view-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-secondary);
+    text-align: center;
+}
+.grading-view-placeholder .fas { font-size: 3rem; opacity: 0.5; }
+
+/* File Viewer Modal */
+.file-viewer-modal { max-width: 90vw; width: 1200px; height: 90vh; }
+.file-viewer-modal .modal-body { padding: 0; }
+#file-viewer-iframe { width: 100%; height: 100%; border: none; }
+
+/* ===== FILE UPLOADER & LIST (ENHANCED STYLES) ===== */
+.file-list {
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 150px;
+    overflow-y: auto;
+    padding: 5px;
+    background-color: var(--background-primary);
+    border-radius: var(--border-radius-main);
+    max-height: 200px;
+}
+
+.file-list-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    background-color: var(--background-tertiary);
+    border-radius: var(--border-radius-main);
+    border: 1px solid var(--border-color);
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes popIn {
+    0% { transform: scale(0.95); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.file-icon {
+    font-size: 1.5rem;
+    color: var(--primary-accent);
+    flex-shrink: 0;
+}
+
+.file-info {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+}
+
+.file-name {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.progress-bar-container {
+    height: 6px;
+    background-color: var(--background-primary);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: var(--success-accent);
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 3px;
+}
+
+.file-status {
+    font-size: 1.2rem;
+    width: 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+.file-status.uploading {
+    animation: spin 1.5s linear infinite;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.status-complete { 
+    color: var(--success-accent);
+    animation: none !important;
+}
+.status-error { 
+    color: var(--danger-accent);
+    animation: none !important;
+}
+
+.remove-file-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 5px;
+    line-height: 1;
+    transition: color 0.2s ease;
+}
+.remove-file-btn:hover {
+    color: var(--danger-accent);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 1024px) {
+    .detail-content, .grading-layout {
+        grid-template-columns: 1fr;
+    }
+    .submission-sidebar {
+        position: static;
+    }
+}
+
+@media (max-width: 768px) {
+    .assignments-container {
+        padding: 15px;
+    }
+    .assignments-main-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    .header-actions {
+        width: 100%;
+    }
+    .tabs-nav {
+        overflow-x: auto;
+    }
+}
+/* ===== ENHANCED NOTIFICATION STYLES ===== */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 15px 20px;
+  border-radius: var(--border-radius-main);
+  color: white;
+  z-index: 10000;
+  opacity: 0;
+  transform: translateX(100%);
+  transition: all 0.3s ease;
+  max-width: 350px;
+  box-shadow: var(--shadow-strong);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.notification.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.notification.success {
+  background-color: var(--success-accent);
+}
+
+.notification.error {
+  background-color: var(--danger-accent);
+}
+
+.notification.warning {
+  background-color: var(--warning-accent);
+  color: #000;
+}
+
+.notification.info {
+  background-color: var(--primary-accent);
+}
+
+/* ===== LOADING SPINNER ===== */
+.loading-spinner {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: var(--primary-accent);
+  animation: spin 1s ease-in-out infinite;
+  margin: 20px auto;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== ENHANCED FILE UPLOADER ===== */
+.file-uploader {
+  position: relative;
+  border: 2px dashed var(--border-color);
+  border-radius: var(--border-radius-main);
+  padding: 30px;
+  text-align: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  overflow: hidden;
+  margin-bottom: 20px; /* Added to prevent overlap with button */
+}
+
+.file-uploader:hover, .file-uploader.drag-over {
+  border-color: var(--primary-accent);
+  background-color: var(--primary-accent-light);
+  color: var(--primary-accent);
+}
+
+.file-uploader input[type="file"] {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.file-uploader .upload-icon {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.file-uploader .upload-text {
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* ===== ENHANCED GRADE DISPLAY ===== */
+.grade-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 15px;
+  background-color: var(--background-tertiary);
+  border-radius: var(--border-radius-main);
+  margin: 10px 0;
+}
+
+.grade-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1.2rem;
+  background: conic-gradient(
+    var(--success-accent) 0% var(--percentage), 
+    var(--background-primary) var(--percentage) 100%
+  );
+  position: relative;
+}
+
+.grade-circle::before {
+  content: '';
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: var(--background-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.grade-circle span {
+  position: relative;
+  z-index: 1;
+}
+
+/* ===== RESPONSIVE IMPROVEMENTS ===== */
+@media (max-width: 768px) {
+  .assignment-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  
+  .assignment-item-status {
+    align-self: flex-start;
+  }
+  
+  .modal {
+    width: 95%;
+    margin: 10px;
+  }
+  
+  .form-row {
+    flex-direction: column;
+  }
+  
+  .detail-content, .grading-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .submission-sidebar {
+    position: static;
+    order: -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .assignments-container {
+    padding: 10px;
+  }
+  
+  .assignments-main-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  
+  .header-actions {
+    width: 100%;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .tabs-nav {
+    overflow-x: auto;
+    padding-bottom: 5px;
+  }
+  
+  .tab-btn {
+    white-space: nowrap;
+    font-size: 0.9rem;
+    padding: 8px 12px;
+  }
+  
+  .notification {
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+}
+
+/* ===== ACCESSIBILITY IMPROVEMENTS ===== */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus styles for keyboard navigation */
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--primary-accent);
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --border-color: #ffffff;
+  }
+  
+  .assignment-item {
+    border: 1px solid var(--border-color);
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background-primary: #121212;
+    --background-secondary: #1e1e1e;
+    --background-tertiary: #2a2a2a;
+    --text-primary: #FFFFFF;
+    --text-secondary: #b3b3b3;
+  }
+}
+/* ADD TO assignments.css */
+
+/* Student File Upload List in Detail View */
+#submission-file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+.file-list-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background-color: var(--background-tertiary);
+    border-radius: var(--border-radius-main);
+    border: 1px solid var(--border-color);
+}
+
+.file-list-item.view-only {
+    padding: 8px 12px;
+}
+
+.file-info {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.file-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.remove-file-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0 5px;
+}
+.remove-file-btn:hover {
+    color: var(--danger-accent);
+}
+
+/* Teacher Feedback Box */
+.feedback-container {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.feedback-box {
+    background-color: var(--primary-accent-light);
+    border-left: 4px solid var(--primary-accent);
+    border-radius: var(--border-radius-main);
+    padding: 15px 20px;
+    color: var(--text-primary);
+    white-space: pre-wrap; /* Preserves line breaks in feedback */
+}
+/* ... (previous CSS code remains the same) */
+
+/* FIX: Add this entire block to the end of the file */
+#create-assignment-modal .file-list {
+    max-height: 150px; /* Limits the height to prevent overflow */
+    overflow-y: auto;  /* Adds a scrollbar if the list is too long */
+    padding-right: 8px; /* Adds some space for the scrollbar */
+    border: 1px solid var(--border-color);
+    background-color: var(--background-primary);
+    padding: 10px;
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+/* Ensure the modal body has enough space */
+.modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.btn-danger {
+    background-color: var(--danger-accent);
+    color: white;
+    border-color: var(--danger-accent);
+}
+
+.btn-danger:hover:not(:disabled) {
+    background-color: var(--danger-accent-hover);
+    border-color: var(--danger-accent-hover);
+}

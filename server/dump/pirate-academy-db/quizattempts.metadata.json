@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"isPastDue":{"$numberInt":"1"}},"name":"isPastDue_1","background":true}],"uuid":"804c9528d51f4a3eaaba5867073a8b55","collectionName":"quizattempts","type":"collection"}
