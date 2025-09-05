@@ -127,7 +127,8 @@ app.get('/api', (req, res) => res.json({ success: true, message: 'Pi-Rate Academ
 
 // SPA fallback
 app.get('*', (req, res) => {
-  res.sendFile(path.resolve(__dirname, './client', 'home', 'home.html'));
+  // Correctly join the path and send the login page as the entry point
+  res.sendFile(path.join(__dirname, '..', 'client', 'login', 'login.html'));
 });
 
 // Error handler
