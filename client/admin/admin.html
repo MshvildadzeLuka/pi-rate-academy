@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ადმინის პანელი | Pi-Rate Academy</title>
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="../header/header.css">
+    <link rel="stylesheet" href="admin.css">
+    <script src="../assets/js/auth.js" defer></script>
+</head>
+<body>
+
+    <div id="header-placeholder"></div>
+
+    <div class="admin-wrapper">
+        <aside class="admin-sidebar">
+            <nav>
+                <ul>
+                    <li><a href="#" class="sidebar-link active" data-target="dashboard-panel"><i class="fa-solid fa-chart-pie fa-fw"></i><span>დაფა</span></a></li>
+                    <li><a href="#" class="sidebar-link" data-target="users-panel"><i class="fa-solid fa-users fa-fw"></i><span>მომხმარებლები</span></a></li>
+                    <li><a href="#" class="sidebar-link" data-target="groups-panel"><i class="fa-solid fa-user-group fa-fw"></i><span>ჯგუფები</span></a></li>
+                    <li><a href="#" class="sidebar-link" data-target="videos-panel"><i class="fa-solid fa-video fa-fw"></i><span>ვიდეოები</span></a></li>
+                    <li><a href="#" class="sidebar-link" data-target="calendar-panel"><i class="fa-solid fa-calendar-days fa-fw"></i><span>კალენდარი</span></a></li>
+                </ul>
+            </nav>
+            <div id="calendar-control-panel" class="sidebar-panel hidden">
+                <h3 id="calendar-panel-title">ლექციის დაგეგმვა</h3>
+                <p id="sidebar-time-range">აირჩიეთ დრო კალენდარზე</p>
+                <div class="form-group">
+                    <label for="lecture-title-input">ლექციის სათაური</label>
+                    <input type="text" id="lecture-title-input" placeholder="მაგ., ალგორითმების შესავალი">
+                </div>
+                <div class="form-actions">
+                    <button id="delete-lecture-btn" class="btn btn--danger" disabled><i class="fa-solid fa-trash"></i> წაშლა</button>
+                    <button id="save-lecture-btn" class="btn btn--primary" disabled><i class="fa-solid fa-save"></i> შენახვა</button>
+                </div>
+            </div>
+        </aside>
+
+        <main class="admin-content">
+            <div id="dashboard-panel" class="admin-panel active">
+                <div class="panel-header"><h1>დაფა</h1></div>
+                <div class="stats-grid" id="stats-grid">
+                    <div class="stat-card"><i class="fa-solid fa-users"></i><div><h3>მომხმარებლები</h3><p id="total-users-stat">--</p></div></div>
+                    <div class="stat-card"><i class="fa-solid fa-user-group"></i><div><h3>ჯგუფები</h3><p id="total-groups-stat">--</p></div></div>
+                    <div class="stat-card"><i class="fa-solid fa-video"></i><div><h3>ვიდეოები</h3><p id="total-videos-stat">--</p></div></div>
+                </div>
+                <div class="panels-grid">
+                    <div class="panel"><h2 class="panel-title">სწრაფი მოქმედებები</h2><div class="quick-actions-list"><button class="btn btn--primary" id="quick-create-user-btn"><i class="fa-solid fa-user-plus"></i> მომხმარებლის დამატება</button><button class="btn btn--primary" id="quick-create-group-btn"><i class="fa-solid fa-plus-circle"></i> ჯგუფის შექმნა</button><button class="btn btn--primary" id="quick-upload-video-btn"><i class="fa-solid fa-upload"></i> ვიდეოს დამატება</button></div></div>
+                    <div class="panel"><h2 class="panel-title">ბოლო აქტივობა</h2><ul id="recent-activity-list" class="activity-feed"></ul></div>
+                </div>
+            </div>
+
+            <div id="users-panel" class="admin-panel"><div class="panel-header"><h1>მომხმარებელთა მართვა</h1><button id="create-user-btn" class="btn btn--primary"><i class="fa-solid fa-plus"></i> მომხმარებლის დამატება</button></div><div class="table-container" id="users-table-container"></div></div>
+            <div id="groups-panel" class="admin-panel"><div class="panel-header"><h1>ჯგუფების მართვა</h1><button id="create-group-btn" class="btn btn--primary"><i class="fa-solid fa-plus"></i> ჯგუფის შექმნა</button></div><div class="table-container" id="groups-table-container"></div></div>
+            <div id="videos-panel" class="admin-panel"><div class="panel-header"><h1>ვიდეოების მართვა</h1><button id="upload-video-btn" class="btn btn--primary"><i class="fa-solid fa-plus"></i> ვიდეოს დამატება</button></div><div class="table-container" id="videos-table-container"></div></div>
+
+            <div id="calendar-panel" class="admin-panel">
+                <div class="panel-header"><h1>ჯგუფის ლექციების დაგეგმვა</h1></div>
+                <div class="calendar-main-header">
+                    <div class="calendar-top-controls">
+                        <div class="form-group"><label for="group-select">აირჩიეთ ჯგუფი</label><select id="group-select"></select></div>
+                        <button id="suggest-schedule-btn" class="btn" disabled><i class="fa-solid fa-wand-magic-sparkles"></i> რეკომენდაცია</button>
+                    </div>
+                    <div class="week-nav">
+                        <button id="today-btn" class="btn">დღეს</button>
+                        <button id="prev-week-btn" aria-label="წინა კვირა"><i class="fa-solid fa-chevron-left"></i></button>
+                        <h2 id="current-week-display"></h2>
+                        <button id="next-week-btn" aria-label="შემდეგი კვირა"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                </div>
+                <div class="calendar-grid-wrapper" role="grid" aria-label="კვირის განრიგის ბადე">
+                    <div class="calendar-grid">
+                        <div id="current-time-indicator" class="current-time-indicator" aria-hidden="true"></div>
+                        <div class="grid-header time-column-header" aria-hidden="true"></div>
+                        <div class="grid-header day-column-header" data-day-header="0">
+                            <div class="day-header-content">
+                                <span class="day-name">ორშ</span>
+                                <span class="day-number"></span>
+                            </div>
+                        </div>
+                        <div class="grid-header day-column-header" data-day-header="1">
+                            <div class="day-header-content">
+                                <span class="day-name">სამ</span>
+                                <span class="day-number"></span>
+                            </div>
+                        </div>
+                        <div class="grid-header day-column-header" data-day-header="2">
+                            <div class="day-header-content">
+                                <span class="day-name">ოთხ</span>
+                                <span class="day-number"></span>
+                            </div>
+                        </div>
+                        <div class="grid-header day-column-header" data-day-header="3">
+                            <div class="day-header-content">
+                                <span class="day-name">ხუთ</span>
+                                <span class="day-number"></span>
+                            </div>
+                        </div>
+                        <div class="grid-header day-column-header" data-day-header="4">
+                            <div class="day-header-content">
+                                <span class="day-name">პარ</span>
+                                <span class="day-number"></span>
+                            </div>
+                        </div>
+                        <div class="grid-header day-column-header" data-day-header="5">
+                            <div class="day-header-content">
+                                <span class="day-name">შაბ</span>
+                                <span class="day-number"></span>
+                            </div>
+                        </div>
+                        <div class="grid-header day-column-header" data-day-header="6">
+                            <div class="day-header-content">
+                                <span class="day-name">კვი</span>
+                                <span class="day-number"></span>
+                            </div>
+                        </div>
+                        <div class="time-column" id="time-column" aria-hidden="true"></div>
+                        <div class="day-column" data-day="0" role="gridcell"></div>
+                        <div class="day-column" data-day="1" role="gridcell"></div>
+                        <div class="day-column" data-day="2" role="gridcell"></div>
+                        <div class="day-column" data-day="3" role="gridcell"></div>
+                        <div class="day-column" data-day="4" role="gridcell"></div>
+                        <div class="day-column" data-day="5" role="gridcell"></div>
+                        <div class="day-column" data-day="6" role="gridcell"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="user-form-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modal-title-user">ახალი მომხმარებელი</h2>
+                <button class="close-modal" aria-label="დახურვა">×</button>
+            </div>
+            <form id="user-form" novalidate>
+                <div class="input-group">
+                    <label for="user-role">როლი</label>
+                    <select id="user-role" name="role" required>
+                        <option value="Student">სტუდენტი</option>
+                        <option value="Teacher">ლექტორი</option>
+                        <option value="Admin">ადმინისტრატორი</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="first-name">სახელი</label>
+                        <input type="text" id="first-name" name="firstName" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="last-name">გვარი</label>
+                        <input type="text" id="last-name" name="lastName" required>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <div id="teacher-fields" class="hidden">
+                    <div class="input-group">
+                        <label for="about-me">შესახებ</label>
+                        <textarea id="about-me" name="aboutMe" rows="3"></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label for="photo-url">ფოტოს URL</label>
+                        <input type="text" id="photo-url" name="photoUrl">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label for="password" id="password-label">დროებითი პაროლი</label>
+                    <input type="text" id="password" name="password">
+                </div>
+                <button type="submit" class="btn btn--primary btn--full-width">მომხმარებლის შენახვა</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="video-form-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modal-title-video">ახალი ვიდეოს დამატება</h2>
+                <button class="close-modal" aria-label="დახურვა">×</button>
+            </div>
+            <form id="video-form" novalidate>
+                <div class="input-group">
+                    <label for="video-title">ვიდეოს სათაური</label>
+                    <input type="text" id="video-title" name="title" required>
+                </div>
+                <div class="input-group">
+                    <label for="video-description">აღწერა</label>
+                    <textarea id="video-description" name="description" rows="4"></textarea>
+                </div>
+                <div class="input-group">
+                    <label for="video-type">ვიდეოს ტიპი</label>
+                    <select id="video-type" name="type" required>
+                        <option value="upload">ლექციის ჩანაწერი</option>
+                        <option value="link">დამატებითი რესურსი</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="video-youtube-url">YouTube ბმული</label>
+                    <input type="text" id="video-youtube-url" name="url" placeholder="https://www.youtube.com/watch?v=..." required>
+                </div>
+                <button type="submit" class="btn btn--primary btn--full-width">ვიდეოს დამატება</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="group-form-modal" class="modal-overlay hidden">
+         <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modal-title-group">ახალი ჯგუფის შექმნა</h2>
+                <button class="close-modal" aria-label="დახურვა">×</button>
+            </div>
+            <form id="group-form">
+                <div class="modal-body">
+                    <div class="input-group">
+                        <label for="group-name">ჯგუფის სახელი</label>
+                        <input type="text" id="group-name" name="name" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="group-zoom-link">Zoom ბმული</label>
+                        <input type="text" id="group-zoom-link" name="zoomLink">
+                    </div>
+                    <div class="input-group">
+                        <label>ლექტორის მინიჭება</label>
+                        <select id="teacher-select"></select>
+                    </div>
+                    <div class="input-group">
+                        <label>სტუდენტების დამატება</label>
+                        <div id="student-multiselect"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn--primary btn--full-width">ჯგუფის შენახვა</button>
+                </div>
+            </form>
+         </div>
+    </div>
+
+    <script src="../header/header.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>

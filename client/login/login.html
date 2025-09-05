@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Pi-Rate Academy</title>
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <link rel="stylesheet" href="../header/header.css">
+    <link rel="stylesheet" href="login.css">
+</head>
+<body>
+    <main class="login-container">
+        <div class="login-form-wrapper">
+            <svg class="logo-svg" viewBox="0 0 360 110" xmlns="http://www.w3.org/2000/svg" aria-label="Pi-Rate Academy Logo">
+                <text font-family="Poppins, sans-serif" font-size="36" y="55">
+                    <tspan font-weight="800" font-size="100px" fill="#00F2FE" alignment-baseline="middle">𝝅</tspan>
+                    <tspan font-weight="700" fill="#00F2FE" dx="-15" dy="10" alignment-baseline="middle">-Rate</tspan>
+                    <tspan font-weight="300" fill="var(--text-primary)" dx="-8" alignment-baseline="middle">Academy</tspan>
+                </text>
+            </svg>
+            <h2>Welcome Back</h2>
+            <form id="login-form" novalidate>
+                <div class="input-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" placeholder="you@example.com" required>
+                </div>
+                <div class="input-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="••••••••" required>
+                </div>
+                <p id="error-message" class="error-hidden"></p>
+                <button type="submit" class="login-btn">Login</button>
+            </form>
+        </div>
+    </main>
+    <script src="login.js"></script>
+</body>
+</html>

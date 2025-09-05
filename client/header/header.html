@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pi-Rate Academy</title>
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <link rel="stylesheet" href="../header/header.css">
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <div class="logo-container">
+                <svg class="logo-svg" viewBox="0 0 360 110" xmlns="http://www.w3.org/2000/svg" aria-label="Pi-Rate Academy Logo">
+                    <text font-family="Poppins, sans-serif" font-size="36" y="55">
+                        <tspan font-weight="800" font-size="100px" fill="#00F2FE" alignment-baseline="middle">𝝅</tspan>
+                        <tspan font-weight="700" fill="#00F2FE" dx="-15" dy="10" alignment-baseline="middle">-Rate</tspan>
+                        <tspan font-weight="300" fill="var(--text-primary)" dx="-8" alignment-baseline="middle">აკადემია</tspan>
+                    </text>
+                </svg>
+            </div>
+
+            <button class="mobile-menu-toggle" aria-label="მენიუს გახსნა">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <nav class="nav-container">
+                <ul class="nav-links">
+                   <li><a href="../home/home.html">მთავარი</a></li>
+                   <li><a href="../calendar/calendar.html">კალენდარი</a></li>
+                   <li><a href="../notes/notes.html">საკითხავი მასალა</a></li>
+                   <li><a href="../videos/videos.html">ვიდეოები</a></li>
+                   <li><a href="../quiz/quizzes.html">ქვიზები</a></li>
+                   <li><a href="../assignments/assignments.html">დავალებები</a></li>
+                   <li><a href="../admin/admin.html" id="admin-nav-link">ადმინისტრატორი</a></li>
+                </ul>
+            </nav>
+
+            <div class="profile-dropdown-container">
+                <a href="../profile/profile.html" class="profile-button">
+                    <img src="https://placehold.co/100x100/2A2A2A/EAEAEA?text=?" alt="მომხმარებლის პროფილის სურათი" class="profile-img">
+                    <span class="profile-name">იტვირთება...</span>
+                </a>
+                <div class="dropdown-menu">
+                    <a href="../profile/profile.html" class="dropdown-item">ჩემი პროფილი</a>
+                    <button id="logout-btn" class="dropdown-item danger">გამოსვლა</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <script src="../header/header.js"></script>
+</body>
+</html>

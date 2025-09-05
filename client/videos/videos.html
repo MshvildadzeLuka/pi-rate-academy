@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ვიდეოები | Pi-Rate Academy</title>
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <script src="../assets/js/auth.js" defer></script>
+    <link rel="stylesheet" href="../header/header.css">
+    <link rel="stylesheet" href="videos.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+
+    <div id="header-placeholder"></div>
+
+    <main class="videos-container">
+        <section id="uploaded-videos-section">
+            <h1>ლექციების ჩანაწერები</h1>
+            <div id="uploaded-videos-grid" class="video-grid">
+                <!-- Videos will be loaded here -->
+            </div>
+            
+            <div class="pagination">
+                <button id="uploaded-prev-page-btn" class="pagination-btn" disabled>
+                    <i class="fas fa-chevron-left"></i> წინა
+                </button>
+                <div class="pagination-info">
+                    <span id="uploaded-current-page">1</span> / <span id="uploaded-total-pages">1</span>
+                </div>
+                <button id="uploaded-next-page-btn" class="pagination-btn" disabled>
+                    შემდეგი <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </section>
+
+        <section id="linked-videos-section">
+            <h1>დამატებითი რესურსები</h1>
+            <div id="linked-videos-grid" class="video-grid">
+                <!-- Videos will be loaded here -->
+            </div>
+            
+            <div class="pagination">
+                <button id="linked-prev-page-btn" class="pagination-btn" disabled>
+                    <i class="fas fa-chevron-left"></i> წინა
+                </button>
+                <div class="pagination-info">
+                    <span id="linked-current-page">1</span> / <span id="linked-total-pages">1</span>
+                </div>
+                <button id="linked-next-page-btn" class="pagination-btn" disabled>
+                    შემდეგი <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Video Modal -->
+    <div class="video-modal" id="video-modal">
+        <div class="video-modal-content">
+            <div class="close-modal" id="close-modal">
+                <i class="fas fa-times"></i>
+            </div>
+            <div class="video-modal-iframe-container">
+                <iframe class="video-modal-iframe" id="video-player" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+                </iframe>
+            </div>
+        </div>
+    </div>
+
+    <script src="../header/header.js"></script>
+    <script src="videos.js"></script>
+</body>
+</html>

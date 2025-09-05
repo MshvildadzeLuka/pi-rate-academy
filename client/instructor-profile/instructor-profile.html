@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ინსტრუქტორის პროფილი | Pi-Rate Academy</title>
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <script src="../assets/js/auth.js" defer></script>
+    <link rel="stylesheet" href="../header/header.css">
+    <link rel="stylesheet" href="instructor-profile.css">
+</head>
+<body>
+
+    <div id="header-placeholder"></div>
+
+    <main class="profile-container">
+        <div class="profile-card">
+            <div class="profile-header">
+                <img src="" alt="ინსტრუქტორის ფოტო" id="instructor-photo" class="profile-photo">
+                <div class="profile-header-info">
+                    <h1 id="instructor-name" class="profile-name"></h1>
+                    <p id="instructor-role" class="profile-role"></p>
+                    <div id="instructor-socials" class="social-links"></div>
+                </div>
+            </div>
+
+            <div class="profile-body">
+                <h2>ჩემს შესახებ</h2>
+                <p id="instructor-about"></p>
+            </div>
+
+            <div class="rating-container">
+                <div class="average-rating-display">
+                    <h2>საშუალო რეიტინგი</h2>
+                    <div class="rating-summary">
+                        <span class="avg-rating-score" id="avg-rating-score">--</span>
+                        <div class="stars" id="avg-stars"></div>
+                        <span class="total-ratings" id="total-ratings">(0 შეფასება)</span>
+                    </div>
+                </div>
+                <div class="user-rating-section" id="user-rating-section" style="display: none;">
+                    <h3>თქვენი შეფასება</h3>
+                    <p id="rating-prompt">აირჩიეთ ქულები</p>
+                    <div class="star-rating-interactive" id="interactive-stars"></div>
+                    <button id="submit-rating-btn" class="btn btn--primary" disabled>შეფასების გაგზავნა</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../header/header.js"></script>
+    <script src="instructor-profile.js"></script>
+</body>
+</html>

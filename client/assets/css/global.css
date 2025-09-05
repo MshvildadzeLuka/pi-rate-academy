@@ -1,0 +1,89 @@
+/* =================================================================== */
+/* ============ GLOBAL STYLESHEET (PERFECTED & UNIFIED) ============ */
+/* =================================================================== */
+/* --- This file is the single source of truth for the entire --- */
+/* --- Pi-Rate Academy design system. It should be included --- */
+/* --- on every page of the application. --- */
+/* =================================================================== */
+
+/* ===== FONT IMPORT ===== */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+/* ===== ROOT VARIABLES (DESIGN TOKENS) ===== */
+:root {
+    /* --- Layout Dimensions --- */
+    --header-height: 70px;
+    --sidebar-width: 260px; /* Included for admin page compatibility */
+    
+    /* --- Core Color Palette --- */
+    --background-primary: #121212;   /* Main page background */
+    --background-secondary: #1e1e1e; /* Cards, sidebars, modals */
+    --background-tertiary: #2a2a2a;  /* Hover states, borders, inputs */
+    --background-quaternary: #1a1a1a; /* Darker elements like modal footers */
+    
+    /* --- Text Colors --- */
+    --text-primary: #FFFFFF;         /* Main text, headings */
+    --text-secondary: #b3b3b3;       /* Subtitles, labels, secondary text */
+    --text-tertiary: #888;           /* Disabled text, placeholders */
+    
+    /* --- Accent & Status Colors --- */
+    --primary-accent: #007BFF;       /* The main brand color for buttons, links, highlights */
+    --primary-accent-hover: #0066cc; /* Darker shade for hover states */
+    --primary-accent-light: rgba(0, 123, 255, 0.15); /* For focus glows and light backgrounds */
+    
+    --danger-accent: #dc3545;        /* Errors, deletion */
+    --success-accent: #28a745;       /* Success, completion */
+    --warning-accent: #ffc107;       /* Warnings, pending status */
+    
+    /* --- UI Element Variables --- */
+    --shadow-color: rgba(0, 123, 255, 0.2); /* Glow effect for primary elements */
+    --border-radius-main: 12px;
+    --transition-main: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===== GLOBAL RESETS & BASE STYLES ===== */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--background-primary);
+    color: var(--text-primary);
+    font-family: 'Poppins', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    
+    /* This is the crucial rule that prevents content from being hidden
+       underneath your fixed header. It is designed for document-style pages. */
+    padding-top: var(--header-height);
+}
+
+/* ===== CUSTOM SCROLLBAR STYLING ===== */
+/* This provides a consistent, dark-themed scrollbar across the app */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--background-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: var(--background-tertiary);
+    border-radius: 10px;
+    border: 2px solid var(--background-secondary);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: #555;
+}
+
+/* ===== GLOBAL UTILITY CLASSES ===== */
+.hidden {
+    display: none !important;
+}

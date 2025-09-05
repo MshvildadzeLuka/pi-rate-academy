@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>მთავარი | Pi-Rate Academy</title>
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <script src="../assets/js/auth.js" defer></script>
+    <link rel="stylesheet" href="../header/header.css">
+    <link rel="stylesheet" href="home.css">
+</head>
+<body>
+
+    <div id="header-placeholder"></div>
+
+    <main>
+        <section id="hero-section">
+            <div class="hero-content">
+                <h2 class="hero-title">მზად ხარ?</h2>
+                <p class="hero-subtitle">შენი შემდეგი ლექცია ერთი დაწკაპუნებით დაიწყება</p>
+                <button id="join-call-btn"><span>დარეკვა</span></button>
+            </div>
+        </section>
+
+        <section id="teachers-section" class="hidden-section">
+            <h2 class="section-title">გაიცანი ჩვენი ინსტრუქტორები</h2>
+            <div id="teacher-grid" class="teacher-grid">
+                <!-- Teachers will be loaded here dynamically -->
+            </div>
+            <div id="pagination-controls" class="pagination-controls">
+                <button id="prev-page-btn" class="pagination-btn" disabled>&larr; წინა</button>
+                <span id="page-info">გვერდი 1 / 1</span>
+                <button id="next-page-btn" class="pagination-btn" disabled>შემდეგი &rarr;</button>
+            </div>
+        </section>
+    </main>
+
+    <footer id="footer-section">
+        <div class="footer-content">
+            <div class="social-links">
+                <a href="#" class="social-link"><span>Facebook</span></a>
+                <a href="#" class="social-link"><span>Instagram</span></a>
+                <a href="#" class="social-link"><span>Email</span></a>
+            </div>
+            <p class="copyright">&copy; 2025 Pi-Rate Academy. ყველა უფლება დაცულია.</p>
+        </div>
+    </footer>
+
+    <div id="zoom-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <button class="close-modal">&times;</button>
+            <h3 id="modal-title">აირჩიე შენი კლასი</h3>
+            <div id="group-list"></div>
+        </div>
+    </div>
+
+    <div id="teacher-profile-modal" class="modal-overlay hidden">
+        <div class="modal-content teacher-profile">
+            <button class="close-modal">&times;</button>
+            <div id="modal-teacher-content">
+                <div class="profile-header">
+                    <img src="" alt="ინსტრუქტორის ფოტო" id="modal-teacher-photo" class="modal-teacher-photo">
+                    <div class="profile-header-info">
+                        <h3 id="modal-teacher-name" class="modal-teacher-name"></h3>
+                        <p id="modal-teacher-role" class="modal-teacher-role"></p>
+                        <div id="modal-teacher-socials" class="social-links-modal"></div>
+                    </div>
+                </div>
+                <div class="profile-body">
+                    <h4>ჩემს შესახებ</h4>
+                    <p id="modal-teacher-about"></p>
+                </div>
+                <div class="profile-rating-section" style="display: none;">
+                    <h4>შეაფასე ეს ინსტრუქტორი</h4>
+                    <p id="rating-prompt"></p>
+                    <div class="star-rating-interactive" id="modal-star-rating"></div>
+                    <button id="submit-rating-btn" class="btn primary" disabled>რეйтиნგის გაგზავნა</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../header/header.js"></script>
+    <script src="home.js"></script>
+
+</body>
+</html>

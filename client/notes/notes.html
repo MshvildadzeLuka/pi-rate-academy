@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>საკითხავი მასალა | Pi-Rate Academy</title>
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <link rel="stylesheet" href="../header/header.css">
+    <link rel="stylesheet" href="notes.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="../assets/js/auth.js" defer></script>
+</head>
+<body>
+
+    <div id="header-placeholder"></div>
+
+    <main class="notes-container">
+        <div class="notes-header">
+            <h1>საკითხავი მასალა</h1>
+            <div id="teacher-admin-controls" class="notes-controls" style="display: none;">
+                <div class="form-group">
+                    <select id="group-select" aria-label="აირჩიეთ ჯგუფი"></select>
+                </div>
+                <button id="upload-note-btn" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> ახალი ჩანაწერი
+                </button>
+            </div>
+        </div>
+
+        <div id="notes-list" class="notes-grid">
+            <div class="loading-indicator">
+                <div class="loading-spinner"></div>
+            </div>
+        </div>
+
+        <div id="pagination-controls" class="pagination-controls" style="display: none;">
+            <button id="prev-page-btn" class="pagination-btn" disabled>&larr; წინა</button>
+            <span id="page-info">გვერდი 1 of 1</span>
+            <button id="next-page-btn" class="pagination-btn" disabled>შემდეგი &rarr;</button>
+        </div>
+    </main>
+
+    <div id="upload-note-modal" class="modal-backdrop" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>ახალი ჩანაწერის ატვირთვა</h2>
+                <button class="close-modal-btn">&times;</button>
+            </div>
+            <form id="note-form">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="note-title">სათაური</label>
+                        <input type="text" id="note-title" name="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="note-description">აღწერა</label>
+                        <textarea id="note-description" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="note-group">ჯგუფი</label>
+                        <select id="note-group" name="groupId" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label>ფაილი (მხოლოდ PDF)</label>
+                        <div class="file-uploader" id="note-drop-zone">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>გადმოათრიეთ PDF ფაილი აქ ან დააჭირეთ ფაილის ასარჩევად</p>
+                            <input type="file" id="note-file-input" hidden accept=".pdf">
+                        </div>
+                        <div class="file-list" id="note-file-list"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary close-modal-btn">გაუქმება</button>
+                    <button type="submit" class="btn btn-primary">ჩანაწერის ატვირთვა</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="../header/header.js"></script>
+    <script src="notes.js"></script>
+</body>
+</html>

@@ -1,0 +1,139 @@
+/* --- Global Settings --- */
+body {
+    background-color: var(--background-primary); /* CHANGED: Using global theme variable */
+    color: var(--text-primary);
+    min-height: 100vh;
+    font-family: 'Poppins', sans-serif;
+}
+
+/* --- Main Layout --- */
+.profile-container {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 30px;
+    max-width: 1400px;
+    margin: 40px auto;
+    padding: 0 30px;
+}
+
+.sidebar { flex-shrink: 0; }
+.content { min-width: 0; }
+
+/* --- Card & Tab Styling (UPDATED to match site theme) --- */
+.card, .profile-summary {
+    background-color: var(--background-secondary); /* CHANGED: Using global theme variable */
+    border: 1px solid var(--background-tertiary); /* CHANGED: Using global theme variable */
+    border-radius: 15px; /* UPDATED: Consistent radius */
+    padding: 30px;
+    margin-bottom: 30px;
+}
+.profile-summary { margin-bottom: 0; text-align: center; }
+
+.tabs {
+    display: flex;
+    background: var(--background-tertiary); /* CHANGED: Consistent tab container */
+    border-radius: 8px;
+    padding: 8px;
+    margin-bottom: 30px;
+}
+.tab-btn {
+    flex: 1;
+    padding: 12px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 6px; /* UPDATED: Consistent radius */
+    transition: all 0.3s ease;
+    text-align: center;
+}
+.tab-btn.active {
+    background: var(--primary-accent); /* CHANGED: Using global theme variable */
+    color: white;
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn 0.5s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* --- Profile Summary Card (UPDATED to match site theme) --- */
+.avatar-container { position: relative; width: 150px; height: 150px; margin: 0 auto 20px; border-radius: 50%; cursor: pointer; }
+.profile-avatar { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.avatar-overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; opacity: 0; transition: all 0.3s ease; border-radius: 50%; }
+.avatar-overlay svg { width: 32px; height: 32px; margin-bottom: 8px; }
+.avatar-container:hover .avatar-overlay { opacity: 1; }
+
+#profile-full-name { font-size: 1.8rem; margin-bottom: 10px; font-weight: 700; color: var(--text-primary); } /* UPDATED: Consistent color */
+#profile-email { color: var(--text-secondary); margin-bottom: 20px; font-size: 1rem; }
+.role-badge { display: inline-block; padding: 6px 15px; border-radius: 20px; font-weight: 600; margin-bottom: 25px; font-size: 0.9rem; text-transform: capitalize; }
+.role-badge.teacher { background: rgba(0, 168, 255, 0.1); color: var(--primary-accent); } /* UPDATED: Consistent teacher style */
+.role-badge.student { background: rgba(234, 234, 234, 0.1); color: var(--text-secondary); } /* UPDATED: Consistent student style */
+.role-badge.admin { background: rgba(255, 193, 7, 0.1); color: #ffc107; } /* UPDATED: Consistent admin style */
+
+
+/* --- Profile Completion Bar (UPDATED to match site theme) --- */
+.profile-completion { margin-top: 25px; }
+.completion-header { display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 8px; }
+.completion-bar { width: 100%; background: var(--background-tertiary); border-radius: 50px; height: 8px; overflow: hidden; }
+.completion-progress { width: 0%; height: 100%; background: var(--primary-accent); border-radius: 50px; transition: width 0.5s ease; }
+
+/* --- Forms & Inputs (UPDATED to match site theme) --- */
+.card h2 { font-size: 1.5rem; margin-bottom: 25px; color: var(--text-primary); }
+.form-row { display: flex; gap: 20px; }
+.form-row > * { flex: 1; }
+.input-group { margin-bottom: 20px; }
+.input-group label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 0.9rem; color: var(--text-secondary); }
+.input-group input, .input-group textarea {
+    width: 100%;
+    padding: 12px; /* UPDATED: Consistent padding */
+    background-color: var(--background-tertiary); /* CHANGED */
+    border: 1px solid var(--background-tertiary); /* CHANGED */
+    border-radius: 8px; /* UPDATED: Consistent radius */
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-family: 'Poppins', sans-serif;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.input-group input:focus, .input-group textarea:focus {
+    outline: none;
+    border-color: var(--primary-accent); /* CHANGED */
+    box-shadow: 0 0 0 3px var(--shadow-color); /* CHANGED */
+}
+.input-group input[readonly] { background: rgba(0,0,0,0.1); cursor: not-allowed; }
+.input-group textarea { min-height: 120px; resize: vertical; }
+
+.form-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+.btn.primary {
+    padding: 12px 28px;
+    border-radius: 8px; /* UPDATED: Consistent radius */
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    background-image: linear-gradient(45deg, var(--primary-accent), #007BFF); /* CHANGED */
+    color: white;
+}
+.btn.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px var(--shadow-color); /* CHANGED */
+}
+
+/* --- Password Strength Meter --- */
+.password-strength { margin-top: 10px; }
+.strength-bar { height: 6px; background: var(--background-tertiary); border-radius: 3px; margin-bottom: 8px; overflow: hidden; }
+.strength-level { height: 100%; width: 0%; border-radius: 3px; transition: all 0.3s ease; }
+.strength-text { font-size: 0.9rem; color: var(--text-secondary); height: 1.2em; }
+
+.hidden { display: none !important; }
+
+/* --- Responsive design --- */
+@media (max-width: 900px) { .profile-container { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .form-row { flex-direction: column; gap: 20px; } }
+
+/* --- Notifications --- */
+.notification { position: fixed; top: 90px; right: 20px; padding: 15px 25px; border-radius: 8px; color: white; font-weight: 500; z-index: 1000; transform: translateX(120%); opacity: 0; transition: all 0.3s ease; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); }
+.notification.show { transform: translateX(0); opacity: 1; }
+.notification.success { background: #2ecc71; } /* UPDATED: Consistent success color */
+.notification.error { background: #e74c3c; } /* UPDATED: Consistent error color */
