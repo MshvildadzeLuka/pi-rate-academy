@@ -90,7 +90,9 @@ class VideoManager {
 
   getYouTubeEmbedUrl(url) {
     const videoId = this.getYouTubeId(url);
-    return videoId ? `https://www.youtube.com/embed/${videoId}?rel=0` : '';
+    // CORRECTED: This now creates the proper embed URL and adds parameters
+    // to ensure the video plays immediately and without showing related videos.
+    return videoId ? `https://www.youtube.com/embed/${videoId}?rel=0&autoplay=1` : '';
   }
 
   async loadAndRenderVideos() {
