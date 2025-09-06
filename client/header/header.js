@@ -78,6 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function populateHeader() {
     const token = localStorage.getItem('piRateToken');
+    // If there's no token, there's nothing to do. The auth.js script will handle redirection.
     if (!token) {
       return;
     }
@@ -85,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const response = await fetch('/api/users/profile', {
         headers: {
-          Authorization: `Bearer ${token}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -106,23 +107,31 @@ document.addEventListener('DOMContentLoaded', () => {
           profileName.textContent = `${currentUser.firstName} ${currentUser.lastName}`;
         }
 
+        // Hide the "Admin" link if the user is not an Admin
         if (adminNavLink && currentUser.role !== 'Admin') {
           adminNavLink.style.display = 'none';
         }
       } else {
+        // If the token is invalid or expired, log the user out.
         console.error('Authentication failed:', response.statusText);
         localStorage.removeItem('piRateToken');
-        window.location.href = '/client/login/login.html';
+        // CORRECTED PATH: Redirects to the correct login page URL.
+        window.location.href = '/login/login.html';
       }
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
+      // In case of a network error, it's safer to log out.
+      localStorage.removeItem('piRateToken');
+      window.location.href = '/login/login.html';
     }
 
+    // Set up the logout button functionality
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', () => {
         localStorage.removeItem('piRateToken');
-        window.location.href = '/client/login/login.html';
+        // CORRECTED PATH: Ensures the logout redirects correctly.
+        window.location.href = '/login/login.html';
       });
     }
   }
