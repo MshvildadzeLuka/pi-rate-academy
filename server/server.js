@@ -122,7 +122,7 @@ console.log('Starting assignment status updater...');
 console.log('Starting quiz status updater...');
 
 // Serve frontend
-app.use(express.static(path.join(__dirname, './client')));
+app.use(express.static(path.join(__dirname, '..', 'client')));
 app.get('/api', (req, res) => res.json({ success: true, message: 'Pi-Rate Academy Server is running!' }));
 
 // SPA fallback
