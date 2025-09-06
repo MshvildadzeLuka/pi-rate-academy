@@ -100,17 +100,19 @@ class VideoManager {
       // Show loading state
       this.showLoadingState();
 
-      // Fetch all videos - FIXED: Updated to match the API response format
+      // Fetch all videos
       const response = await this.apiFetch('/videos');
 
       if (!response || !response.success) {
         throw new Error(response?.message || 'Failed to load videos');
       }
 
-      // FIXED: Extract videos from the correct response structure
       const allVideos = response.data?.videos || response.videos || [];
 
-      // Filter videos
+      // CORRECTED: Sort all videos by creation date (newest first)
+      allVideos.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      // Filter videos after sorting
       this.uploadedVideos = allVideos.filter(video => 
         video.type === 'upload' || 
         (video.tags && video.tags.includes('lecture')) ||
