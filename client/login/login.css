@@ -1,3 +1,24 @@
+
+/* --- CSS Variables --- */
+:root {
+    --background-primary: #1a1a2e;
+    --background-secondary: #16213e;
+    --background-tertiary: #0f3460;
+    --text-primary: #f0f0f0;
+    --text-secondary: #c0c0c0;
+    --primary-accent: #00F2FE;
+    --secondary-accent: #4facfe;
+    --error-color: #e74c3c;
+    --shadow-color: rgba(0, 242, 254, 0.3);
+}
+
+/* --- Reset and Base Styles --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
 /* --- Keyframe Animations --- */
 @keyframes fade-in-scale {
     from {
@@ -17,15 +38,16 @@ body {
     justify-content: center;
     min-height: 100vh;
     background-image: radial-gradient(circle at 50% 50%, var(--background-secondary) 0%, var(--background-primary) 75%);
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Noto Sans Georgian', sans-serif;
     padding: 20px;
+    line-height: 1.6;
 }
 
 .login-form-wrapper {
     width: 100%;
     max-width: 400px;
     background-color: var(--background-secondary);
-    padding: 40px;
+    padding: 30px;
     border-radius: 15px;
     border: 1px solid var(--background-tertiary);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
@@ -37,7 +59,7 @@ body {
     height: 50px;
     width: auto;
     display: block;
-    margin: 0 auto 30px;
+    margin: 0 auto 25px;
 }
 
 .login-form-wrapper h2 {
@@ -45,7 +67,7 @@ body {
     color: var(--text-primary);
     font-weight: 700;
     font-size: 1.8rem;
-    margin-bottom: 30px;
+    margin-bottom: 25px;
 }
 
 /* --- Form Element Styling --- */
@@ -59,17 +81,18 @@ body {
     font-size: 0.9rem;
     color: var(--text-secondary);
     margin-bottom: 8px;
+    font-weight: 500;
 }
 
 .input-group input {
     width: 100%;
-    padding: 12px;
+    padding: 15px;
     background-color: var(--background-tertiary);
     border: 1px solid var(--background-tertiary);
     border-radius: 8px;
     color: var(--text-primary);
     font-size: 1rem;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Noto Sans Georgian', sans-serif;
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -79,23 +102,29 @@ body {
     box-shadow: 0 0 0 3px var(--shadow-color);
 }
 
+.input-group input::placeholder {
+    color: #8892b0;
+    font-size: 0.9rem;
+}
+
 .login-btn {
     width: 100%;
     padding: 15px;
     margin-top: 10px;
     border-radius: 8px;
     font-size: 1.1rem;
-    font-weight: 500;
+    font-weight: 600;
     color: #fff;
-    background-image: linear-gradient(45deg, var(--primary-accent), #007BFF);
+    background-image: linear-gradient(45deg, var(--primary-accent), var(--secondary-accent));
     border: none;
     cursor: pointer;
     transition: all 0.3s ease;
+    font-family: 'Noto Sans Georgian', sans-serif;
 }
 
 .login-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0, 168, 255, 0.2);
+    box-shadow: 0 4px 15px rgba(0, 168, 255, 0.4);
 }
 
 .login-btn:active {
@@ -105,19 +134,25 @@ body {
 
 /* --- Error Message and Extra Links --- */
 #error-message {
-    color: #e74c3c;
+    color: var(--error-color);
     text-align: center;
     margin-top: 15px;
     font-size: 0.9rem;
-    min-height: 1.2em; /* Prevents layout shift */
+    min-height: 1.2em;
+    padding: 8px;
+    background-color: rgba(231, 76, 60, 0.1);
+    border-radius: 5px;
+    border-left: 3px solid var(--error-color);
 }
 
 .error-hidden {
     visibility: hidden;
+    opacity: 0;
 }
 
 .error-visible {
     visibility: visible;
+    opacity: 1;
 }
 
 .extra-links {
@@ -130,9 +165,90 @@ body {
     font-size: 0.9rem;
     text-decoration: none;
     transition: color 0.3s ease;
+    display: inline-block;
+    margin: 5px 0;
 }
 
 .extra-links a:hover {
     color: var(--primary-accent);
     text-decoration: underline;
+}
+
+/* --- Mobile Responsive Styles --- */
+@media screen and (max-width: 480px) {
+    body {
+        padding: 15px;
+    }
+    
+    .login-form-wrapper {
+        padding: 25px 20px;
+        border-radius: 12px;
+    }
+    
+    .login-form-wrapper h2 {
+        font-size: 1.6rem;
+        margin-bottom: 20px;
+    }
+    
+    .login-form-wrapper .logo-svg {
+        height: 45px;
+        margin-bottom: 20px;
+    }
+    
+    .input-group input {
+        padding: 12px;
+    }
+    
+    .login-btn {
+        padding: 14px;
+        font-size: 1rem;
+    }
+    
+    .extra-links a {
+        font-size: 0.85rem;
+    }
+}
+
+/* For very small devices */
+@media screen and (max-width: 350px) {
+    .login-form-wrapper {
+        padding: 20px 15px;
+    }
+    
+    .login-form-wrapper h2 {
+        font-size: 1.4rem;
+    }
+    
+    .input-group label {
+        font-size: 0.85rem;
+    }
+    
+    .input-group input {
+        font-size: 0.95rem;
+        padding: 10px;
+    }
+}
+
+/* Landscape mode for mobile */
+@media screen and (max-height: 500px) and (orientation: landscape) {
+    body {
+        padding: 10px;
+        align-items: flex-start;
+    }
+    
+    .login-form-wrapper {
+        margin: 20px 0;
+    }
+}
+
+/* Reduced motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+    .login-form-wrapper {
+        animation: none;
+    }
+    
+    .input-group input,
+    .login-btn {
+        transition: none;
+    }
 }
