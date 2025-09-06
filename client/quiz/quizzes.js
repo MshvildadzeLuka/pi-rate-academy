@@ -1,4 +1,4 @@
-// quizzes.js (Enhanced Version)
+// quizzes.js (Georgian Version)
 // Comprehensive solution for Pi-Rate Academy Quiz System
 // =========================================================================
 
@@ -182,12 +182,12 @@ const utils = {
     // Format date for display
     formatDate(dateStr) {
         try {
-            if (!dateStr) return 'Invalid Date';
+            if (!dateStr) return 'არასწორი თარიღი';
             
             const date = new Date(dateStr);
-            if (isNaN(date.getTime())) return 'Invalid Date';
+            if (isNaN(date.getTime())) return 'არასწორი თარიღი';
             
-            return date.toLocaleString('en-US', {
+            return date.toLocaleString('ka-GE', {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric',
@@ -196,7 +196,7 @@ const utils = {
             });
         } catch (error) {
             console.error('Error formatting date for display:', error);
-            return 'Invalid Date';
+            return 'არასწორი თარიღი';
         }
     },
     
@@ -225,38 +225,38 @@ const utils = {
 
         // --- Top-Level Quiz Validation ---
         if (!quizData.title || quizData.title.trim() === '') {
-            errors.push('Quiz title is required.');
+            errors.push('ქვიზის სათაური აუცილებელია.');
         }
         if (!quizData.groupId) {
-            errors.push('A group must be selected.');
+            errors.push('უნდა აირჩიოთ ჯგუფი.');
         }
         if (!quizData.startTime || !quizData.endTime) {
-            errors.push('Both a start and end time are required.');
+            errors.push('საჭიროა როგორც დაწყების, ასევე დამთავრების დრო.');
         } else {
             const startDate = new Date(quizData.startTime);
             const endDate = new Date(quizData.endTime);
             if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-                errors.push('The start or end time is not a valid date.');
+                errors.push('დაწყების ან დამთავრების დრო არ არის სწორი.');
             } else if (endDate <= startDate) {
-                errors.push('End time must be after start time.');
+                errors.push('დამთავრების დრო უნდა იყოს დაწყების დროის შემდეგ.');
             }
         }
 
         // --- Detailed Question Validation ---
         if (!quizData.questions || quizData.questions.length === 0) {
-            errors.push('A quiz must have at least one question.');
+            errors.push('ქვიზს უნდა ჰქონდეს მინიმუმ ერთი კითხვა.');
         } else {
             quizData.questions.forEach((question, index) => {
                 if (!question.text || question.text.trim() === '') {
-                    errors.push(`Question #${index + 1} text cannot be empty.`);
+                    errors.push(`კითხვა #${index + 1} არ შეიძლება იყოს ცარიელი.`);
                 }
                 if (!question.options || question.options.length < 2) {
-                    errors.push(`Question #${index + 1} must have at least two answer options.`);
+                    errors.push(`კითხვა #${index + 1} უნდა ჰქონდეს მინიმუმ ორი პასუხის ვარიანტი.`);
                 } else if (!question.options.some(opt => opt.isCorrect)) {
-                    errors.push(`Question #${index + 1} must have one correct answer selected.`);
+                    errors.push(`კითხვა #${index + 1} უნდა ჰქონდეს მინიმუმ ერთი სწორი პასუხი.`);
                 }
                 if (isNaN(parseInt(question.points)) || question.points < 0) {
-                    errors.push(`Question #${index + 1} must have a valid, non-negative point value.`);
+                    errors.push(`კითხვა #${index + 1} უნდა ჰქონდეს სწორი, არაუარყოფითი ქულა.`);
                 }
             });
         }
@@ -330,6 +330,20 @@ const utils = {
     // Generate a unique ID for temporary elements
     generateTempId() {
         return `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    },
+    
+    // Translate status to Georgian
+    translateStatus(status) {
+        const statusMap = {
+            [QUIZ_STATUS.UPCOMING]: 'მომავალი',
+            [QUIZ_STATUS.ACTIVE]: 'აქტიური',
+            [QUIZ_STATUS.COMPLETED]: 'დასრულებული',
+            [QUIZ_STATUS.PAST_DUE]: 'ვადაგასული',
+            [QUIZ_STATUS.GRADED]: 'შეფასებული',
+            [QUIZ_STATUS['NOT ATTEMPTED']]: 'არ არის ნაცდი',
+            [QUIZ_STATUS.IN_PROGRESS]: 'მიმდინარე'
+        };
+        return statusMap[status] || status;
     }
 };
 
@@ -341,7 +355,7 @@ const apiService = {
             const token = localStorage.getItem('piRateToken');
             if (!token) {
                 window.location.href = '/client/login/login.html';
-                throw new Error('No authentication token found');
+                throw new Error('ავთენტიფიკაციის ტოკენი არ მოიძებნა');
             }
             
             const headers = {
@@ -361,12 +375,12 @@ const apiService = {
             if (response.status === 401) {
                 localStorage.removeItem('piRateToken');
                 window.location.href = '/client/login/login.html';
-                throw new Error('Session expired. Please log in again.');
+                throw new Error('სესია ამოიწურა. გთხოვთ, თავიდან შეხვიდეთ სისტემაში.');
             }
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ message: `HTTP error ${response.status}` }));
-                const error = new Error(errorData.message || 'An unknown error occurred');
+                const errorData = await response.json().catch(() => ({ message: `HTTP შეცდომა ${response.status}` }));
+                const error = new Error(errorData.message || 'მოხდა უცნობი შეცდომა');
                 error.status = response.status;
                 error.data = errorData;
                 throw error;
@@ -374,7 +388,7 @@ const apiService = {
 
             return response.status === 204 ? null : response.json();
         } catch (error) {
-            console.error(`API request to ${endpoint} failed:`, error);
+            console.error(`API მოთხოვნა ${endpoint}-ზე ვერ შესრულდა:`, error);
             throw error; 
         }
     },
@@ -390,7 +404,7 @@ const apiService = {
             
             if (userResult.status === 'rejected') {
                 // If fetching the user fails, it's a critical error.
-                throw new Error(`Failed to fetch user profile: ${userResult.reason.message}`);
+                throw new Error(`მომხმარებლის პროფილის მიღება ვერ მოხერხდა: ${userResult.reason.message}`);
             }
             
             // ✅ Robustness: Explicitly assign the user object. The /users/profile route returns it directly.
@@ -402,7 +416,7 @@ const apiService = {
 
             return { user, groups };
         } catch (error) {
-            console.error('Failed to fetch initial data:', error);
+            console.error('საწყისი მონაცემების მიღება ვერ მოხერხდა:', error);
             // This will trigger the redirect to login if the token is invalid
             if (error.message.includes('Session expired')) {
                 return { user: null, groups: [] };
@@ -422,7 +436,7 @@ const apiService = {
             const response = await this.fetch(endpoint);
             return response.data || response;
         } catch (error) {
-            console.error('Failed to fetch student quizzes:', error);
+            console.error('სტუდენტური ქვიზების მიღება ვერ მოხერხდა:', error);
             return [];
         }
     },
@@ -431,7 +445,7 @@ const apiService = {
     async fetchQuizzesForGroup(groupId, status) {
         try {
             if (!utils.isValidObjectId(groupId)) {
-                throw new Error('Invalid group ID');
+                throw new Error('ჯგუფის ID არასწორია');
             }
             
             let endpoint = `/quizzes/teacher/${groupId}`;
@@ -441,7 +455,7 @@ const apiService = {
             const response = await this.fetch(endpoint);
             return response.data || response;
         } catch (error) {
-            console.error('Failed to fetch quizzes for group:', error);
+            console.error('ჯგუფის ქვიზების მიღება ვერ მოხერხდა:', error);
             return [];
         }
     },
@@ -471,7 +485,7 @@ const apiService = {
             });
             return response.data || response;
         } catch (error) {
-            console.error('Failed to create quiz:', error);
+            console.error('ქვიზის შექმნა ვერ მოხერხდა:', error);
             throw error;
         }
     },
@@ -480,7 +494,7 @@ const apiService = {
     async updateQuiz(quizId, quizData) {
         try {
             if (!utils.isValidObjectId(quizId)) {
-                throw new Error('Invalid quiz ID format');
+                throw new Error('ქვიზის ID არასწორია');
             }
             
             const validationErrors = utils.validateQuizData(quizData);
@@ -499,7 +513,7 @@ const apiService = {
             });
             return response.data || response;
         } catch (error) {
-            console.error('Failed to update quiz:', error);
+            console.error('ქვიზის განახლება ვერ მოხერხდა:', error);
             throw error;
         }
     },
@@ -508,13 +522,13 @@ const apiService = {
     async deleteQuiz(quizId) {
         try {
             if (!utils.isValidObjectId(quizId)) {
-                throw new Error('Invalid quiz ID format');
+                throw new Error('ქვიზის ID არასწორია');
             }
             
             const response = await this.fetch(`/quizzes/${quizId}`, { method: 'DELETE' });
             return response.data || response;
         } catch (error) {
-            console.error('Failed to delete quiz:', error);
+            console.error('ქვიზის წაშლა ვერ მოხერხდა:', error);
             throw error;
         }
     },
@@ -523,7 +537,7 @@ const apiService = {
     async startQuizAttempt(quizId, password = null) {
         try {
             if (!utils.isValidObjectId(quizId)) {
-                throw new Error('Invalid quiz ID format');
+                throw new Error('ქვიზის ID არასწორია');
             }
             
             const body = password ? { password } : {};
@@ -533,7 +547,7 @@ const apiService = {
             });
             return response.data || response;
         } catch (error) {
-            console.error('Failed to start quiz attempt:', error);
+            console.error('ქვიზის დაწყება ვერ მოხერხდა:', error);
             throw error;
         }
     },
@@ -542,7 +556,7 @@ const apiService = {
     async submitAnswer(attemptId, questionId, selectedOptionIndex) {
         try {
             if (!utils.isValidObjectId(attemptId) || !utils.isValidObjectId(questionId)) {
-                throw new Error('Invalid ID format');
+                throw new Error('ID არასწორია');
             }
             
             const response = await this.fetch(`/quizzes/attempt/${attemptId}/answer`, {
@@ -554,7 +568,7 @@ const apiService = {
             });
             return response.data || response;
         } catch (error) {
-            console.error('Failed to submit answer:', error);
+            console.error('პასუხის გაგზავნა ვერ მოხერხდა:', error);
             throw error;
         }
     },
@@ -563,7 +577,7 @@ const apiService = {
     async submitQuizAttempt(attemptId, answers) {
         try {
             if (!utils.isValidObjectId(attemptId)) {
-                throw new Error('Invalid attempt ID format');
+                throw new Error('ცდის ID არასწორია');
             }
             
             return this.fetch(`/quizzes/attempt/${attemptId}/submit`, {
@@ -571,7 +585,7 @@ const apiService = {
                 body: JSON.stringify({ answers })
             });
         } catch (error) {
-            console.error('Failed to submit quiz attempt:', error);
+            console.error('ქვიზის გაგზავნა ვერ მოხერხდა:', error);
             throw error;
         }
     },
@@ -580,13 +594,13 @@ const apiService = {
     async fetchQuizResults(attemptId) {
         try {
             if (!utils.isValidObjectId(attemptId)) {
-                throw new Error('Invalid attempt ID format');
+                throw new Error('ცდის ID არასწორია');
             }
             
             const response = await this.fetch(`/quizzes/attempt/${attemptId}/results`);
             return response.data || response;
         } catch (error) {
-            console.error('Failed to fetch quiz results:', error);
+            console.error('ქვიზის შედეგების მიღება ვერ მოხერხდა:', error);
             throw error;
         }
     },
@@ -595,13 +609,13 @@ const apiService = {
     async fetchQuizAnalytics(quizId) {
         try {
             if (!utils.isValidObjectId(quizId)) {
-                throw new Error('Invalid quiz ID format');
+                throw new Error('ქვიზის ID არასწორია');
             }
             
             const response = await this.fetch(`/quizzes/${quizId}/analytics`);
             return response.data || response;
         } catch (error) {
-            console.error('Failed to fetch quiz analytics:', error);
+            console.error('ქვიზის ანალიტიკის მიღება ვერ მოხერხდა:', error);
             throw error;
         }
     },
@@ -610,7 +624,7 @@ const apiService = {
     async uploadQuestionImage(file) {
         try {
             if (!file || !(file instanceof File)) {
-                throw new Error('Invalid file provided');
+                throw new Error('არასწორი ფაილი');
             }
             
             const formData = new FormData();
@@ -622,7 +636,7 @@ const apiService = {
             });
             return response.data || response;
         } catch (error) {
-            console.error('Failed to upload question image:', error);
+            console.error('კითხვის სურათის ატვირთვა ვერ მოხერხდა:', error);
             throw error;
         }
     },
@@ -631,13 +645,13 @@ const apiService = {
     async fetchQuestionBanks(groupId) {
         try {
             if (!utils.isValidObjectId(groupId)) {
-                throw new Error('Invalid group ID format');
+                throw new Error('ჯგუფის ID არასწორია');
             }
             
             const response = await this.fetch(`/quizzes/question-banks/${groupId}`);
             return response.data || response;
         } catch (error) {
-            console.error('Failed to fetch question banks:', error);
+            console.error('კითხვების ბანკების მიღება ვერ მოხერხდა:', error);
             throw error;
         }
     },
@@ -646,7 +660,7 @@ const apiService = {
     async requestRetake(quizId, reason) {
         try {
             if (!utils.isValidObjectId(quizId)) {
-                throw new Error('Invalid quiz ID format');
+                throw new Error('ქვიზის ID არასწორია');
             }
             
             const response = await this.fetch('/assignments/requests', {
@@ -659,7 +673,7 @@ const apiService = {
             });
             return response.data || response;
         } catch (error) {
-            console.error('Failed to request retake:', error);
+            console.error('ხელახალი გაკეთების მოთხოვნა ვერ მოხერხდა:', error);
             throw error;
         }
     },
@@ -670,18 +684,18 @@ const apiService = {
             const response = await this.fetch('/quizzes/bank');
             return response.data || response;
         } catch (error) {
-            console.error('Failed to fetch quiz bank:', error);
+            console.error('ქვიზების ბანკის მიღება ვერ მოხერხდა:', error);
             throw error;
         }
     },
 
     async fetchQuizTemplatesForGroup(groupId, status) {
         try {
-            if (!utils.isValidObjectId(groupId)) throw new Error('Invalid group ID');
+            if (!utils.isValidObjectId(groupId)) throw new Error('ჯგუფის ID არასწორია');
             const response = await this.fetch(`/quizzes/templates/${groupId}?status=${status}`);
             return response.data || [];
         } catch (error) {
-            console.error('Failed to fetch quiz templates:', error);
+            console.error('ქვიზის შაბლონების მიღება ვერ მოხერხდა:', error);
             return [];
         }
     },
@@ -691,7 +705,7 @@ const apiService = {
             const response = await this.fetch('/assignments/requests?type=Quiz');
             return response.data || [];
         } catch (error) {
-            console.error('Failed to fetch retake requests:', error);
+            console.error('ხელახალი გაკეთების მოთხოვნების მიღება ვერ მოხერხდა:', error);
             return [];
         }
     },
@@ -703,7 +717,7 @@ const uiRenderer = {
     init() {
         try {
             if (!state.currentUser) {
-                console.error('Current user not set in state, cannot initialize UI.');
+                console.error('მიმდინარე მომხმარებელი არ არის დაყენებული, UI-ის ინიციალიზაცია შეუძლებელია.');
                 return;
             }
             
@@ -724,7 +738,7 @@ const uiRenderer = {
             this.renderTabs();
             this.updateView();
         } catch (error) {
-            console.error('Error initializing UI:', error);
+            console.error('UI-ის ინიციალიზაციის შეცდომა:', error);
         }
     },
 
@@ -732,7 +746,7 @@ const uiRenderer = {
     renderTeacherAdminUI() {
         try {
             if (!elements.teacherControls) {
-                console.error('Teacher controls element not found in HTML.');
+                console.error('მასწავლებელის კონტროლის ელემენტი HTML-ში ვერ მოიძებნა.');
                 return;
             }
             
@@ -743,7 +757,7 @@ const uiRenderer = {
                 : state.groups.filter(g => g.users?.some(u => u._id?.toString() === state.currentUser._id.toString()));
 
             if (elements.groupSelect) {
-                elements.groupSelect.innerHTML = `<option value="">Choose a Group</option>` +
+                elements.groupSelect.innerHTML = `<option value="">აირჩიეთ ჯგუფი</option>` +
                     relevantGroups.map(g => `
                         <option value="${g._id}" ${g._id === state.selectedGroupId ? 'selected' : ''}>
                             ${utils.escapeHTML(g.name)}
@@ -751,7 +765,7 @@ const uiRenderer = {
                     `).join('');
             }
         } catch (error) {
-            console.error('Error rendering teacher admin UI:', error);
+            console.error('მასწავლებელის/ადმინისტრატორის UI-ის გამოსახვის შეცდომა:', error);
         }
     },
 
@@ -760,7 +774,7 @@ const uiRenderer = {
         try {
             this.renderTabs();
         } catch (error) {
-            console.error('Error rendering student UI:', error);
+            console.error('სტუდენტური UI-ის გამოსახვის შეცდომა:', error);
         }
     },
 
@@ -782,7 +796,7 @@ const uiRenderer = {
                 btn.classList.toggle('active', btn.dataset.tab === state.activeTab);
             });
         } catch (error) {
-            console.error('Error rendering tabs:', error);
+            console.error('ტაბების გამოსახვის შეცდომა:', error);
         }
     },
 
@@ -790,13 +804,14 @@ const uiRenderer = {
         try {
             const isTeacher = [ROLES.TEACHER, ROLES.ADMIN].includes(state.currentUser.role);
             
-            const title = quiz.templateTitle || (quiz.templateId && quiz.templateId.title) || 'Untitled Quiz';
+            const title = quiz.templateTitle || (quiz.templateId && quiz.templateId.title) || 'უსათაურო ქვიზი';
             const id = quiz._id;
             const status = quiz.status; 
             const statusClass = status.toLowerCase().replace(/\s+/g, '-');
+            const translatedStatus = utils.translateStatus(status);
             
             // This logic correctly displays the score for completed/graded quizzes
-            let statusDisplay = `<span class="quiz-item-status status-badge ${statusClass}">${status}</span>`;
+            let statusDisplay = `<span class="quiz-item-status status-badge ${statusClass}">${translatedStatus}</span>`;
             if ((status === 'completed' || status === 'graded') && quiz.grade && typeof quiz.grade.score === 'number') {
                 const scoreText = `${quiz.grade.score}/${quiz.templatePoints}`;
                 statusDisplay = `<span class="quiz-item-status score-badge completed">${scoreText}</span>`;
@@ -807,15 +822,15 @@ const uiRenderer = {
                     <i class="fas fa-file-alt quiz-item-icon"></i>
                     <div class="quiz-item-info">
                         <span class="quiz-item-title">${utils.escapeHTML(title)}</span>
-                        <span class="quiz-item-meta">Due: ${utils.formatDate(quiz.dueDate)}</span>
-                        ${isTeacher ? `<span class="quiz-item-meta">Student: ${utils.escapeHTML(quiz.studentId.firstName)} ${utils.escapeHTML(quiz.studentId.lastName)}</span>` : ''}
+                        <span class="quiz-item-meta">ვადა: ${utils.formatDate(quiz.dueDate)}</span>
+                        ${isTeacher ? `<span class="quiz-item-meta">სტუდენტი: ${utils.escapeHTML(quiz.studentId.firstName)} ${utils.escapeHTML(quiz.studentId.lastName)}</span>` : ''}
                     </div>
                     ${statusDisplay}
                 </div>
             `;
         } catch (error) {
-            console.error('Error rendering quiz item:', error, quiz);
-            return `<div class="quiz-item error"><p>Error loading quiz item.</p></div>`;
+            console.error('ქვიზის ელემენტის გამოსახვის შეცდომა:', error, quiz);
+            return `<div class="quiz-item error"><p>ქვიზის ჩატვირთვის შეცდომა.</p></div>`;
         }
     },
 
@@ -825,7 +840,7 @@ const uiRenderer = {
         if (!container) return;
 
         if (requests.length === 0) {
-            container.innerHTML = `<div class="empty-state"><p>No pending retake requests.</p></div>`;
+            container.innerHTML = `<div class="empty-state"><p>მოლოდინში არ არის ხელახალი გაკეთების მოთხოვნები.</p></div>`;
             return;
         }
 
@@ -833,13 +848,13 @@ const uiRenderer = {
             <div class="request-item">
                 <div class="request-info">
                     <strong>${utils.escapeHTML(req.studentId.firstName)} ${utils.escapeHTML(req.studentId.lastName)}</strong>
-                    requested a retake for quiz:
+                    მოითხოვს ხელახლა გაკეთებას ქვიზისთვის:
                     <em>${utils.escapeHTML(req.requestableId.title)}</em>
-                    <p class="request-reason">Reason: "${utils.escapeHTML(req.reason)}"</p>
+                    <p class="request-reason">მიზეზი: "${utils.escapeHTML(req.reason)}"</p>
                 </div>
                 <div class="request-actions">
-                    <button class="btn btn-success" data-action="approve-request" data-request-id="${req._id}">Approve</button>
-                    <button class="btn btn-danger" data-action="deny-request" data-request-id="${req._id}">Deny</button>
+                    <button class="btn btn-success" data-action="approve-request" data-request-id="${req._id}">დამტკიცება</button>
+                    <button class="btn btn-danger" data-action="deny-request" data-request-id="${req._id}">უარყოფა</button>
                 </div>
             </div>
         `).join('');
@@ -868,7 +883,7 @@ const uiRenderer = {
                 this.renderDetailView();
             }
         } catch (error) {
-            console.error('Error updating view:', error);
+            console.error('ხედის განახლების შეცდომა:', error);
         }
     },
 
@@ -883,9 +898,9 @@ const uiRenderer = {
         }
 
         if (!state.studentQuizzes || state.studentQuizzes.length === 0) {
-            let message = 'No quizzes to display in this view.';
+            let message = 'ამ ხედში ქვიზები არაა ნაჩვენები.';
             if (state.currentUser.role !== ROLES.STUDENT && !state.selectedGroupId) {
-                message = 'Please select a group to see its quizzes.';
+                message = 'გთხოვთ აირჩიოთ ჯგუფი მისი ქვიზების სანახავად.';
             }
             container.innerHTML = `<div class="empty-state"><i class="fas fa-folder-open"></i><p>${message}</p></div>`;
             return;
@@ -904,9 +919,9 @@ const uiRenderer = {
             if (!state.detailedQuiz) {
                 elements.detailView.innerHTML = `
                     <div class="error-message">
-                        <p>Failed to load quiz details. Please go back and try again.</p>
+                        <p>ქვიზის დეტალების ჩატვირთვა ვერ მოხერხდა. გთხოვთ, დაბრუნდით და სცადოთ თავიდან.</p>
                         <button class="btn btn-primary" data-action="back-to-list">
-                            Back to List
+                            უკან სიაში
                         </button>
                     </div>`;
                 return;
@@ -924,8 +939,8 @@ const uiRenderer = {
             }
         } catch (error)
         {
-            console.error('Error rendering detail view:', error);
-            elements.detailView.innerHTML = `<div class="error-message"><p>A critical error occurred while displaying quiz details.</p></div>`;
+            console.error('დეტალური ხედის გამოსახვის შეცდომა:', error);
+            elements.detailView.innerHTML = `<div class="error-message"><p>მოხდა კრიტიკული შეცდომა ქვიზის დეტალების ჩვენებისას.</p></div>`;
         }
     },
     // Render student-specific detail view
@@ -935,25 +950,25 @@ const uiRenderer = {
         elements.detailView.innerHTML = `
             <div class="detail-panel results-dashboard">
                  <div class="detail-panel-header">
-                    <button class="btn back-btn" data-action="${QUIZ_ACTIONS.BACK_TO_LIST}"><i class="fas fa-arrow-left"></i> Back</button>
+                    <button class="btn back-btn" data-action="${QUIZ_ACTIONS.BACK_TO_LIST}"><i class="fas fa-arrow-left"></i> უკან</button>
                     <h2 class="quiz-title-detail">${utils.escapeHTML(quiz.templateTitle)}</h2>
                 </div>
                 <div class="results-grid">
                     <div class="stat-card">
-                        <div class="stat-label">Student</div>
+                        <div class="stat-label">სტუდენტი</div>
                         <div class="stat-value student-name">${utils.escapeHTML(quiz.studentId?.firstName)} ${utils.escapeHTML(quiz.studentId?.lastName)}</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">Student's Score</div>
+                        <div class="stat-label">სტუდენტის ქულა</div>
                         <div class="stat-value score-value">${quiz.grade?.score ?? 'N/A'} / ${quiz.templatePoints} (${(quiz.templatePoints > 0 && quiz.grade?.score != null) ? ((quiz.grade.score / quiz.templatePoints) * 100).toFixed(0) : 0}%)</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">Class Average</div>
+                        <div class="stat-label">კლასის საშუალო</div>
                         <div class="stat-value class-average" id="${uniqueAnalyticsId}"><i class="fas fa-spinner fa-spin"></i></div>
                     </div>
                 </div>
                 <div class="results-actions">
-                    ${quiz.lastAttemptId ? `<button class="btn btn-primary" data-action="${QUIZ_ACTIONS.REVIEW_QUIZ}" data-attempt-id="${quiz.lastAttemptId}">Review Answers</button>` : ''}
+                    ${quiz.lastAttemptId ? `<button class="btn btn-primary" data-action="${QUIZ_ACTIONS.REVIEW_QUIZ}" data-attempt-id="${quiz.lastAttemptId}">პასუხების გადახედვა</button>` : ''}
                 </div>
             </div>
         `;
@@ -972,9 +987,9 @@ const uiRenderer = {
             
             const startTime = quiz.templateId?.startTime || quiz.startTime;
             const endTime = quiz.templateId?.endTime || quiz.dueDate;
-            const timeLimit = quiz.templateId?.timeLimit || 'No time limit';
+            const timeLimit = quiz.templateId?.timeLimit || 'დროის ლიმიტი არ არის';
             const totalPoints = quiz.templatePoints || 0;
-            const description = quiz.templateId?.description || 'No description provided';
+            const description = quiz.templateId?.description || 'აღწერა არ არის მოწოდებული';
 
             // ✅ This block contains the specific rules, translated into Georgian.
             const instructionsInGeorgian = `
@@ -990,20 +1005,20 @@ const uiRenderer = {
             elements.detailView.innerHTML = `
                 <div class="detail-panel">
                     <div class="detail-panel-header">
-                        <button class="btn back-btn" data-action="${QUIZ_ACTIONS.BACK_TO_LIST}"><i class="fas fa-arrow-left"></i> Back</button>
+                        <button class="btn back-btn" data-action="${QUIZ_ACTIONS.BACK_TO_LIST}"><i class="fas fa-arrow-left"></i> უკან</button>
                         <h2 class="quiz-title-detail">${quizTitle}</h2>
                     </div>
                     <div class="quiz-instructions-content" style="padding: 20px;">
-                        ${!isStudent ? `<p><strong>Student:</strong> ${utils.escapeHTML(quiz.studentId?.firstName)} ${utils.escapeHTML(quiz.studentId?.lastName)}</p>` : ''}
+                        ${!isStudent ? `<p><strong>სტუდენტი:</strong> ${utils.escapeHTML(quiz.studentId?.firstName)} ${utils.escapeHTML(quiz.studentId?.lastName)}</p>` : ''}
                         
                         <div class="quiz-info-card" style="background-color: var(--background-secondary); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border-color);">
-                            <h3 style="margin-top: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Quiz Information</h3>
-                            <p><strong>Status:</strong> <span class="status-badge ${quiz.status.toLowerCase()}">${quiz.status}</span></p>
-                            <p><strong>Description:</strong> ${utils.sanitizeHTML(description)}</p>
-                            <p><strong>Total Points:</strong> ${totalPoints}</p>
-                            <p><strong>Time Limit:</strong> ${timeLimit} ${typeof timeLimit === 'number' ? 'minutes' : ''}</p>
-                            <p><strong>Available From:</strong> ${utils.formatDate(startTime)}</p>
-                            <p><strong>Due Date:</strong> ${utils.formatDate(endTime)}</p>
+                            <h3 style="margin-top: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">ქვიზის ინფორმაცია</h3>
+                            <p><strong>სტატუსი:</strong> <span class="status-badge ${quiz.status.toLowerCase()}">${utils.translateStatus(quiz.status)}</span></p>
+                            <p><strong>აღწერა:</strong> ${utils.sanitizeHTML(description)}</p>
+                            <p><strong>სულ ქულა:</strong> ${totalPoints}</p>
+                            <p><strong>დროის ლიმიტი:</strong> ${timeLimit} ${typeof timeLimit === 'number' ? 'წუთი' : ''}</p>
+                            <p><strong>ხელმისაწვდომია:</strong> ${utils.formatDate(startTime)}</p>
+                            <p><strong>ვადა:</strong> ${utils.formatDate(endTime)}</p>
                         </div>
                         
                         ${instructionsInGeorgian}
@@ -1034,7 +1049,7 @@ const uiRenderer = {
                 }
             }
         } catch (error) {
-            console.error('Error in renderInstructionsView:', error);
+            console.error('ინსტრუქციების ხედის გამოსახვის შეცდომა:', error);
         }
     },
 
@@ -1044,19 +1059,19 @@ const uiRenderer = {
             <div class="quiz-stats-container">
                 <div class="stat-card">
                     <div class="stat-value" id="total-students">0</div>
-                    <div class="stat-label">Total Students</div>
+                    <div class="stat-label">სულ სტუდენტები</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value" id="completed-attempts">0</div>
-                    <div class="stat-label">Completed</div>
+                    <div class="stat-label">დასრულებული</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value" id="average-score">0%</div>
-                    <div class="stat-label">Average Score</div>
+                    <div class="stat-label">საშუალო ქულა</div>
                 </div>
             </div>
             <div class="student-attempts-container">
-                <h3>Student Attempts</h3>
+                <h3>სტუდენტების ცდები</h3>
                 <div class="student-list" id="student-attempts-list">
                     <div class="loading-spinner"></div>
                 </div>
@@ -1068,13 +1083,13 @@ const uiRenderer = {
     async loadQuizAnalytics(quizId) {
         try {
             if (!utils.isValidObjectId(quizId)) {
-                console.error('Invalid quiz ID for analytics:', quizId);
+                console.error('ანალიტიკისთვის ქვიზის ID არასწორია:', quizId);
                 return;
             }
             
             const analytics = await apiService.fetchQuizAnalytics(quizId);
             if (!analytics) {
-                console.error('No analytics data received');
+                console.error('ანალიტიკის მონაცემები არ მიღებულა');
                 return;
             }
             
@@ -1106,31 +1121,31 @@ const uiRenderer = {
                             <span class="student-email">${utils.escapeHTML(attempt.student?.email || '')}</span>
                         </div>
                         <div class="attempt-info">
-                            <span class="attempt-status status-badge ${attempt.status}">${attempt.status}</span>
+                            <span class="attempt-status status-badge ${attempt.status}">${utils.translateStatus(attempt.status)}</span>
                             <span class="attempt-score">${attempt.score || 0}/${attempt.quiz?.totalPoints || 0}</span>
                         </div>
                         <div class="attempt-actions">
                             <button class="btn btn-secondary view-attempt-btn" 
                                     data-action="${QUIZ_ACTIONS.VIEW_STUDENT_ATTEMPT}" 
                                     data-attempt-id="${attempt._id}">
-                                <i class="fas fa-eye"></i> View
+                                <i class="fas fa-eye"></i> ნახვა
                             </button>
                         </div>
                     </div>
                 `).join('');
             } else {
-                studentList.innerHTML = '<p>No attempts have been made on this quiz yet.</p>';
+                studentList.innerHTML = '<p>ამ ქვიზზე ჯერ არავინ არ ცდილობდა.</p>';
             }
         } catch (error) {
-            console.error('Failed to load quiz analytics:', error);
-            this.showNotification('Failed to load quiz analytics', 'error');
+            console.error('ქვიზის ანალიტიკის ჩატვირთვა ვერ მოხერხდა:', error);
+            this.showNotification('ქვიზის ანალიტიკის ჩატვირთვა ვერ მოხერხდა', 'error');
             
             const studentList = document.getElementById('student-attempts-list');
             if (studentList) {
                 studentList.innerHTML = `
                     <div class="error-message">
                         <i class="fas fa-exclamation-triangle"></i>
-                        <p>Failed to load analytics data.</p>
+                        <p>ანალიტიკის მონაცემების ჩატვირთვა ვერ მოხერხდა.</p>
                     </div>
                 `;
             }
@@ -1144,7 +1159,7 @@ const uiRenderer = {
             const template = document.getElementById(templateId);
 
             if (!template) {
-                console.error(`Modal template with ID "${templateId}" not found.`);
+                console.error(`მოდალური შაბლონი ID-ით "${templateId}" ვერ მოიძებნა.`);
                 return;
             }
 
@@ -1157,7 +1172,7 @@ const uiRenderer = {
             const modalElement = content.querySelector('.modal');
             
             if (!modalElement) {
-                console.error('Modal element not found in template');
+                console.error('მოდალური ელემენტი შაბლონში ვერ მოიძებნა');
                 return;
             }
             
@@ -1184,7 +1199,7 @@ const uiRenderer = {
                     this.setupQuestionBankModal(modalElement);
                     break;
                 default:
-                    console.warn(`Unknown modal type: ${type}`);
+                    console.warn(`უცნობი მოდალის ტიპი: ${type}`);
             }
 
             // Add event listeners for all "close" buttons within the new modal
@@ -1194,7 +1209,7 @@ const uiRenderer = {
             
             elements.modalBackdrop.style.display = 'flex';
         } catch (error) {
-            console.error('Error opening modal:', error);
+            console.error('მოდალის გახსნის შეცდომა:', error);
         }
     },
 
@@ -1216,7 +1231,7 @@ const uiRenderer = {
                 elements.modalBackdrop.innerHTML = '';
             }
         } catch (error) {
-            console.error('Error closing modal:', error);
+            console.error('მოდალის დახურვის შეცდომა:', error);
         }
     },
 
@@ -1245,7 +1260,7 @@ const uiRenderer = {
             modalElement.querySelector('#quiz-end-time').value = utils.formatDateTimeLocal(oneHourLater);
 
             if (data) { // Prefill data if editing
-                modalElement.querySelector('#modal-title').textContent = 'Edit Quiz';
+                modalElement.querySelector('#modal-title').textContent = 'ქვიზის რედაქტირება';
                 modalElement.querySelector('#quiz-title').value = data.title || '';
                 modalElement.querySelector('#quiz-description').value = data.description || '';
                 modalElement.querySelector('#quiz-start-time').value = utils.formatDateTimeLocal(new Date(data.startTime || now));
@@ -1287,7 +1302,7 @@ const uiRenderer = {
                 };
             }
         } catch (error) {
-            console.error('Error setting up quiz modal:', error);
+            console.error('ქვიზის მოდალის დაყენების შეცდომა:', error);
         }
     },
 
@@ -1309,7 +1324,7 @@ const uiRenderer = {
                 instructionsText.innerHTML = utils.sanitizeHTML(
                     state.detailedQuiz.templateId?.instructions || 
                     state.detailedQuiz.instructions || 
-                    'No specific instructions provided for this quiz.'
+                    'ამ ქვიზისთვის სპეციალური ინსტრუქციები არ არის მოწოდებული.'
                 );
             }
             
@@ -1330,7 +1345,7 @@ const uiRenderer = {
                 });
             }
         } catch (error) {
-            console.error('Error setting up instructions modal:', error);
+            console.error('ინსტრუქციების მოდალის დაყენების შეცდომა:', error);
         }
     },
 
@@ -1342,7 +1357,7 @@ const uiRenderer = {
             const questions = quiz.templateId?.questions || [];
             
             if (questions.length === 0) {
-                this.showNotification('Quiz data is incomplete.', 'error');
+                this.showNotification('ქვიზის მონაცემები არასრულია.', 'error');
                 this.closeModal();
                 return;
             }
@@ -1351,7 +1366,7 @@ const uiRenderer = {
             const question = questions[questionIndex];
             
             if (!question) {
-                this.showNotification('Question not found.', 'error');
+                this.showNotification('კითხვა ვერ მოიძებნა.', 'error');
                 this.closeModal();
                 return;
             }
@@ -1405,7 +1420,7 @@ const uiRenderer = {
             utils.renderMath(modalElement);
 
         } catch (error) {
-            console.error('Error setting up quiz taking modal:', error);
+            console.error('ქვიზის გაკეთების მოდალის დაყენების შეცდომა:', error);
         }
     },
 
@@ -1414,14 +1429,14 @@ const uiRenderer = {
         try {
             const groupSelect = document.querySelector('#quiz-group');
             if (!groupSelect) {
-                this.showNotification('Please select a group first', 'error');
+                this.showNotification('გთხოვთ ჯერ აირჩიოთ ჯგუფი', 'error');
                 this.closeModal();
                 return;
             }
             
             const groupId = groupSelect.value;
             if (!groupId) {
-                this.showNotification('Please select a group first', 'error');
+                this.showNotification('გთხოვთ ჯერ აირჩიოთ ჯგუფი', 'error');
                 this.closeModal();
                 return;
             }
@@ -1437,7 +1452,7 @@ const uiRenderer = {
                     banksContainer.innerHTML = '';
                     
                     if (banks.length === 0) {
-                        banksContainer.innerHTML = '<p class="empty-state">No question banks available for this group.</p>';
+                        banksContainer.innerHTML = '<p class="empty-state">ამ ჯგუფისთვის კითხვების ბანკები არ არის ხელმისაწვდომი.</p>';
                         return;
                     }
                     
@@ -1447,7 +1462,7 @@ const uiRenderer = {
                         bankElement.className = 'question-bank-item';
                         bankElement.innerHTML = `
                             <h4>${utils.escapeHTML(bank.name)}</h4>
-                            <p>${utils.escapeHTML(bank.description || 'No description')}</p>
+                            <p>${utils.escapeHTML(bank.description || 'აღწერა არ არის')}</p>
                             <div class="bank-questions">
                                 ${bank.questions.map(q => `
                                     <div class="bank-question" data-question-id="${q._id}">
@@ -1462,10 +1477,10 @@ const uiRenderer = {
                 })
                 .catch(error => {
                     console.error('Failed to load question banks:', error);
-                    this.showNotification('Failed to load question banks', 'error');
+                    this.showNotification('კითხვების ბანკების ჩატვირთვა ვერ მოხერხდა', 'error');
                 });
         } catch (error) {
-            console.error('Error setting up question bank modal:', error);
+            console.error('კითხვების ბანკის მოდალის დაყენების შეცდომა:', error);
         }
     },
 
@@ -1483,7 +1498,7 @@ const uiRenderer = {
                 utils.renderMath(previewElement);
             }
         } catch (error) {
-            console.error('Error updating LaTeX preview:', error);
+            console.error('LaTeX პრევიუს განახლების შეცდომა:', error);
         }
     },
     // Add a new question to the form
@@ -1493,7 +1508,7 @@ const uiRenderer = {
             const questionTemplate = document.getElementById('template-question-item');
             
             if (!questionTemplate || !questionsContainer) {
-                console.error('Question item template or container not found');
+                console.error('კითხვის შაბლონი ან კონტეინერი ვერ მოიძებნა');
                 return;
             }
 
@@ -1503,7 +1518,7 @@ const uiRenderer = {
 
             // Set question number
             const questionNumber = questionsContainer.children.length + 1;
-            questionItem.querySelector('.question-number').textContent = `Question #${questionNumber}`;
+            questionItem.querySelector('.question-number').textContent = `კითხვა #${questionNumber}`;
             
             // Setup image uploader
             const uploader = questionItem.querySelector('.question-image-uploader');
@@ -1547,7 +1562,7 @@ const uiRenderer = {
             // Renumber questions
             this.renumberQuestions(questionsContainer);
         } catch (error) {
-            console.error('Error adding new question:', error);
+            console.error('ახალი კითხვის დამატების შეცდომა:', error);
         }
     },
     
@@ -1559,13 +1574,13 @@ const uiRenderer = {
             
             // Validate file type
             if (!file.type.startsWith('image/')) {
-                this.showNotification('Please select an image file', 'error');
+                this.showNotification('გთხოვთ აირჩიოთ სურათის ფაილი', 'error');
                 return;
             }
             
             // Validate file size (max 5MB)
             if (file.size > 5 * 1024 * 1024) {
-                this.showNotification('Image must be less than 5MB', 'error');
+                this.showNotification('სურათი უნდა იყოს 5MB-ზე ნაკლები', 'error');
                 return;
             }
             
@@ -1573,11 +1588,11 @@ const uiRenderer = {
             if (preview && preview.querySelector('img')) {
                 preview.querySelector('img').src = result.imageUrl;
                 preview.style.display = 'block';
-                this.showNotification('Image uploaded successfully');
+                this.showNotification('სურათი წარმატებით აიტვირთა');
             }
         } catch (error) {
-            console.error('Failed to upload image:', error);
-            this.showNotification('Failed to upload image', 'error');
+            console.error('სურათის ატვირთვა ვერ მოხერხდა:', error);
+            this.showNotification('სურათის ატვირთვა ვერ მოხერხდა', 'error');
         }
     },
     
@@ -1589,7 +1604,7 @@ const uiRenderer = {
                 preview.style.display = 'none';
             }
         } catch (error) {
-            console.error('Error removing image:', error);
+            console.error('სურათის წაშლის შეცდომა:', error);
         }
     },
 
@@ -1598,7 +1613,7 @@ const uiRenderer = {
         try {
             const optionTemplate = document.getElementById('template-option-item');
             if (!optionTemplate || !optionsContainer) {
-                console.error('Option item template or container not found');
+                console.error('ოფშენის შაბლონი ან კონტეინერი ვერ მოიძებნა');
                 return;
             }
             
@@ -1606,7 +1621,7 @@ const uiRenderer = {
             optionsContainer.appendChild(optionClone);
             this.reletterOptions(optionsContainer);
         } catch (error) {
-            console.error('Error adding new option:', error);
+            console.error('ახალი ოფშენის დამატების შეცდომა:', error);
         }
     },
 
@@ -1627,7 +1642,7 @@ const uiRenderer = {
                 if (radio) radio.name = `correct-option-${questionIndex}`;
             });
         } catch (error) {
-            console.error('Error relettering options:', error);
+            console.error('ოფშენების ასოებით აღნიშვნის შეცდომა:', error);
         }
     },
 
@@ -1683,7 +1698,7 @@ const uiRenderer = {
                 this.addNewQuestion(modalElement);
             }
         } catch (error) {
-            console.error('Error rendering questions:', error);
+            console.error('კითხვების გამოსახვის შეცდომა:', error);
         }
     },
 
@@ -1692,14 +1707,14 @@ const uiRenderer = {
         try {
             Array.from(questionsContainer.children).forEach((question, index) => {
                 const numberElement = question.querySelector('.question-number');
-                if (numberElement) numberElement.textContent = `Question #${index + 1}`;
+                if (numberElement) numberElement.textContent = `კითხვა #${index + 1}`;
                 
                 question.dataset.questionIndex = index;
                 const optionsContainer = question.querySelector('.options-container');
                 if (optionsContainer) this.reletterOptions(optionsContainer);
             });
         } catch (error) {
-            console.error('Error renumbering questions:', error);
+            console.error('კითხვების ნუმერაციის შეცდომა:', error);
         }
     },
 
@@ -1731,10 +1746,10 @@ const uiRenderer = {
                     const studentAnswer = results.answers.find(ans => ans.question?.toString() === question._id.toString());
 
                     // --- FIX: Use innerHTML for all text that might contain LaTeX ---
-                    reviewClone.querySelector('.question-number-review').textContent = `Question ${index + 1}`;
-                    reviewClone.querySelector('.question-points-review').textContent = `${studentAnswer ? studentAnswer.pointsAwarded : 0} / ${question.points} Points`;
+                    reviewClone.querySelector('.question-number-review').textContent = `კითხვა ${index + 1}`;
+                    reviewClone.querySelector('.question-points-review').textContent = `${studentAnswer ? studentAnswer.pointsAwarded : 0} / ${question.points} ქულა`;
                     reviewClone.querySelector('.question-text-review').innerHTML = question.text;
-                    reviewClone.querySelector('.solution-text').innerHTML = question.solution || 'No solution explanation was provided.';
+                    reviewClone.querySelector('.solution-text').innerHTML = question.solution || 'გამოსავალი არ არის მოწოდებული.';
 
                     if (question.imageUrl) {
                         const imageContainer = reviewClone.querySelector('.question-image-review');
@@ -1771,7 +1786,7 @@ const uiRenderer = {
             utils.renderMath(elements.detailView);
             
         } catch (error) {
-            console.error('Error rendering quiz results:', error);
+            console.error('ქვიზის შედეგების გამოსახვის შეცდომა:', error);
         }
     },
 
@@ -1799,7 +1814,7 @@ const uiRenderer = {
                 }
             }, 5000);
         } catch (error) {
-            console.error('Error showing notification:', error);
+            console.error('შეტყობინების ჩვენების შეცდომა:', error);
         }
     },
 
@@ -1808,12 +1823,12 @@ const uiRenderer = {
         try {
             const modal = document.querySelector('#modal-create-edit-quiz');
             if (!modal) {
-                this.showNotification('Could not find the quiz form to prefill.', 'error');
+                this.showNotification('ქვიზის ფორმა ვერ მოიძებნა წინასწარი შესავსებად.', 'error');
                 return;
             }
 
             // Prefill basic fields
-            modal.querySelector('#quiz-title').value = (quizData.title || '') + ' (Copy)';
+            modal.querySelector('#quiz-title').value = (quizData.title || '') + ' (კოპირება)';
             modal.querySelector('#quiz-description').value = quizData.description || '';
             modal.querySelector('#quiz-time-limit').value = quizData.timeLimit || 60;
             modal.querySelector('#quiz-max-attempts').value = quizData.maxAttempts || 1;
@@ -1836,7 +1851,7 @@ const uiRenderer = {
             // Render questions
             this.renderQuestions(quizData.questions, modal);
         } catch (error) {
-            console.error('Error prefilling quiz form:', error);
+            console.error('ქვიზის ფორმის წინასწარი შევსების შეცდომა:', error);
         }
     },
 
@@ -1853,7 +1868,7 @@ const uiRenderer = {
                 listContainer.innerHTML = '';
 
                 if (quizBankTemplates.length === 0) {
-                    listContainer.innerHTML = '<p>No saved quiz templates found.</p>';
+                    listContainer.innerHTML = '<p>შენახული ქვიზის შაბლონები არ მოიძებნა.</p>';
                     return;
                 }
 
@@ -1863,7 +1878,7 @@ const uiRenderer = {
                         <i class="fas fa-file-alt quiz-item-icon"></i>
                         <div class="quiz-item-info">
                             <span class="quiz-item-title">${utils.escapeHTML(quiz.title)}</span>
-                            <span class="quiz-item-meta">${quiz.questions.length} questions</span>
+                            <span class="quiz-item-meta">${quiz.questions.length} კითხვა</span>
                         </div>
                     </div>
                 `).join('');
@@ -1871,11 +1886,11 @@ const uiRenderer = {
                 // Save to state
                 state.quizBank = quizBankTemplates;
             } catch (error) {
-                console.error('Failed to load quiz bank:', error);
-                listContainer.innerHTML = '<p>Could not load quiz bank.</p>';
+                console.error('ქვიზების ბანკის ჩატვირთვა ვერ მოხერხდა:', error);
+                listContainer.innerHTML = '<p>ქვიზების ბანკის ჩატვირთვა ვერ მოხერხდა.</p>';
             }
         } catch (error) {
-            console.error('Error setting up quiz bank modal:', error);
+            console.error('ქვიზების ბანკის მოდალის დაყენების შეცდომა:', error);
         }
     }
 };
@@ -1910,7 +1925,7 @@ const eventHandlers = {
             // Keyboard shortcuts
             document.addEventListener('keydown', this.handleKeyboardShortcuts.bind(this));
         } catch (error) {
-            console.error('Error initializing event handlers:', error);
+            console.error('მოვლენების დამმუშავებლების ინიციალიზაციის შეცდომა:', error);
         }
     },
 
@@ -1921,7 +1936,7 @@ const eventHandlers = {
             state.selectedGroupId = groupId;
             await this.loadQuizzes();
         } catch (error) {
-            console.error('Error handling group change:', error);
+            console.error('ჯგუფის ცვლილების დამუშავების შეცდომა:', error);
         }
     },
 
@@ -1937,7 +1952,7 @@ const eventHandlers = {
             state.currentView = 'list';
             await this.loadQuizzes();
         } catch (error) {
-            console.error('Error handling tab click:', error);
+            console.error('ტაბის დაჭერის დამუშავების შეცდომა:', error);
         }
     },
 
@@ -1946,7 +1961,7 @@ const eventHandlers = {
         try {
             if (!quizId) {
                 console.error('handleViewDetail was called with an invalid ID.');
-                uiRenderer.showNotification('Cannot load quiz: The ID is missing.', 'error');
+                uiRenderer.showNotification('ქვიზის ჩატვირთვა შეუძლებელია: ID აკლია.', 'error');
                 return;
             }
 
@@ -1957,7 +1972,7 @@ const eventHandlers = {
             const quiz = responseData.data;
 
             if (!quiz) {
-                throw new Error('Quiz data not found in server response.');
+                throw new Error('ქვიზის მონაცემები სერვერის პასუხში ვერ მოიძებნა.');
             }
             
             state.detailedQuiz = quiz;
@@ -1966,8 +1981,8 @@ const eventHandlers = {
             state.isLoading = false;
             uiRenderer.updateView();
         } catch (error) {
-            console.error('Failed to fetch quiz details:', error);
-            uiRenderer.showNotification('Failed to load quiz details', 'error');
+            console.error('ქვიზის დეტალების მიღება ვერ მოხერხდა:', error);
+            uiRenderer.showNotification('ქვიზის დეტალების ჩატვირთვა ვერ მოხერხდა', 'error');
             state.isLoading = false;
             uiRenderer.updateView();
         }
@@ -1978,8 +1993,8 @@ const eventHandlers = {
             const results = await apiService.fetchQuizResults(attemptId);
             uiRenderer.renderQuizResults(results);
         } catch (error) {
-            console.error('Failed to fetch quiz results:', error);
-            uiRenderer.showNotification('Failed to load quiz results', 'error');
+            console.error('ქვიზის შედეგების მიღება ვერ მოხერხდა:', error);
+            uiRenderer.showNotification('ქვიზის შედეგების ჩატვირთვა ვერ მოხერხდა', 'error');
         }
     },
 
@@ -1999,7 +2014,7 @@ const eventHandlers = {
             
             uiRenderer.updateView();
         } catch (error) {
-            console.error('Error handling back to list:', error);
+            console.error('სიაში დაბრუნების დამუშავების შეცდომა:', error);
         }
     },
 
@@ -2009,24 +2024,24 @@ const eventHandlers = {
             const quiz = await apiService.fetchQuizById(quizId);
             uiRenderer.openModal('create-edit-quiz', quiz);
         } catch (error) {
-            console.error('Failed to fetch quiz for editing:', error);
-            uiRenderer.showNotification('Failed to load quiz for editing', 'error');
+            console.error('რედაქტირებისთვის ქვიზის მიღება ვერ მოხერხდა:', error);
+            uiRenderer.showNotification('რედაქტირებისთვის ქვიზის ჩატვირთვა ვერ მოხერხდა', 'error');
         }
     },
 
     // Handle delete quiz
     async handleDeleteQuiz(quizId) {
         try {
-            const confirmed = confirm('Are you sure you want to delete this quiz? This action cannot be undone.');
+            const confirmed = confirm('დარწმუნებული ხართ, რომ გსურთ ამ ქვიზის წაშლა? ეს ქმედება შეუქცევადია.');
             if (!confirmed) return;
             
             await apiService.deleteQuiz(quizId);
-            uiRenderer.showNotification('Quiz deleted successfully');
+            uiRenderer.showNotification('ქვიზი წარმატებით წაიშალა');
             await this.loadQuizzes();
             this.handleBackToList();
         } catch (error) {
-            console.error('Failed to delete quiz:', error);
-            uiRenderer.showNotification('Failed to delete quiz', 'error');
+            console.error('ქვიზის წაშლა ვერ მოხერხდა:', error);
+            uiRenderer.showNotification('ქვიზის წაშლა ვერ მოხერხდა', 'error');
         }
     },
 
@@ -2043,8 +2058,8 @@ const eventHandlers = {
             // After entering fullscreen, the quiz will start.
             await this.handleRealStartQuiz(quizId, null);
         } catch (error) {
-            console.error('Failed to enter fullscreen or start quiz:', error);
-            uiRenderer.showNotification('Could not start quiz. Please allow fullscreen mode.', 'error');
+            console.error('სრულ ეკრანზე გადასვლა ან ქვიზის დაწყება ვერ მოხერხდა:', error);
+            uiRenderer.showNotification('ქვიზის დაწყება ვერ მოხერხდა. გთხოვთ, დაუშვათ სრულეკრანიანი რეჟიმი.', 'error');
         }
     },
 
@@ -2074,7 +2089,7 @@ const eventHandlers = {
                 }
             }, 100);
         } catch (error) {
-            uiRenderer.showNotification(error.data?.message || 'Failed to start quiz', 'error');
+            uiRenderer.showNotification(error.data?.message || 'ქვიზის დაწყება ვერ მოხერხდა', 'error');
         }
     },
     // Start quiz timer
@@ -2129,7 +2144,7 @@ const eventHandlers = {
         const timeUntilDeadline = new Date(deadlineDate) - new Date();
         if (timeUntilDeadline > 0) {
             state.quizDeadlineTimer = setTimeout(() => {
-                uiRenderer.showNotification("The quiz deadline has passed. Submitting automatically.", 'warning');
+                uiRenderer.showNotification("ქვიზის ვადა ამოიწურა. ავტომატურად იგზავნება.", 'warning');
                 this.handleFinishQuiz();
             }, timeUntilDeadline);
         }
@@ -2138,13 +2153,13 @@ const eventHandlers = {
         this.beforeUnloadListener = (e) => { e.preventDefault(); e.returnValue = ''; };
         this.visibilityChangeListener = () => {
             if (document.hidden) {
-                uiRenderer.showNotification("You have left the page. The quiz will be submitted.", 'error');
+                uiRenderer.showNotification("თქვენ დატოვეთ გვერდი. ქვიზი გაიგზავნება.", 'error');
                 this.handleFinishQuiz();
             }
         };
         this.fullscreenChangeListener = () => {
             if (!document.fullscreenElement) {
-                uiRenderer.showNotification("You have exited fullscreen. The quiz will be submitted.", 'error');
+                uiRenderer.showNotification("თქვენ დატოვეთ სრულეკრანიანი რეჟიმი. ქვიზი გაიგზავნება.", 'error');
                 this.handleFinishQuiz();
             }
         };
@@ -2163,15 +2178,15 @@ const eventHandlers = {
             const questions = quiz.templateId?.questions || [];
             
             if (questions.length === 0) {
-                console.error('Quiz data is incomplete or missing questions');
-                uiRenderer.showNotification('Quiz data is incomplete. Please try again.', 'error');
+                console.error('ქვიზის მონაცემები არასრულია ან კითხვები აკლია');
+                uiRenderer.showNotification('ქვიზის მონაცემები არასრულია. გთხოვთ, სცადოთ თავიდან.', 'error');
                 return;
             }
             
             const question = questions[state.currentQuestionIndex];
             if (!question || !question._id) {
-                console.error('Question not found at index', state.currentQuestionIndex);
-                uiRenderer.showNotification('Question not found. Please try again.', 'error');
+                console.error('კითხვა ვერ მოიძებნა ინდექსზე', state.currentQuestionIndex);
+                uiRenderer.showNotification('კითხვა ვერ მოიძებნა. გთხოვთ, სცადოთ თავიდან.', 'error');
                 return;
             }
             
@@ -2209,8 +2224,8 @@ const eventHandlers = {
             }
             
         } catch (error) {
-            console.error('Failed to submit answer:', error);
-            uiRenderer.showNotification('Failed to submit answer', 'error');
+            console.error('პასუხის გაგზავნა ვერ მოხერხდა:', error);
+            uiRenderer.showNotification('პასუხის გაგზავნა ვერ მოხერხდა', 'error');
         }
     },
 
@@ -2226,7 +2241,7 @@ const eventHandlers = {
                 }
             }
         } catch (error) {
-            console.error('Error handling next question:', error);
+            console.error('შემდეგი კითხვის დამუშავების შეცდომა:', error);
         }
     },
 
@@ -2240,7 +2255,7 @@ const eventHandlers = {
                 }
             }
         } catch (error) {
-            console.error('Error handling previous question:', error);
+            console.error('წინა კითხვის დამუშავების შეცდომა:', error);
         }
     },
     async saveCurrentAnswer() {
@@ -2284,7 +2299,7 @@ const eventHandlers = {
                 }
             }
         } catch (error) {
-            console.error('Error saving current answer:', error);
+            console.error('მიმდინარე პასუხის შენახვის შეცდომა:', error);
             // Don't show error to avoid disrupting quiz flow
         }
     },
@@ -2292,7 +2307,7 @@ const eventHandlers = {
     async handleFinishQuiz() {
         try {
             // ✅ This function now cleans up all timers and anti-cheating listeners.
-            console.log('Finishing quiz...');
+            console.log('ქვიზის დასრულება...');
             
             // Cleanup anti-cheating listeners
             window.removeEventListener('beforeunload', this.beforeUnloadListener);
@@ -2313,7 +2328,7 @@ const eventHandlers = {
             const finishBtn = document.querySelector('.finish-quiz-btn, .btn-warning');
             if (finishBtn) {
                 finishBtn.disabled = true;
-                finishBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+                finishBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> იგზავნება...';
             }
             
             const attempt = state.activeQuizAttempt;
@@ -2326,8 +2341,8 @@ const eventHandlers = {
             uiRenderer.renderQuizResults(results);
             await this.loadQuizzes();
         } catch (error) {
-            console.error('Failed to finish quiz:', error);
-            uiRenderer.showNotification(error.data?.message || 'Failed to submit quiz', 'error');
+            console.error('ქვიზის დასრულება ვერ მოხერხდა:', error);
+            uiRenderer.showNotification(error.data?.message || 'ქვიზის გაგზავნა ვერ მოხერხდა', 'error');
         }
     },
 
@@ -2338,12 +2353,12 @@ const eventHandlers = {
             const modal = buttonElement.closest('.modal');
             if (!modal) {
                 console.error('Could not find the create quiz modal to add a question to.');
-                uiRenderer.showNotification('Error: Could not find the quiz form.', 'error');
+                uiRenderer.showNotification('შეცდომა: ქვიზის ფორმა ვერ მოიძებნა.', 'error');
                 return;
             }
             uiRenderer.addNewQuestion(modal);
         } catch (error) {
-            console.error('Error handling add question:', error);
+            console.error('კითხვის დამატების დამუშავების შეცდომა:', error);
         }
     },
 
@@ -2354,14 +2369,14 @@ const eventHandlers = {
             
             const questionsContainer = questionElement.parentElement;
             if (questionsContainer.children.length <= 1) {
-                uiRenderer.showNotification('A quiz must have at least one question', 'error');
+                uiRenderer.showNotification('ქვიზს უნდა ჰქონდეს მინიმუმ ერთი კითხვა', 'error');
                 return;
             }
             
             questionElement.remove();
             uiRenderer.renumberQuestions(questionsContainer);
         } catch (error) {
-            console.error('Error handling delete question:', error);
+            console.error('კითხვის წაშლის დამუშავების შეცდომა:', error);
         }
     },
 
@@ -2375,7 +2390,7 @@ const eventHandlers = {
                 uiRenderer.renumberQuestions(questionsContainer);
             }
         } catch (error) {
-            console.error('Error handling move question up:', error);
+            console.error('კითხვის აწევის დამუშავების შეცდომა:', error);
         }
     },
 
@@ -2389,7 +2404,7 @@ const eventHandlers = {
                 uiRenderer.renumberQuestions(questionsContainer);
             }
         } catch (error) {
-            console.error('Error handling move question down:', error);
+            console.error('კითხვის ჩამოწევის დამუშავების შეცდომა:', error);
         }
     },
 
@@ -2398,7 +2413,7 @@ const eventHandlers = {
         try {
             uiRenderer.addNewOption(optionsContainer);
         } catch (error) {
-            console.error('Error handling add option:', error);
+            console.error('ოფშენის დამატების დამუშავების შეცდომა:', error);
         }
     },
 
@@ -2407,14 +2422,14 @@ const eventHandlers = {
         try {
             const optionsContainer = optionElement.parentElement;
             if (optionsContainer.children.length <= 2) {
-                uiRenderer.showNotification('A question must have at least two options', 'error');
+                uiRenderer.showNotification('კითხვას უნდა ჰქონდეს მინიმუმ ორი ვარიანტი', 'error');
                 return;
             }
             
             optionElement.remove();
             uiRenderer.reletterOptions(optionsContainer);
         } catch (error) {
-            console.error('Error handling delete option:', error);
+            console.error('ოფშენის წაშლის დამუშავების შეცდომა:', error);
         }
     },
 
@@ -2428,7 +2443,7 @@ const eventHandlers = {
             modal.innerHTML = `
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h3>Student Attempt Details</h3>
+                        <h3>სტუდენტის ცდის დეტალები</h3>
                         <button class="close-btn" data-action="${QUIZ_ACTIONS.CLOSE_MODAL}">
                             <i class="fas fa-times"></i>
                         </button>
@@ -2450,16 +2465,16 @@ const eventHandlers = {
                                 const isCorrect = answer.selectedOptionIndex === question.correctOptionIndex;
                                 return `
                                     <div class="review-question ${isCorrect ? 'correct' : 'incorrect'}">
-                                        <h5>Question ${index + 1}: ${utils.escapeHTML(question.text)}</h5>
+                                        <h5>კითხვა ${index + 1}: ${utils.escapeHTML(question.text)}</h5>
                                         <div class="student-answer">
-                                            Your answer: ${utils.escapeHTML(question.options[answer.selectedOptionIndex]?.text || 'No answer')}
+                                            თქვენი პასუხი: ${utils.escapeHTML(question.options[answer.selectedOptionIndex]?.text || 'პასუხი არ არის')}
                                             ${isCorrect ? 
                                                 '<span class="result-icon correct"><i class="fas fa-check"></i></span>' : 
                                                 '<span class="result-icon incorrect"><i class="fas fa-times"></i></span>'}
                                         </div>
                                         ${!isCorrect ? `
                                             <div class="correct-answer">
-                                                Correct answer: ${utils.escapeHTML(question.options[question.correctOptionIndex]?.text)}
+                                                სწორი პასუხი: ${utils.escapeHTML(question.options[question.correctOptionIndex]?.text)}
                                             </div>
                                         ` : ''}
                                     </div>
@@ -2475,8 +2490,8 @@ const eventHandlers = {
             elements.modalBackdrop.style.display = 'flex';
             
         } catch (error) {
-            console.error('Failed to fetch student attempt:', error);
-            uiRenderer.showNotification('Failed to load student attempt details', 'error');
+            console.error('სტუდენტის ცდის მიღება ვერ მოხერხდა:', error);
+            uiRenderer.showNotification('სტუდენტის ცდის დეტალების ჩატვირთვა ვერ მოხერხდა', 'error');
         }
     },
 
@@ -2485,7 +2500,7 @@ const eventHandlers = {
         try {
             uiRenderer.openModal('question-bank');
         } catch (error) {
-            console.error('Error handling add from bank:', error);
+            console.error('ბანკიდან დამატების დამუშავების შეცდომა:', error);
         }
     },
 
@@ -2493,15 +2508,15 @@ const eventHandlers = {
     async handleRequestRetake(quizId, reason) {
         try {
             if (!reason) {
-                reason = prompt('Please provide a reason for requesting a retake:');
+                reason = prompt('გთხოვთ, მიუთითოთ ხელახლა გაკეთების მოთხოვნის მიზეზი:');
                 if (!reason) return;
             }
             
             await apiService.requestRetake(quizId, reason);
-            uiRenderer.showNotification('Retake request submitted successfully');
+            uiRenderer.showNotification('ხელახალი გაკეთების მოთხოვნა წარმატებით გაიგზავნა');
         } catch (error) {
-            console.error('Failed to request retake:', error);
-            uiRenderer.showNotification('Failed to submit retake request', 'error');
+            console.error('ხელახალი გაკეთების მოთხოვნა ვერ მოხერხდა:', error);
+            uiRenderer.showNotification('ხელახალი გაკეთების მოთხოვნის გაგზავნა ვერ მოხერხდა', 'error');
         }
     },
 
@@ -2513,7 +2528,7 @@ const eventHandlers = {
             const questionElements = form.querySelectorAll('.question-item');
 
             if (questionElements.length === 0) {
-                console.error("Error: No '.question-item' elements were found inside the form.");
+                console.error("შეცდომა: ფორმის შიგნით '.question-item' ელემენტები ვერ მოიძებნა.");
             }
 
             questionElements.forEach(questionElement => {
@@ -2544,7 +2559,7 @@ const eventHandlers = {
             
             return questions;
         } catch (error) {
-            console.error('A critical error occurred in extractQuestionsData:', error);
+            console.error('კრიტიკული შეცდომა extractQuestionsData-ში:', error);
             // Return an empty array on error to trigger the validation message
             return [];
         }
@@ -2574,12 +2589,12 @@ const eventHandlers = {
             }
 
             await apiService.createQuiz(quizData);
-            uiRenderer.showNotification('Quiz created successfully');
+            uiRenderer.showNotification('ქვიზი წარმატებით შეიქმნა');
             uiRenderer.closeModal();
             await this.loadQuizzes();
         } catch (error) {
-            console.error('Failed to create quiz:', error);
-            uiRenderer.showNotification(error.data?.message || 'Failed to create quiz', 'error');
+            console.error('ქვიზის შექმნა ვერ მოხერხდა:', error);
+            uiRenderer.showNotification(error.data?.message || 'ქვიზის შექმნა ვერ მოხერხდა', 'error');
         }
     },
 
@@ -2607,12 +2622,12 @@ const eventHandlers = {
             }
 
             await apiService.updateQuiz(quizId, quizData);
-            uiRenderer.showNotification('Quiz updated successfully');
+            uiRenderer.showNotification('ქვიზი წარმატებით განახლდა');
             uiRenderer.closeModal();
             await this.loadQuizzes();
         } catch (error) {
-            console.error('Failed to update quiz:', error);
-            uiRenderer.showNotification(error.data?.message || 'Failed to update quiz', 'error');
+            console.error('ქვიზის განახლება ვერ მოხერხდა:', error);
+            uiRenderer.showNotification(error.data?.message || 'ქვიზის განახლება ვერ მოხერხდა', 'error');
         }
     },
 
@@ -2649,8 +2664,8 @@ const eventHandlers = {
             uiRenderer.updateView();
             
         } catch (error) {
-            console.error('Failed to fetch quizzes:', error);
-            uiRenderer.showNotification('Failed to load quizzes', 'error');
+            console.error('ქვიზების მიღება ვერ მოხერხდა:', error);
+            uiRenderer.showNotification('ქვიზების ჩატვირთვა ვერ მოხერხდა', 'error');
             state.isLoading = false;
             uiRenderer.updateView();
         }
@@ -2729,7 +2744,7 @@ const eventHandlers = {
                     break;
             }
         } catch (error) {
-            console.error('Error handling global click:', error);
+            console.error('გლობალური დაჭერის დამუშავების შეცდომა:', error);
         }
     },
     
@@ -2752,7 +2767,7 @@ const eventHandlers = {
                 }
             }
         } catch (error) {
-            console.error('Error handling keyboard shortcuts:', error);
+            console.error('კლავიშების კომბინაციების დამუშავების შეცდომა:', error);
         }
     },
 
@@ -2761,7 +2776,7 @@ const eventHandlers = {
         try {
             uiRenderer.openModal('question-bank', null, true);
         } catch (error) {
-            console.error('Error handling add from quiz bank:', error);
+            console.error('ქვიზების ბანკიდან დამატების დამუშავების შეცდომა:', error);
         }
     },
 
@@ -2769,7 +2784,7 @@ const eventHandlers = {
     handleSelectQuizFromBank(quizId) {
         try {
             if (!state.quizBank) {
-                uiRenderer.showNotification('Quiz bank data is not loaded.', 'error');
+                uiRenderer.showNotification('ქვიზების ბანკის მონაცემები არ არის ჩატვირთული.', 'error');
                 return;
             }
             
@@ -2778,10 +2793,10 @@ const eventHandlers = {
                 uiRenderer.prefillQuizForm(selectedQuiz);
                 uiRenderer.closeModal();
             } else {
-                uiRenderer.showNotification('Selected quiz could not be found.', 'error');
+                uiRenderer.showNotification('არჩეული ქვიზი ვერ მოიძებნა.', 'error');
             }
         } catch (error) {
-            console.error('Error handling select quiz from bank:', error);
+            console.error('ქვიზების ბანკიდან არჩევის დამუშავების შეცდომა:', error);
         }
     }
 };
@@ -2807,7 +2822,7 @@ async function initQuizzes() {
             console.log('Is the Role exactly "Teacher"?', user.role === ROLES.TEACHER);
         } else {
             console.error('CRITICAL: User object is null or missing a role after fetch.');
-            uiRenderer.showNotification('Could not verify user role. Logging out.', 'error');
+            uiRenderer.showNotification('მომხმარებლის როლის დადასტურება ვერ მოხერხდა. გამოსვლა.', 'error');
             setTimeout(() => {
                 // Redirect if user data is invalid
                 localStorage.removeItem('piRateToken');
@@ -2830,8 +2845,8 @@ async function initQuizzes() {
         }
         
     } catch (error) {
-        console.error('Failed to initialize quizzes:', error);
-        uiRenderer.showNotification('A critical error occurred. Please try logging in again.', 'error');
+        console.error('ქვიზების ინიციალიზაცია ვერ მოხერხდა:', error);
+        uiRenderer.showNotification('მოხდა კრიტიკული შეცდომა. გთხოვთ, თავიდან შეხვიდეთ სისტემაში.', 'error');
         state.isLoading = false;
         uiRenderer.updateView();
     }
