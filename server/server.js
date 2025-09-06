@@ -106,7 +106,7 @@ app.use('/api', rateLimit({
   }
 })();
 
-// Import Routes
+// API routes must be registered before the fallback
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/groups', require('./routes/groupRoutes'));
@@ -118,20 +118,21 @@ app.use('/api/ratings', require('./routes/ratingRoutes'));
 app.use('/api/quizzes', require('./routes/quizRoutes'));
 app.use('/api/calendar-events', require('./routes/calendarRoutes'));
 
+
 console.log('Starting assignment status updater...');
 console.log('Starting quiz status updater...');
 
 // Serve frontend
-console.log("Current directory (__dirname):", __dirname);
 const clientPath = path.join(__dirname, '..', 'client');
-console.log("Server is trying to serve static files from:", clientPath);
+app.use(express.static(clientPath));
+console.log(`Serving static files from: ${clientPath}`);
 app.get('/api', (req, res) => res.json({ success: true, message: 'Pi-Rate Academy Server is running!' }));
 
 // SPA fallback
 app.get('*', (req, res) => {
-  // Correctly join the path and send the login page as the entry point
-  res.sendFile(path.join(__dirname, '..', 'client', 'login', 'login.html'));
+  res.sendFile(path.join(clientPath, 'login', 'login.html'));
 });
+
 
 // Error handler
 app.use((err, req, res, next) => {
