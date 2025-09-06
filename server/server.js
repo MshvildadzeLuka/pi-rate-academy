@@ -129,7 +129,7 @@ console.log(`Serving static files from: ${clientPath}`);
 app.get('/api', (req, res) => res.json({ success: true, message: 'Pi-Rate Academy Server is running!' }));
 
 // SPA fallback
-app.get('*', (req, res) => {
+app.get('/', (req, res) => {
   res.sendFile(path.join(clientPath, 'login', 'login.html'));
 });
 
