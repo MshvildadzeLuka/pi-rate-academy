@@ -272,7 +272,12 @@ const uiRenderer = {
             this.renderLoadingState();
             
             const notesResponse = await apiService.fetchNotes(state.selectedGroupId);
-            state.allNotesForGroup = notesResponse.data || notesResponse || [];
+            let notes = notesResponse.data || notesResponse || [];
+            
+            // CORRECTED: Added a sort to ensure newest notes are always first
+            notes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            
+            state.allNotesForGroup = notes;
             
             this.updatePagination();
             this.renderNotes();
