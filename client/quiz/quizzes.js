@@ -2048,17 +2048,18 @@ const eventHandlers = {
     // Handle start quiz
     async handleStartQuiz(quizId) {
         try {
-            // ✅ This function now handles entering fullscreen mode.
-            const quizWrapper = document.getElementById('quiz-wrapper');
+            // CORRECTED: Targets the entire page for fullscreen mode, which is more reliable.
+            const quizWrapper = document.documentElement;
+
             if (quizWrapper.requestFullscreen) {
                 await quizWrapper.requestFullscreen();
-            } else if (quizWrapper.webkitRequestFullscreen) { /* Safari */
+            } else if (quizWrapper.webkitRequestFullscreen) { // Safari
                 await quizWrapper.webkitRequestFullscreen();
             }
             // After entering fullscreen, the quiz will start.
             await this.handleRealStartQuiz(quizId, null);
         } catch (error) {
-            console.error('სრულ ეკრანზე გადასვლა ან ქვიზის დაწყება ვერ მოხერხდა:', error);
+            console.error('Failed to enter fullscreen or start quiz:', error);
             uiRenderer.showNotification('ქვიზის დაწყება ვერ მოხერხდა. გთხოვთ, დაუშვათ სრულეკრანიანი რეჟიმი.', 'error');
         }
     },
