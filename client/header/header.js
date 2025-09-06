@@ -8,7 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!headerPlaceholder) return;
 
   // Load header HTML
-  fetch('/client/header/header.html')
+  // CORRECTED PATH: Changed from '/client/header/header.html'
+  fetch('/header/header.html')
     .then((response) => {
       if (!response.ok) throw new Error('Network response was not ok');
       return response.text();
