@@ -1,9 +1,8 @@
-
 /* --- CSS Variables --- */
 :root {
-    --background-primary: #1a1a2e;
-    --background-secondary: #16213e;
-    --background-tertiary: #0f3460;
+    --background-primary: #0f0f23;
+    --background-secondary: #1a1a2e;
+    --background-tertiary: #16213e;
     --text-primary: #f0f0f0;
     --text-secondary: #c0c0c0;
     --primary-accent: #00F2FE;
@@ -132,7 +131,7 @@ body {
     box-shadow: none;
 }
 
-/* --- Error Message and Extra Links --- */
+/* --- Error Message --- */
 #error-message {
     color: var(--error-color);
     text-align: center;
@@ -153,25 +152,6 @@ body {
 .error-visible {
     visibility: visible;
     opacity: 1;
-}
-
-.extra-links {
-    text-align: center;
-    margin-top: 25px;
-}
-
-.extra-links a {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    text-decoration: none;
-    transition: color 0.3s ease;
-    display: inline-block;
-    margin: 5px 0;
-}
-
-.extra-links a:hover {
-    color: var(--primary-accent);
-    text-decoration: underline;
 }
 
 /* --- Mobile Responsive Styles --- */
@@ -202,10 +182,6 @@ body {
     .login-btn {
         padding: 14px;
         font-size: 1rem;
-    }
-    
-    .extra-links a {
-        font-size: 0.85rem;
     }
 }
 
