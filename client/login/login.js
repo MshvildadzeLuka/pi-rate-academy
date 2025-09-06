@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.ok) {
                     // Store token and redirect on success
                     localStorage.setItem('piRateToken', data.token);
-                    window.location.href = '../home/home.html';
+                    window.location.href = '/home/home.html';
                 } else {
                     // Display server error message
                     showError(data.message || 'დაფიქსირდა შეცდომა. გთხოვთ, სცადოთ მოგვიანებით');
