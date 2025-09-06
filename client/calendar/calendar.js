@@ -1,8 +1,4 @@
-// Updated calendar.js for user calendar with group lectures support
 document.addEventListener('DOMContentLoaded', () => {
-  // ======================================================
-  // 1. CONFIGURATION & STATE MANAGEMENT
-  // ======================================================
   const API_BASE_URL = '/api';
   
   let state = {
@@ -16,9 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
     userGroups: []
   };
 
-  // ======================================================
-  // 2. DOM ELEMENT SELECTORS
-  // ======================================================
   const elements = {
     timeColumn: document.getElementById('time-column'),
     dayColumns: document.querySelectorAll('.day-column'),
@@ -38,9 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
     gridWrapper: document.querySelector('.calendar-grid-wrapper'),
   };
 
-  // ======================================================
-  // 3. API SERVICE
-  // ======================================================
   async function apiFetch(endpoint, options = {}) {
     const token = localStorage.getItem('piRateToken');
     const headers = { 'Content-Type': 'application/json', ...options.headers };
@@ -50,26 +40,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'An API error occurred');
+      throw new Error(errorData.message || 'API შეცდომა მოხდა');
     }
     return response.status === 204 ? null : response.json();
   }
 
-  // ======================================================
-  // 4. INITIALIZATION
-  // ======================================================
   async function initializeCalendar() {
     try {
-      // First get user's groups
       await fetchUserGroups();
-      // Then fetch all events (personal + group lectures)
       await fetchEvents();
       generateTimeSlots();
       renderAll();
       addEventListeners();
     } catch (error) {
-      console.error('Failed to load calendar:', error);
-      alert('Error loading calendar: ' + error.message);
+      console.error('კალენდრის ჩატვირთვა ვერ მოხერხდა:', error);
+      alert('კალენდრის ჩატვირთვის შეცდომა: ' + error.message);
     }
   }
 
@@ -78,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const groupsData = await apiFetch('/groups/my-groups');
       state.userGroups = groupsData || [];
     } catch (error) {
-      console.error('Failed to fetch user groups:', error);
+      console.error('მომხმარებლის ჯგუფების ჩატვირთვა ვერ მოხერხდა:', error);
       state.userGroups = [];
     }
   }
@@ -88,13 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const endOfWeek = getEndOfWeek(startOfWeek);
     
     try {
-      // Fetch personal events
       const personalEventsResponse = await apiFetch(
         `/calendar-events/my-schedule?start=${startOfWeek.toISOString()}&end=${endOfWeek.toISOString()}`
       );
       const personalEvents = personalEventsResponse?.data || [];
       
-      // Fetch lectures for all user's groups
       let groupLectures = [];
       for (const group of state.userGroups) {
         try {
@@ -103,11 +86,10 @@ document.addEventListener('DOMContentLoaded', () => {
           );
           groupLectures = [...groupLectures, ...(lecturesResponse?.data || [])];
         } catch (error) {
-          console.error(`Failed to fetch lectures for group ${group._id}:`, error);
+          console.error(`ლექციების ჩატვირთვა ვერ მოხერხდა ჯგუფისთვის ${group._id}:`, error);
         }
       }
       
-      // Format lectures to match calendar event structure
       const formattedLectures = groupLectures.map(lecture => ({
         _id: lecture._id,
         title: lecture.title,
@@ -115,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
         startTime: lecture.startTime,
         endTime: lecture.endTime,
         groupId: lecture.assignedGroup?._id || lecture.assignedGroup,
-        groupName: lecture.assignedGroup?.name || 'Unknown Group',
+        groupName: lecture.assignedGroup?.name || 'უცნობი ჯგუფი',
         isRecurring: lecture.isRecurring,
         recurrenceRule: lecture.recurrenceRule,
         startTimeLocal: new Date(lecture.startTime).toLocaleTimeString('en-GB', { 
@@ -128,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       state.allEvents = [...personalEvents, ...formattedLectures];
     } catch (error) {
-      console.error('Failed to fetch events:', error);
+      console.error('მოვლენების ჩატვირთვა ვერ მოხერხდა:', error);
       state.allEvents = [];
     }
   }
@@ -139,9 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return end;
   }
 
-  // ======================================================
-  // 5. DATA MANIPULATION (Create & Delete)
-  // ======================================================
   async function saveEvent() {
     if (state.selectedSlots.size === 0) return;
 
@@ -186,13 +165,13 @@ document.addEventListener('DOMContentLoaded', () => {
       clearSelection();
       renderEventsForWeek();
     } catch (error) {
-      console.error('Failed to save event:', error);
-      alert('Error saving event: ' + error.message);
+      console.error('მოვლენის შენახვა ვერ მოხერხდა:', error);
+      alert('მოვლენის შენახვის შეცდომა: ' + error.message);
     }
   }
 
   async function deleteEvent(eventId) {
-    if (!confirm('Are you sure you want to delete this event?')) return;
+    if (!confirm('დარწმუნებული ხარ, რომ გსურს ამ მოვლენის წაშლა?')) return;
 
     const event = state.allEvents.find(e => e._id === eventId);
     if (!event) return;
@@ -211,14 +190,11 @@ document.addEventListener('DOMContentLoaded', () => {
       clearSelection();
       renderEventsForWeek();
     } catch (error) {
-      console.error('Failed to delete event:', error);
-      alert('Error deleting event: ' + error.message);
+      console.error('მოვლენის წაშლა ვერ მოხერხდა:', error);
+      alert('მოვლენის წაშლის შეცდომა: ' + error.message);
     }
   }
 
-  // ======================================================
-  // 6. RENDERING FUNCTIONS
-  // ======================================================
   function generateTimeSlots() {
     elements.timeColumn.innerHTML = '';
     for (let hour = 8; hour < 22; hour++) {
@@ -254,13 +230,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const start = getStartOfWeek(state.mainViewDate);
     const end = new Date(start);
     end.setDate(end.getDate() + 6);
-    elements.weekDisplay.textContent = `${start.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+    elements.weekDisplay.textContent = `${start.toLocaleDateString('ka-GE', { month: 'long', day: 'numeric' })} - ${end.toLocaleDateString('ka-GE', { month: 'long', day: 'numeric', year: 'numeric' })}`;
   }
 
   function renderMiniCalendar() {
     const month = state.miniCalDate.getMonth();
     const year = state.miniCalDate.getFullYear();
-    elements.miniCalHeader.textContent = `${new Date(year, month).toLocaleString('default', { month: 'long' })} ${year}`;
+    elements.miniCalHeader.textContent = `${new Date(year, month).toLocaleString('ka-GE', { month: 'long' })} ${year}`;
     elements.miniCalDaysGrid.innerHTML = '';
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -348,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const startMinutes = timeToMinutes(eventData.startTime);
     const endMinutes = timeToMinutes(eventData.endTime);
     const durationMinutes = endMinutes - startMinutes;
-    const slotHeight = 40;
+    const slotHeight = 45;
     const slotsSpanned = durationMinutes / 30;
     const top = ((startMinutes - 8 * 60) / 30) * slotHeight;
     const height = slotsSpanned * slotHeight - 2;
@@ -379,9 +355,6 @@ document.addEventListener('DOMContentLoaded', () => {
     dayColumn.appendChild(eventBlock);
   }
 
-  // ======================================================
-  // 7. EVENT LISTENERS
-  // ======================================================
   function addEventListeners() {
     elements.prevWeekBtn.addEventListener('click', async () => {
       state.mainViewDate.setDate(state.mainViewDate.getDate() - 7);
@@ -448,16 +421,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector(`[data-event-id="${eventData._id}"]`).classList.add('active-event');
   }
 
-  // ======================================================
-  // 8. UI UPDATE FUNCTIONS
-  // ======================================================
   function updateSidebarUI(mode = 'add', eventData = null) {
     if (mode === 'add') {
       elements.saveEventBtn.disabled = false;
       elements.deleteEventBtn.disabled = true;
       elements.recurringCheckbox.checked = false;
-      elements.recurringLabelText.textContent = 'Apply to all weeks';
-      if(state.selectedSlots.size === 0) elements.sidebarTimeRange.textContent = 'Select a time on the calendar';
+      elements.recurringLabelText.textContent = 'გამოყენება ყველა კვირაში';
+      if(state.selectedSlots.size === 0) elements.sidebarTimeRange.textContent = 'აირჩიე დრო კალენდარზე';
     } else if (mode === 'edit') {
       const start = eventData.isRecurring ? eventData.recurringStartTime : new Date(eventData.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
       const end = eventData.isRecurring ? eventData.recurringEndTime : new Date(eventData.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -465,7 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.deleteEventBtn.disabled = false;
       elements.saveEventBtn.disabled = true;
       elements.recurringCheckbox.checked = state.activeEvent.isRecurring;
-      elements.recurringLabelText.textContent = state.activeEvent.isRecurring ? 'Affect all recurring instances' : 'Affect this instance only';
+      elements.recurringLabelText.textContent = state.activeEvent.isRecurring ? 'ყველა განმეორებადი მოვლენის შეცვლა' : 'მხოლოდ ამ მოვლენის შეცვლა';
       document.querySelector(`input[name="event-type"][value="${eventData.type}"]`).checked = true;
     }
   }
@@ -501,9 +471,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (resetSidebar) updateSidebarUI('add');
   }
 
-  // ======================================================
-  // 9. UTILITY FUNCTIONS
-  // ======================================================
   const getEndTime = (startTimeStr) => {
     const d = new Date(); const [h, m] = startTimeStr.split(':'); d.setHours(parseInt(h), parseInt(m) + 30);
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -557,8 +524,5 @@ document.addEventListener('DOMContentLoaded', () => {
     const diff = d.getDate() - day + (day === 0 ? -6 : 1); return new Date(d.setDate(diff));
   };
 
-  // ======================================================
-  // 10. START THE APPLICATION
-  // ======================================================
   initializeCalendar();
 });
