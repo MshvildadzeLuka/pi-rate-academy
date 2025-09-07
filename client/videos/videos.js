@@ -29,7 +29,7 @@ class VideoManager {
   checkAuth() {
     const token = localStorage.getItem('piRateToken');
     if (!token) {
-      window.location.href = '../login/login.html';
+      window.location.href = '/login/login.html';
       return false;
     }
     return true;
@@ -57,7 +57,7 @@ class VideoManager {
       // Handle unauthorized responses
       if (response.status === 401 || response.status === 403) {
         localStorage.removeItem('piRateToken');
-        window.location.href = '../login/login.html';
+        window.location.href = '/login/login.html';
         throw new Error('Authentication required');
       }
 
