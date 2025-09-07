@@ -625,7 +625,9 @@ const eventHandlers = {
             formData.append('groupId', e.target.groupId.value);
             formData.append('file', fileWrapper.file);
             
-            const response = await apiService.createNote(formData);
+            // CORRECTED: This now uses the apiService.createNote function
+            // which correctly attaches the authentication token to the file upload request.
+            await apiService.createNote(formData);
             
             fileWrapper.status = 'complete';
             fileWrapper.progress = 100;
