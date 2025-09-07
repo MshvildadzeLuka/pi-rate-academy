@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!headerPlaceholder) return;
 
   // Load header HTML
-  // CORRECTED PATH: Changed from '/client/header/header.html'
+  // ✅ FIX: Changed path to be absolute from the root for consistency.
   fetch('/header/header.html')
     .then((response) => {
       if (!response.ok) throw new Error('Network response was not ok');
@@ -78,9 +78,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function populateHeader() {
     const token = localStorage.getItem('piRateToken');
-    // If there's no token, there's nothing to do. The auth.js script will handle redirection.
     if (!token) {
-      return;
+      return; // auth.js will handle redirection if needed.
     }
 
     try {
@@ -107,30 +106,28 @@ document.addEventListener('DOMContentLoaded', () => {
           profileName.textContent = `${currentUser.firstName} ${currentUser.lastName}`;
         }
 
-        // Hide the "Admin" link if the user is not an Admin
+        // Show/hide admin link based on role
         if (adminNavLink && currentUser.role !== 'Admin') {
           adminNavLink.style.display = 'none';
         }
       } else {
-        // If the token is invalid or expired, log the user out.
         console.error('Authentication failed:', response.statusText);
         localStorage.removeItem('piRateToken');
-        // CORRECTED PATH: Redirects to the correct login page URL.
+        // ✅ FIX: Use absolute path for reliable redirection.
         window.location.href = '/login/login.html';
       }
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
-      // In case of a network error, it's safer to log out.
       localStorage.removeItem('piRateToken');
+       // ✅ FIX: Use absolute path for reliable redirection.
       window.location.href = '/login/login.html';
     }
 
-    // Set up the logout button functionality
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', () => {
         localStorage.removeItem('piRateToken');
-        // CORRECTED PATH: Ensures the logout redirects correctly.
+        // ✅ FIX: Use absolute path for reliable redirection.
         window.location.href = '/login/login.html';
       });
     }
