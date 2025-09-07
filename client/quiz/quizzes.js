@@ -887,6 +887,35 @@ const uiRenderer = {
         }
     },
 
+    groupQuizzesByDate(quizzes) {
+        const groups = {};
+        const today = new Date();
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        // Sort quizzes by due date, newest first
+        quizzes.sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
+
+        quizzes.forEach(quiz => {
+            const dueDate = new Date(quiz.dueDate);
+            let key = dueDate.toLocaleDateString('ka-GE', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+            });
+
+            // Use friendly labels for today and yesterday
+            if (dueDate.toDateString() === today.toDateString()) key = 'დღეს';
+            if (dueDate.toDateString() === yesterday.toDateString()) key = 'გუშინ';
+
+            if (!groups[key]) {
+                groups[key] = [];
+            }
+            groups[key].push(quiz);
+        });
+
+        return groups;
+    },
     // Render the list view of quizzes
     renderListView() {
         const container = elements.listView;
@@ -906,11 +935,24 @@ const uiRenderer = {
             return;
         }
 
-        container.innerHTML = state.studentQuizzes
-            .map(item => this.renderQuizItem(item))
-            .join('');
+        // Apply grouping logic only for 'completed' and 'past-due' tabs
+        if (['completed', 'past-due'].includes(state.activeTab)) {
+            const groupedQuizzes = this.groupQuizzesByDate(state.studentQuizzes);
+            container.innerHTML = Object.entries(groupedQuizzes).map(([dateLabel, quizzes]) => `
+                <h3 class="date-group-header">${dateLabel}</h3>
+                <div class="list-container">
+                    ${quizzes.map(q => this.renderQuizItem(q)).join('')}
+                </div>
+            `).join('');
+        } else {
+            // Render a simple list for other tabs
+            container.innerHTML = `
+                <div class="list-container">
+                    ${state.studentQuizzes.map(item => this.renderQuizItem(item)).join('')}
+                </div>
+            `;
+        }
     },
-
 
        // Render the detailed view of a quiz
     renderDetailView() {
