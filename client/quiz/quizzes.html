@@ -154,8 +154,13 @@
     <template id="template-create-edit-quiz-modal">
         <div class="modal create-quiz-modal" role="dialog" aria-labelledby="modal-title">
             <div class="modal-header">
-                <h2 id="modal-title">ქვიზის შექმნა</h2>
-                <button class="close-modal-btn" aria-label="მოდალის დახურვა">&times;</button>
+                <h2 id="modal-title">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>ქვიზის შექმნა</span>
+                </h2>
+                <button class="close-modal-btn" data-action="close-modal" aria-label="მოდალის დახურვა">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
             <form id="quiz-form" class="quiz-form">
                 <div class="modal-body">
