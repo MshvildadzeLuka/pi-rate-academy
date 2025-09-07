@@ -603,20 +603,14 @@ body {
 }
 
 /* Modal styles */
-.modal-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
+.modal-backdrop > .quiz-taking-container.modal {
+    max-width: 100vw;
+    max-height: 100vh;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(8px);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: var(--z-modal-backdrop);
-    padding: var(--spacing-md);
-    animation: fadeIn 0.3s;
+    border-radius: 0; /* Remove rounded corners for a true fullscreen feel */
+    animation: none; /* Disable the scaling animation for an instant appearance */
+    padding: 0; /* Remove padding from the modal backdrop */
 }
 
 .modal {
