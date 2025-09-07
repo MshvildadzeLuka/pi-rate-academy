@@ -148,11 +148,11 @@ const apiService = {
     
     async fetchInitialData() {
         try {
-            const [user, allGroups] = await Promise.all([
-                this.fetch('/users/profile'),
-                this.fetch('/groups?populate=users')
-            ]);
-            return { user, allGroups };
+            // CORRECTED: Fetches the user's profile which now includes their groups
+            const user = await this.fetch('/users/profile');
+            // This assumes the groups are populated in the user profile response
+            const userGroups = user.groups || []; 
+            return { user, userGroups };
         } catch (error) {
             console.error('Error fetching initial data:', error);
             throw new Error(lang.initializationError);
@@ -673,19 +673,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         const token = localStorage.getItem('piRateToken');
         if (!token) {
-            window.location.href = '../login/login.html';
+            window.location.href = '/login/login.html';
             return;
         }
         
-        const { user, allGroups } = await apiService.fetchInitialData();
+        // CORRECTED: This now correctly unpacks the user and their groups
+        const { user, userGroups } = await apiService.fetchInitialData();
         state.currentUser = user;
-        state.allSystemGroups = allGroups.data || allGroups || [];
+        state.userMemberGroups = userGroups;
         
-        const userGroups = await apiService.fetchUserGroups();
-        state.userMemberGroups = userGroups.data || userGroups || [];
+        // This part fetches all groups for Admins
+        if (user.role === 'Admin') {
+            const allGroupsResponse = await apiService.fetch('/groups');
+            state.allSystemGroups = allGroupsResponse.data || allGroupsResponse || [];
+            // For admins, show all groups in the dropdown
+            state.userMemberGroups = state.allSystemGroups;
+        }
         
         uiRenderer.init();
         eventHandlers.init();
+
     } catch (error) {
         console.error('Initialization error:', error);
         document.body.innerHTML = `
