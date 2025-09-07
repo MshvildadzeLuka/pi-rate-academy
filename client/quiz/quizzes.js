@@ -2794,7 +2794,7 @@ async function initQuizzes() {
         
         const token = localStorage.getItem('piRateToken');
         if (!token) {
-            window.location.href = '/client/login/login.html';
+            window.location.href = '/login/login.html';
             return;
         }
         
@@ -2812,7 +2812,7 @@ async function initQuizzes() {
             setTimeout(() => {
                 // Redirect if user data is invalid
                 localStorage.removeItem('piRateToken');
-                window.location.href = '/client/login/login.html';
+                window.location.href = '/login/login.html';
             }, 2000);
             return;
         }
