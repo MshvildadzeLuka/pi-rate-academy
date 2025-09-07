@@ -137,7 +137,7 @@ const apiService = {
         if (!response.ok) {
             if (response.status === 401) {
                 localStorage.removeItem('piRateToken');
-                window.location.href = '../login/login.html';
+                window.location.href = '/login/login.html';
             }
             const errorData = await response.json().catch(() => ({ message: lang.error }));
             throw new Error(errorData.message || lang.error);
