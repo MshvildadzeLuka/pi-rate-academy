@@ -31,43 +31,40 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 
 // =================================================================
-// TRUST PROXY SETTING (FIX FOR DEPLOYMENT)
+// ✅ FIX: TRUST PROXY SETTING (CRITICAL FOR RENDER DEPLOYMENT)
 // =================================================================
-// This tells Express to trust the 'X-Forwarded-For' header from the proxy
-// which is essential for express-rate-limit to work correctly on Render.
+// This tells Express to trust the 'X-Forwarded-For' header from the proxy.
+// This is essential for express-rate-limit to work correctly on Render,
+// as it ensures the rate limiter sees the user's real IP, not the proxy's.
 app.set('trust proxy', 1);
 // =================================================================
 
 // =================================================================
-// IMPROVED CORS CONFIGURATION
+// ✅ FIX: ROBUST CORS CONFIGURATION FOR PRODUCTION
 // =================================================================
+// This configuration is more secure and flexible for deployment.
 const allowedOrigins = [
+    // Add local development URLs
     'http://localhost:3000',
     'http://127.0.0.1:5500',
     'http://127.0.0.1:8080',
-    'http://localhost:5500',
-    'http://localhost:8080',
-    'http://192.168.0.102:5001'
 ];
 
-// Add environment-specific origins
+// Add the production frontend URL from the environment variables.
+// This is the key change to make it work on Render.
 if (process.env.FRONTEND_URL) {
     allowedOrigins.push(process.env.FRONTEND_URL);
 }
 
-// Add the server's own origin for direct access
-if (process.env.NODE_ENV === 'development') {
-    allowedOrigins.push(`http://localhost:${PORT}`);
-    allowedOrigins.push(`http://127.0.0.1:${PORT}`);
-}
-
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
     }
+    return callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -84,9 +81,9 @@ app.use(mongoSanitize());
 
 // Rate limiting
 app.use('/api', rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 200,
-  message: 'Too many requests, please try again later'
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200, // Limit each IP to 200 requests per windowMs
+  message: 'Too many requests from this IP, please try again after 15 minutes'
 }));
 
 // Connect DB
@@ -125,11 +122,10 @@ app.get('/api', (req, res) => res.json({ success: true, message: 'Pi-Rate Academ
 
 // SPA fallback for client-side routing
 app.get('*', (req, res) => {
-  // Check if the request is for an API route
   if (req.originalUrl.startsWith('/api/')) {
     return res.status(404).json({ message: 'API route not found' });
   }
-  // Otherwise, serve the main HTML file for the frontend
+  // All non-API requests will serve the main entry point of your frontend.
   res.sendFile(path.resolve(clientPath, 'home', 'home.html'));
 });
 
@@ -139,10 +135,7 @@ app.use((err, req, res, next) => {
   let statusCode = err.statusCode || 500;
   let message = err.message || 'Server Error';
 
-  if(err.code === 'ERR_ERL_UNEXPECTED_X_FORWARDED_FOR') {
-    statusCode = 429;
-    message = "Rate limit error due to configuration. Please try again shortly."
-  } else if (err.name === 'ValidationError') {
+  if (err.name === 'ValidationError') {
     statusCode = 400;
     message = Object.values(err.errors).map(val => val.message).join(', ');
   } else if (err.name === 'CastError') {
