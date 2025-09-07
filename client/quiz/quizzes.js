@@ -2047,19 +2047,51 @@ const eventHandlers = {
 
     // Handle start quiz
     async handleStartQuiz(quizId) {
+        // Target the entire HTML document for the fullscreen request.
+        const quizElement = document.documentElement;
+
+        // Check if the browser supports the Fullscreen API.
+        if (!quizElement.requestFullscreen && !quizElement.webkitRequestFullscreen) {
+            uiRenderer.showNotification('თქვენი ბრაუზერი არ უჭერს მხარს სრულეკრანიან რეჟიმს, რომელიც აუცილებელია ქვიზისთვის.', 'error');
+            return;
+        }
+
+        uiRenderer.showNotification('ქვიზის დასაწყებად, გთხოვთ, დაუშვათ სრულეკრანიანი რეჟიმი.', 'info');
+
         try {
-            // ✅ This function now handles entering fullscreen mode.
-            const quizWrapper = document.getElementById('quiz-wrapper');
-            if (quizWrapper.requestFullscreen) {
-                await quizWrapper.requestFullscreen();
-            } else if (quizWrapper.webkitRequestFullscreen) { /* Safari */
-                await quizWrapper.webkitRequestFullscreen();
+            // Directly request fullscreen. The browser will now show a permission pop-up.
+            // This 'await' will pause the function until the user clicks "Allow" or "Deny".
+            if (quizElement.requestFullscreen) {
+                await quizElement.requestFullscreen();
+            } else if (quizElement.webkitRequestFullscreen) { // For Safari
+                await quizElement.webkitRequestFullscreen();
             }
-            // After entering fullscreen, the quiz will start.
-            await this.handleRealStartQuiz(quizId, null);
+
+            // --- This code ONLY runs if the user clicks "Allow" ---
+            const attempt = await apiService.startQuizAttempt(quizId);
+            state.activeQuizAttempt = attempt;
+            state.currentQuestionIndex = 0;
+
+            // Use a short timeout for a smoother visual transition into the quiz modal.
+            setTimeout(() => {
+                uiRenderer.openModal('quiz-taking');
+                const timeLimit = state.detailedQuiz.templateId?.timeLimit;
+                const deadline = state.detailedQuiz.dueDate;
+
+                if (timeLimit && Number(timeLimit) > 0) {
+                    this.startQuizTimers(Number(timeLimit), deadline);
+                } else {
+                    const countdownElement = document.querySelector('#quiz-countdown');
+                    if (countdownElement) {
+                       countdownElement.parentElement.style.display = 'none';
+                    }
+                }
+            }, 150);
+
         } catch (error) {
-            console.error('სრულ ეკრანზე გადასვლა ან ქვიზის დაწყება ვერ მოხერხდა:', error);
-            uiRenderer.showNotification('ქვიზის დაწყება ვერ მოხერხდა. გთხოვთ, დაუშვათ სრულეკრანიანი რეჟიმი.', 'error');
+            // --- This code runs if the user clicks "Deny" or an error occurs ---
+            console.error('Fullscreen request failed:', error);
+            uiRenderer.showNotification('ქვიზის დასაწყებად სრულეკრანიან რეჟიმზე წვდომა აუცილებელია. გთხოვთ, სცადოთ თავიდან.', 'error');
         }
     },
 
