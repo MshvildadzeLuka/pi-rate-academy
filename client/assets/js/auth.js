@@ -18,12 +18,12 @@
   const currentPage = window.location.pathname;
 
   // Check if the user is on the login page.
-  const isLoginPage = currentPage.endsWith('login.html');
+  const isLoginPage = currentPage.endsWith('/login/login.html');
 
   // If there is no token AND the user is not on the login page,
   // they are not authorized. Redirect them to the login page.
   if (!token && !isLoginPage) {
     // The path must be absolute from the root to work reliably from any page.
-    window.location.href = '/client/login/login.html';
+    window.location.href = '/login/login.html';
   }
 })();
