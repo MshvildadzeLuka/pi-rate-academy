@@ -104,7 +104,7 @@ const apiService = {
             
             if (response.status === 401) {
                 localStorage.removeItem('piRateToken');
-                window.location.href = '../login/login.html';
+                window.location.href = '/login/login.html';
                 throw new Error(lang.authError);
             }
             
@@ -645,7 +645,7 @@ const eventHandlers = {
             uiRenderer.renderFileList();
             uiRenderer.showNotification(`${lang.fileUploadFailed}: ${error.message}`, 'error');
             if (error.message.includes('token') || error.message.includes('authorized')) {
-                setTimeout(() => window.location.href = '../login/login.html', 2000);
+                setTimeout(() => window.location.href = '/login/login.html', 2000);
             }
         } finally {
             submitButton.disabled = false;
