@@ -1,11 +1,12 @@
-// noteRoutes.js (Minor updates for better error handling and ensuring raw file integrity during download)
+const streamifier = require('streamifier');
+const cloudinary = require('cloudinary').v2;
 const express = require('express');
 const router = express.Router();
-const Note = require('../models/noteModel');
-const Group = require('../models/groupModel');
-const { protect, restrictTo } = require('../middleware/authMiddleware');
-const { upload, createCloudinaryUploader, handleUploadErrors, deleteCloudinaryFile } = require('../middleware/uploadMiddleware');
-const ErrorResponse = require('../utils/errorResponse');
+const Note = require('/models/noteModel');
+const Group = require('/models/groupModel');
+const { protect, restrictTo } = require('/middleware/authMiddleware');
+const { upload, createCloudinaryUploader, handleUploadErrors, deleteCloudinaryFile } = require('/middleware/uploadMiddleware');
+const ErrorResponse = require('/utils/errorResponse');
 const asyncHandler = require('express-async-handler');
 const axios = require('axios');
 const stream = require('stream');
