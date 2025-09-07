@@ -516,17 +516,13 @@ const eventHandlers = {
             elements.uploadBtn.addEventListener('click', () => uiRenderer.openModal());
         }
         
+        // CORRECTED: This properly handles closing the modal from multiple buttons
         if (elements.modalBackdrop) {
             elements.modalBackdrop.addEventListener('click', (e) => {
-                if (e.target === elements.modalBackdrop) {
+                if (e.target === elements.modalBackdrop || e.target.closest('.close-modal-btn')) {
                     uiRenderer.closeModal();
                 }
             });
-        }
-        
-        const closeBtn = document.querySelector('.close-modal');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => uiRenderer.closeModal());
         }
         
         if (elements.noteForm) {
