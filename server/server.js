@@ -31,7 +31,7 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 
 // =================================================================
-// ✅ FIX: TRUST PROXY SETTING (CRITICAL FOR RENDER DEPLOYMENT)
+// FIX: TRUST PROXY SETTING (CRITICAL FOR RENDER DEPLOYMENT)
 // =================================================================
 // This tells Express to trust the 'X-Forwarded-For' header from the proxy.
 // This is essential for express-rate-limit to work correctly on Render,
@@ -40,7 +40,7 @@ app.set('trust proxy', 1);
 // =================================================================
 
 // =================================================================
-// ✅ FIX: ROBUST CORS CONFIGURATION FOR PRODUCTION
+// FIX: ROBUST CORS CONFIGURATION FOR PRODUCTION
 // =================================================================
 // This configuration is more secure and flexible for deployment.
 const allowedOrigins = [
@@ -75,26 +75,28 @@ app.use(cors({
 // Middleware
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
 // =================================================================
-// ✅ FIX: HELMET CONFIGURATION FOR CSP
-// This new configuration allows for external resources
-// like fonts, scripts, and images.
+// FIX: HELMET CONFIGURATION FOR CSP (Comprehensive)
+// This configuration allows all necessary external resources.
 // =================================================================
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-        "img-src": ["'self'", "https://res.cloudinary.com", "https://placehold.co"],
+        "img-src": ["'self'", "https://res.cloudinary.com", "https://placehold.co", "https://img.youtube.com"],
         "script-src": ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
         "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
-        "font-src": ["'self'", "https://fonts.gstatic.com"],
+        "font-src": ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
         "connect-src": ["'self'", "https://api.cloudinary.com"],
+        "frame-src": ["'self'", "https://www.youtube.com", "https://docs.google.com"],
       },
     },
   })
 );
 // =================================================================
+
 app.use(hpp());
 app.use(mongoSanitize());
 
