@@ -3,7 +3,6 @@ body {
     font-family: 'Poppins', sans-serif; 
     overflow: hidden; 
     margin: 0;
-    
 }
 .page-wrapper { 
     display: flex; 
@@ -125,7 +124,7 @@ body {
     transform: translateY(-2px);
     box-shadow: 0 4px 15px var(--shadow-color);
 }
-.btn-danger { background-color: var(--danger-color); }
+.btn-danger { background-color: var(--danger-accent); }
 .btn:disabled {
     background-image: none;
     background-color: var(--background-tertiary);
@@ -212,6 +211,8 @@ body {
     display: grid;
     grid-template-columns: 120px repeat(7, 1fr);
     background-color: var(--background-secondary);
+    position: relative;
+    min-width: 900px; 
 }
 .grid-header {
     padding: 18px 12px;
@@ -244,7 +245,10 @@ body {
     font-weight: 700;
     color: var(--text-primary);
 }
-.day-column-header.current-day-header .day-number { color: var(--primary-accent); }
+.day-column-header.current-day-header .day-number { 
+    color: var(--primary-accent); 
+    font-weight: 700;
+}
 .time-column {
     position: sticky;
     left: 0;
@@ -254,18 +258,23 @@ body {
 .day-column {
     position: relative;
     display: grid;
-    grid-template-rows: repeat(30, 45px);
+    grid-template-rows: repeat(30, 45px); /* 15 hours * 2 slots per hour */
     border-left: 1px solid var(--background-tertiary);
 }
 .time-label {
-    text-align: center;
+    text-align: right;
+    padding-right: 10px;
     color: var(--text-secondary);
-    font-size: 1rem;
+    font-size: 0.8rem;
     height: 90px;
     border-top: 1px solid var(--background-tertiary);
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: flex-start;
+    justify-content: flex-end;
+    box-sizing: border-box;
+    padding-top: 5px;
+    transform: translateY(-8px);
+    user-select: none;
     grid-row: span 2;
 }
 .time-slot {
@@ -372,6 +381,30 @@ body {
     font-size: 16px;
 }
 
+/* მიმდინარე დროის ხაზის სტილი */
+.current-time-indicator {
+    position: absolute;
+    height: 2px;
+    background-color: var(--danger-accent);
+    z-index: 15;
+    box-shadow: 0 0 10px var(--danger-accent);
+    pointer-events: none;
+    display: none; /* თავდაპირველად დამალულია */
+    width: calc(100% - 120px);
+    left: 120px;
+}
+
+.current-time-indicator::before {
+    content: '';
+    position: absolute;
+    left: -5px;
+    top: -4px;
+    width: 10px;
+    height: 10px;
+    background-color: var(--danger-accent);
+    border-radius: 50%;
+}
+
 /* Mobile Responsive Styles */
 @media (max-width: 1024px) {
     .page-wrapper {
@@ -407,6 +440,24 @@ body {
     .time-label {
         font-size: 0.9rem;
         height: 70px;
+    }
+    
+    .day-column {
+        grid-template-rows: repeat(30, 40px);
+    }
+    
+    .time-slot {
+        height: 40px;
+    }
+    
+    .event-block {
+        font-size: 0.8rem;
+        padding: 4px 8px;
+    }
+
+    .current-time-indicator {
+        width: calc(100% - 80px);
+        left: 80px;
     }
 }
 
@@ -447,6 +498,11 @@ body {
     .event-block {
         font-size: 0.8rem;
         padding: 4px 8px;
+    }
+    
+    .current-time-indicator {
+        width: calc(100% - 60px);
+        left: 60px;
     }
 }
 
@@ -498,32 +554,9 @@ body {
         padding: 10px;
         font-size: 0.9rem;
     }
-}
-/* მიმდინარე დღის სათაურის სტილი */
-.day-column-header.current-day-header .day-number {
-    background-color: var(--primary-accent);
-    color: #fff;
-    font-weight: 600;
-}
 
-/* მიმდინარე დროის ხაზის სტილი */
-.current-time-indicator {
-    position: absolute;
-    height: 2px;
-    background-color: var(--danger-accent);
-    z-index: 15;
-    box-shadow: 0 0 10px var(--danger-accent);
-    pointer-events: none;
-    display: none; /* თავდაპირველად დამალულია */
-}
-
-.current-time-indicator::before {
-    content: '';
-    position: absolute;
-    left: -5px;
-    top: -4px;
-    width: 10px;
-    height: 10px;
-    background-color: var(--danger-accent);
-    border-radius: 50%;
+    .current-time-indicator {
+        width: calc(100% - 50px);
+        left: 50px;
+    }
 }
