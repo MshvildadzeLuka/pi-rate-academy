@@ -142,8 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const payload = {
       type,
       isRecurring,
-      // CORRECTED: Ensure groupId is always part of the payload.
-      groupId: elements.groupSelect.value, 
+      groupId: state.userGroups.length > 0 ? state.userGroups[0]._id : null
     };
 
     if (isRecurring) {
@@ -270,18 +269,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const year = state.miniCalDate.getFullYear();
     elements.miniCalHeader.textContent = `${new Date(year, month).toLocaleString('ka-GE', { month: 'long' })} ${year}`;
     elements.miniCalDaysGrid.innerHTML = '';
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
     for (let i = 0; i < firstDay; i++) {
       const day = document.createElement('div');
       day.className = 'mini-calendar-day other-month';
       elements.miniCalDaysGrid.appendChild(day);
     }
+    
     for (let d = 1; d <= daysInMonth; d++) {
       const day = document.createElement('div');
       day.className = 'mini-calendar-day';
       day.textContent = d;
-      if (d === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear()) {
+      const currentDay = new Date(year, month, d);
+      if (currentDay.toDateString() === today.toDateString()) {
         day.classList.add('current-day');
       }
       elements.miniCalDaysGrid.appendChild(day);
@@ -420,30 +426,48 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.deleteEventBtn.addEventListener('click', () => {
       if (state.activeEvent) deleteEvent(state.activeEvent._id);
     });
-
+    
+    // Updated listeners for both mouse and touch for mobile support
     document.querySelectorAll('.time-slot').forEach(slot => {
-      slot.addEventListener('mousedown', startSelection);
-      slot.addEventListener('mouseenter', continueSelection);
+        slot.addEventListener('mousedown', startSelection);
+        slot.addEventListener('mouseenter', continueSelection);
+        slot.addEventListener('touchstart', startSelection, { passive: true });
+        slot.addEventListener('touchmove', continueSelection, { passive: true });
     });
 
     document.addEventListener('mouseup', endSelection);
+    document.addEventListener('touchend', endSelection);
   }
 
   function startSelection(e) {
+    if (e.target.classList.contains('event-block')) {
+        handleEventClick(state.allEvents.find(event => event._id === e.target.dataset.eventId));
+        return;
+    }
+    e.preventDefault(); // Prevents unwanted touch behavior
     if (state.activeEvent) return;
-    clearSelection(false);
     state.isDragging = true;
-    state.selectionStartSlot = e.target;
-    updateSelection(e.target);
+    const targetSlot = e.target.closest('.time-slot');
+    if (!targetSlot) return;
+    
+    if (e.type === 'touchstart' || e.type === 'mousedown') {
+        clearSelection();
+        state.selectionStartSlot = targetSlot;
+    }
+    updateSelection(targetSlot);
   }
 
   function continueSelection(e) {
     if (!state.isDragging) return;
-    updateSelection(e.target);
+    const targetSlot = e.target.closest('.time-slot');
+    if (!targetSlot || targetSlot.dataset.day !== state.selectionStartSlot.dataset.day) return;
+    updateSelection(targetSlot);
   }
-
-  function endSelection() {
+  
+  function endSelection(e) {
+    if (!state.isDragging) return;
     state.isDragging = false;
+    updateSidebarWithSelection();
   }
 
   function handleEventClick(eventData) {
@@ -473,11 +497,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateSelection(endSlot) {
-    if (endSlot.dataset.day !== state.selectionStartSlot.dataset.day) return;
-    clearSelection(false);
+    if (!state.selectionStartSlot || endSlot.dataset.day !== state.selectionStartSlot.dataset.day) return;
+    
+    // Clear previous selection visually and from state
+    document.querySelectorAll('.selection-active').forEach(s => s.classList.remove('selection-active'));
+    state.selectedSlots.clear();
+    
     const allSlots = Array.from(document.querySelectorAll(`.time-slot[data-day="${state.selectionStartSlot.dataset.day}"]`));
     const startIndex = allSlots.indexOf(state.selectionStartSlot);
     const endIndex = allSlots.indexOf(endSlot);
+    
     if (startIndex === -1 || endIndex === -1) return;
     
     const [min, max] = [Math.min(startIndex, endIndex), Math.max(startIndex, endIndex)];
@@ -490,7 +519,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateSidebarWithSelection() {
     elements.saveEventBtn.disabled = state.selectedSlots.size === 0;
-    if (state.selectedSlots.size === 0) return;
+    if (state.selectedSlots.size === 0) {
+        elements.sidebarTimeRange.textContent = 'აირჩიე დრო კალენდარზე';
+        return;
+    }
     const times = Array.from(state.selectedSlots).map(s => s.dataset.time).sort((a,b) => timeToMinutes(a) - timeToMinutes(b));
     elements.sidebarTimeRange.textContent = `${formatTime(times[0])} - ${formatTime(getEndTime(times[times.length - 1]))}`;
   }
@@ -590,6 +622,27 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.currentTimeIndicator.style.left = `${dayColumn.offsetLeft}px`;
         elements.currentTimeIndicator.style.display = 'block';
     }
+  }
+
+  function renderDayHeaders() {
+      const startOfWeek = getStartOfWeek(state.mainViewDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      document.querySelectorAll('.day-column-header').forEach((header, index) => {
+          const headerDate = new Date(startOfWeek);
+          headerDate.setDate(startOfWeek.getDate() + index);
+          
+          if (header.querySelector('.day-number')) {
+              header.querySelector('.day-number').textContent = headerDate.getDate();
+          }
+          
+          if (headerDate.toDateString() === today.toDateString()) {
+              header.classList.add('current-day-header');
+          } else {
+              header.classList.remove('current-day-header');
+          }
+      });
   }
 
   initializeCalendar();
