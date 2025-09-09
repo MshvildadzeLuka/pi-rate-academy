@@ -246,7 +246,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function generateTimeSlots() {
     elements.timeColumn.innerHTML = '';
-    for (let hour = 8; hour < 22; hour++) {
+    // Fix: The loop now correctly runs up to and includes 22 (for 22:00)
+    for (let hour = 8; hour <= 22; hour++) {
       const timeLabel = document.createElement('div');
       timeLabel.className = 'time-label';
       timeLabel.textContent = formatTime(`${hour}:00`, false);
@@ -256,7 +257,8 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.dayColumns.forEach((column, dayIndex) => {
       column.innerHTML = '';
       column.dataset.day = dayIndex;
-      for (let slot = 0; slot < 28; slot++) {
+      // Fix: The loop now correctly creates 29 slots (for 8:00 to 22:00)
+      for (let slot = 0; slot < 29; slot++) {
         const timeSlot = document.createElement('div');
         timeSlot.className = 'time-slot';
         const hour = 8 + Math.floor(slot / 2);
