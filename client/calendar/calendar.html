@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ka">
 <head>
@@ -9,10 +10,9 @@
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="/header/header.css">
-    
     <link rel="stylesheet" href="/calendar/calendar.css">
 </head>
 <body>
@@ -23,33 +23,67 @@
         <aside class="calendar-sidebar">
             <div id="mini-calendar">
                 <div class="mini-calendar-header">
-                    <button id="mini-cal-prev-month" aria-label="წინა თვე"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></button>
+                    <button id="mini-cal-prev-month" aria-label="წინა თვე">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                        </svg>
+                    </button>
                     <h2 id="mini-cal-month-year"></h2>
-                    <button id="mini-cal-next-month" aria-label="შემდეგი თვე"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></button>
+                    <button id="mini-cal-next-month" aria-label="შემდეგი თვე">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+                        </svg>
+                    </button>
                 </div>
                 <div class="mini-calendar-weekdays">
-                    <div>ორშ</div><div>სამ</div><div>ოთხ</div><div>ხუთ</div><div>პარ</div><div>შაბ</div><div>კვი</div>
+                    <div>ორშ</div>
+                    <div>სამ</div>
+                    <div>ოთხ</div>
+                    <div>ხუთ</div>
+                    <div>პარ</div>
+                    <div>შაბ</div>
+                    <div>კვი</div>
                 </div>
                 <div id="mini-calendar-days" class="mini-calendar-days"></div>
             </div>
 
             <div id="add-event-panel">
                 <h2>დაამატე განრიგში</h2>
-                <form id="event-form" onsubmit="return false;">
+                <form id="event-form">
                     <p id="sidebar-time-range">აირჩიე დრო კალენდარზე</p>
                     <div class="input-group">
                         <label>მოვლენის ტიპი</label>
                         <div class="radio-group-tabs">
-                            <label class="custom-radio-tab"><input type="radio" name="event-type" value="busy" checked><span>დაკავებული</span></label>
-                            <label class="custom-radio-tab"><input type="radio" name="event-type" value="preferred"><span>პრიორიტეტული</span></label>
+                            <label class="custom-radio-tab">
+                                <input type="radio" name="event-type" value="busy" checked>
+                                <span>დაკავებული</span>
+                            </label>
+                            <label class="custom-radio-tab">
+                                <input type="radio" name="event-type" value="preferred">
+                                <span>პრიორიტეტული</span>
+                            </label>
                         </div>
                     </div>
                     <div class="input-group">
-                        <label class="custom-checkbox"><input type="checkbox" id="recurring-event-checkbox" checked><span class="checkbox-box"></span><span id="recurring-label-text">გამოყენება ყველა კვირაში</span></label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="recurring-event-checkbox">
+                            <span class="checkbox-box"></span>
+                            <span id="recurring-label-text">გამოყენება ყველა კვირაში</span>
+                        </label>
                     </div>
                     <div class="form-actions">
-                         <button type="button" id="delete-event-btn" class="btn btn-danger" disabled>წაშლა</button>
-                         <button type="submit" id="save-event-btn" class="btn btn-primary" disabled>შენახვა</button>
+                         <button type="button" id="delete-event-btn" class="btn btn-danger" disabled>
+                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                 <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                             </svg>
+                             წაშლა
+                         </button>
+                         <button type="submit" id="save-event-btn" class="btn btn-primary" disabled>
+                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                 <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
+                             </svg>
+                             შენახვა
+                         </button>
                     </div>
                 </form>
             </div>
@@ -59,9 +93,17 @@
             <div class="calendar-header">
                 <button id="today-btn" class="today-btn">დღეს</button>
                 <div class="week-nav">
-                    <button id="prev-week-btn" aria-label="წინა კვირა"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></button>
+                    <button id="prev-week-btn" aria-label="წინა კვირა">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                        </svg>
+                    </button>
                     <h2 id="current-week-display"></h2>
-                    <button id="next-week-btn" aria-label="შემდეგი კვირა"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></button>
+                    <button id="next-week-btn" aria-label="შემდეგი კვირა">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
     
@@ -69,13 +111,34 @@
                 <div class="calendar-grid">
                     <div id="current-time-indicator" class="current-time-indicator"></div>
                     <div class="grid-header time-column-header"></div>
-                    <div class="grid-header day-column-header" data-day-header="0"><span class="day-name">ორშ</span><span class="day-number"></span></div>
-                    <div class="grid-header day-column-header" data-day-header="1"><span class="day-name">სამ</span><span class="day-number"></span></div>
-                    <div class="grid-header day-column-header" data-day-header="2"><span class="day-name">ოთხ</span><span class="day-number"></span></div>
-                    <div class="grid-header day-column-header" data-day-header="3"><span class="day-name">ხუთ</span><span class="day-number"></span></div>
-                    <div class="grid-header day-column-header" data-day-header="4"><span class="day-name">პარ</span><span class="day-number"></span></div>
-                    <div class="grid-header day-column-header" data-day-header="5"><span class="day-name">შაბ</span><span class="day-number"></span></div>
-                    <div class="grid-header day-column-header" data-day-header="6"><span class="day-name">კვი</span><span class="day-number"></span></div>
+                    <div class="grid-header day-column-header" data-day-header="0">
+                        <span class="day-name">ორშ</span>
+                        <span class="day-number"></span>
+                    </div>
+                    <div class="grid-header day-column-header" data-day-header="1">
+                        <span class="day-name">სამ</span>
+                        <span class="day-number"></span>
+                    </div>
+                    <div class="grid-header day-column-header" data-day-header="2">
+                        <span class="day-name">ოთხ</span>
+                        <span class="day-number"></span>
+                    </div>
+                    <div class="grid-header day-column-header" data-day-header="3">
+                        <span class="day-name">ხუთ</span>
+                        <span class="day-number"></span>
+                    </div>
+                    <div class="grid-header day-column-header" data-day-header="4">
+                        <span class="day-name">პარ</span>
+                        <span class="day-number"></span>
+                    </div>
+                    <div class="grid-header day-column-header" data-day-header="5">
+                        <span class="day-name">შაბ</span>
+                        <span class="day-number"></span>
+                    </div>
+                    <div class="grid-header day-column-header" data-day-header="6">
+                        <span class="day-name">კვი</span>
+                        <span class="day-number"></span>
+                    </div>
                     
                     <div class="time-column" id="time-column"></div>
                     <div class="day-column" data-day="0"></div>
