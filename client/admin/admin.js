@@ -4,6 +4,36 @@ document.addEventListener('DOMContentLoaded', () => {
   // =================================================================
   const API_BASE_URL = '/api';
 
+  // Toast notification function
+  function showToast(message, type = 'info') {
+    const toastContainer = document.getElementById('toast-container') || (() => {
+      const container = document.createElement('div');
+      container.id = 'toast-container';
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+      return container;
+    })();
+    
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    const icon = type === 'success' ? 'fa-check-circle' : 
+                type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+    
+    toast.innerHTML = `
+      <i class="fas ${icon}"></i>
+      <span>${message}</span>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+      toast.style.animation = 'slideIn 0.3s ease reverse forwards';
+      setTimeout(() => toast.remove(), 300);
+    }, 5000);
+  }
+
   async function apiFetch(endpoint, options = {}) {
     const token = localStorage.getItem('piRateToken');
     const headers = { ...(options.headers || {}) };
@@ -40,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('API Request Failed:', error);
       // Don't redirect on network errors, only on auth errors
       if (error.message !== 'Authentication required') {
+        showToast(`API Error: ${error.message}`, 'error');
         throw error;
       }
     }
@@ -69,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
     aggregatedAvailability: {},
   };
 
+  // DOM Elements
   const elements = {
     sidebarLinks: document.querySelectorAll('.sidebar-link'),
     adminPanels: document.querySelectorAll('.admin-panel'),
@@ -95,6 +127,9 @@ document.addEventListener('DOMContentLoaded', () => {
     lectureTitleInput: document.getElementById('lecture-title-input'),
     currentTimeIndicator: document.getElementById('current-time-indicator'),
     suggestLecturesBtn: document.getElementById('suggest-schedule-btn'),
+    // Mobile sidebar toggle
+    sidebarToggle: document.getElementById('sidebar-toggle'),
+    adminSidebar: document.querySelector('.admin-sidebar')
   };
 
   // =================================================================
@@ -109,6 +144,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
+      // Create sidebar toggle for mobile
+      createSidebarToggle();
+      
       const [currentUserRes, usersRes, groupsRes, videosRes] = await Promise.all([
         apiFetch('/users/profile'),
         apiFetch('/users'),
@@ -142,6 +180,31 @@ document.addEventListener('DOMContentLoaded', () => {
       showErrorPage('წვდომა აკრძალულია', 'ადმინისტრაციული მონაცემების ჩატვირთვა ვერ მოხერხდა. გთხოვთ შეამოწმოთ კავშირი და სცადოთ თავიდან.');
     }
   }
+
+  function createSidebarToggle() {
+    // Only create on mobile
+    if (window.innerWidth > 768) return;
+    
+    const toggleBtn = document.createElement('button');
+    toggleBtn.id = 'sidebar-toggle';
+    toggleBtn.className = 'sidebar-toggle';
+    toggleBtn.innerHTML = '<i class="fas fa-bars"></i>';
+    toggleBtn.addEventListener('click', () => {
+      elements.adminSidebar.classList.toggle('active');
+    });
+    
+    document.body.appendChild(toggleBtn);
+    
+    // Close sidebar when clicking outside
+    document.addEventListener('click', (e) => {
+      if (elements.adminSidebar.classList.contains('active') && 
+          !elements.adminSidebar.contains(e.target) && 
+          e.target !== toggleBtn) {
+        elements.adminSidebar.classList.remove('active');
+      }
+    });
+  }
+
   // =================================================================
   // 4. DYNAMIC RENDERING FUNCTIONS
   // =================================================================
@@ -219,10 +282,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 </span>
               </td>
               <td class="action-btns">
-                <button onclick="adminApp.editUser('${user._id}')">
+                <button class="btn-edit" data-id="${user._id}">
                   <i class="fa-solid fa-pencil"></i>
                 </button>
-                <button onclick="adminApp.deleteUser('${user._id}')">
+                <button class="btn-delete" data-id="${user._id}">
                   <i class="fa-solid fa-trash"></i>
                 </button>
               </td>
@@ -231,6 +294,22 @@ document.addEventListener('DOMContentLoaded', () => {
         </tbody>
       </table>
     `;
+    
+    // Add event listeners to the buttons
+    container.querySelectorAll('.btn-edit').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const userId = btn.getAttribute('data-id');
+        const user = state.users.find(u => u._id === userId);
+        if (user) setupUserModal(user);
+      });
+    });
+    
+    container.querySelectorAll('.btn-delete').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const userId = btn.getAttribute('data-id');
+        deleteUser(userId);
+      });
+    });
   }
 
   function renderGroupsTable() {
@@ -264,10 +343,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${teacher ? `${escapeHTML(teacher.firstName)} ${escapeHTML(teacher.lastName)}` : 'არ არის მინიჭებული'}</td>
                 <td>${studentCount}</td>
                 <td class="action-btns">
-                  <button onclick="adminApp.editGroup('${group._id}')">
+                  <button class="btn-edit" data-id="${group._id}">
                     <i class="fa-solid fa-pencil"></i>
                   </button>
-                  <button onclick="adminApp.deleteGroup('${group._id}')">
+                  <button class="btn-delete" data-id="${group._id}">
                     <i class="fa-solid fa-trash"></i>
                   </button>
                 </td>
@@ -277,6 +356,22 @@ document.addEventListener('DOMContentLoaded', () => {
         </tbody>
       </table>
     `;
+    
+    // Add event listeners to the buttons
+    container.querySelectorAll('.btn-edit').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const groupId = btn.getAttribute('data-id');
+        const group = state.groups.find(g => g._id === groupId);
+        if (group) setupGroupModal(group);
+      });
+    });
+    
+    container.querySelectorAll('.btn-delete').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const groupId = btn.getAttribute('data-id');
+        deleteGroup(groupId);
+      });
+    });
   }
 
   function renderVideosTable() {
@@ -309,10 +404,10 @@ document.addEventListener('DOMContentLoaded', () => {
               </td>
               <td class="video-url">${escapeHTML(video.url)}</td>
               <td class="action-btns">
-                <button onclick="adminApp.editVideo('${video._id}')">
+                <button class="btn-edit" data-id="${video._id}">
                   <i class="fa-solid fa-pencil"></i>
                 </button>
-                <button onclick="adminApp.deleteVideo('${video._id}')">
+                <button class="btn-delete" data-id="${video._id}">
                   <i class="fa-solid fa-trash"></i>
                 </button>
               </td>
@@ -321,17 +416,39 @@ document.addEventListener('DOMContentLoaded', () => {
         </tbody>
       </table>
     `;
+    
+    // Add event listeners to the buttons
+    container.querySelectorAll('.btn-edit').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const videoId = btn.getAttribute('data-id');
+        const video = state.videos.find(v => v._id === videoId);
+        if (video) setupVideoModal(video);
+      });
+    });
+    
+    container.querySelectorAll('.btn-delete').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const videoId = btn.getAttribute('data-id');
+        deleteVideo(videoId);
+      });
+    });
   }
 
   // =================================================================
   // 5. MODAL & FORM MANAGEMENT
   // =================================================================
   function openModal(modal) {
-    if (modal) modal.classList.remove('hidden');
+    if (modal) {
+      modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
   }
 
   function closeModal(modal) {
-    if (modal) modal.classList.add('hidden');
+    if (modal) {
+      modal.classList.add('hidden');
+      document.body.style.overflow = 'auto';
+    }
   }
 
   function setupUserModal(user = null) {
@@ -423,14 +540,31 @@ document.addEventListener('DOMContentLoaded', () => {
           </option>`
         ).join('');
         
-    studentMultiSelect.innerHTML = state.users
+    // Create a container for multi-select options
+    studentMultiSelect.innerHTML = '';
+    const container = document.createElement('div');
+    container.className = 'multi-select-container';
+    
+    state.users
       .filter(u => u.role === 'Student')
-      .map(s => `
-        <label class="multi-select-option">
-          <input type="checkbox" value="${s._id}" ${selectedStudentIds.includes(s._id) ? 'checked' : ''}>
-          <span>${escapeHTML(s.firstName)} ${escapeHTML(s.lastName)}</span>
-        </label>`
-      ).join('');
+      .forEach(s => {
+        const label = document.createElement('label');
+        label.className = 'multi-select-option';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = s._id;
+        if (selectedStudentIds.includes(s._id)) checkbox.checked = true;
+        
+        const span = document.createElement('span');
+        span.textContent = `${escapeHTML(s.firstName)} ${escapeHTML(s.lastName)}`;
+        
+        label.appendChild(checkbox);
+        label.appendChild(span);
+        container.appendChild(label);
+      });
+    
+    studentMultiSelect.appendChild(container);
   }
 
   // =================================================================
@@ -440,27 +574,38 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     if (!elements.userForm) return;
     
-    const data = Object.fromEntries(new FormData(elements.userForm).entries());
-    if (!data.password) delete data.password;
-    
-    const endpoint = state.editingId ? `/users/${state.editingId}` : '/users';
-    const method = state.editingId ? 'PUT' : 'POST';
+    const submitBtn = elements.userForm.querySelector('button[type="submit"]');
+    submitBtn.classList.add('loading');
     
     try {
+      const data = Object.fromEntries(new FormData(elements.userForm).entries());
+      if (!data.password) delete data.password;
+      
+      const endpoint = state.editingId ? `/users/${state.editingId}` : '/users';
+      const method = state.editingId ? 'PUT' : 'POST';
+      
       await apiFetch(endpoint, { method, body: JSON.stringify(data) });
       const usersRes = await apiFetch('/users');
       state.users = Array.isArray(usersRes?.data) ? usersRes.data : usersRes || [];
+      
       renderAllComponents();
       closeModal(elements.userModal);
+      showToast(state.editingId ? 'მომხმარებელი განახლებულია' : 'მომხმარებელი დაემატა', 'success');
     } catch (error) { 
-      alert(`შეცდომა: ${error.message}`); 
+      showToast(`შეცდომა: ${error.message}`, 'error');
+    } finally {
+      submitBtn.classList.remove('loading');
     }
   }
 
   async function handleVideoFormSubmit(e) {
-      e.preventDefault();
-      if (!elements.videoForm) return;
+    e.preventDefault();
+    if (!elements.videoForm) return;
     
+    const submitBtn = elements.videoForm.querySelector('button[type="submit"]');
+    submitBtn.classList.add('loading');
+    
+    try {
       const formData = new FormData(elements.videoForm);
       const data = {
         title: formData.get('title'),
@@ -472,65 +617,119 @@ document.addEventListener('DOMContentLoaded', () => {
       // Validate YouTube URL with more flexible regex
       const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
       if (!youtubeRegex.test(data.url)) {
-        alert('გთხოვთ მიუთითოთ სწორი YouTube ბმული');
+        showToast('გთხოვთ მიუთითოთ სწორი YouTube ბმული', 'error');
         return;
       }
     
       const endpoint = state.editingId ? `/videos/${state.editingId}` : '/videos';
       const method = state.editingId ? 'PUT' : 'POST';
     
-      try {
-        const response = await apiFetch(endpoint, { 
-          method, 
-          body: JSON.stringify(data),
-          headers: { 'Content-Type': 'application/json' }
-        });
-      
-        // Refresh videos list
-        const videosRes = await apiFetch('/videos');
-        state.videos = Array.isArray(videosRes?.data) ? videosRes.data : 
-                      Array.isArray(videosRes?.videos) ? videosRes.videos : videosRes || [];
-      
-        renderAllComponents();
-        closeModal(elements.videoModal);
-      } catch (error) { 
-        alert(`შეცდომა: ${error.message}`); 
-      }
+      const response = await apiFetch(endpoint, { 
+        method, 
+        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json' }
+      });
+    
+      // Refresh videos list
+      const videosRes = await apiFetch('/videos');
+      state.videos = Array.isArray(videosRes?.data) ? videosRes.data : 
+                    Array.isArray(videosRes?.videos) ? videosRes.videos : videosRes || [];
+    
+      renderAllComponents();
+      closeModal(elements.videoModal);
+      showToast(state.editingId ? 'ვიდეო განახლებულია' : 'ვიდეო დაემატა', 'success');
+    } catch (error) { 
+      showToast(`შეცდომა: ${error.message}`, 'error');
+    } finally {
+      submitBtn.classList.remove('loading');
+    }
   }
 
   async function handleGroupFormSubmit(e) {
     e.preventDefault();
     if (!elements.groupForm) return;
     
-    const selectedStudents = Array.from(document.querySelectorAll('#student-multiselect input:checked'))
-      .map(el => el.value);
-    const selectedTeacher = document.getElementById('teacher-select').value;
-    const userIds = [...selectedStudents];
-    
-    if (selectedTeacher) userIds.push(selectedTeacher);
-    
-    const data = {
-      name: document.getElementById('group-name').value,
-      zoomLink: document.getElementById('group-zoom-link').value,
-      users: userIds,
-    };
-    
-    const endpoint = state.editingId ? `/groups/${state.editingId}` : '/groups';
-    const method = state.editingId ? 'PUT' : 'POST';
+    const submitBtn = elements.groupForm.querySelector('button[type="submit"]');
+    submitBtn.classList.add('loading');
     
     try {
+      const selectedStudents = Array.from(document.querySelectorAll('#student-multiselect input:checked'))
+        .map(el => el.value);
+      const selectedTeacher = document.getElementById('teacher-select').value;
+      const userIds = [...selectedStudents];
+      
+      if (selectedTeacher) userIds.push(selectedTeacher);
+      
+      const data = {
+        name: document.getElementById('group-name').value,
+        zoomLink: document.getElementById('group-zoom-link').value,
+        users: userIds,
+      };
+      
+      const endpoint = state.editingId ? `/groups/${state.editingId}` : '/groups';
+      const method = state.editingId ? 'PUT' : 'POST';
+      
       await apiFetch(endpoint, { method, body: JSON.stringify(data) });
       const groupsRes = await apiFetch('/groups');
       state.groups = Array.isArray(groupsRes?.data) ? groupsRes.data : groupsRes || [];
+      
       renderAllComponents();
       closeModal(elements.groupModal);
+      showToast(state.editingId ? 'ჯგუფი განახლებულია' : 'ჯგუფი დაემატა', 'success');
     } catch (error) { 
-      alert(`შეცდომა: ${error.message}`); 
+      showToast(`შეცდომა: ${error.message}`, 'error');
+    } finally {
+      submitBtn.classList.remove('loading');
     }
   }
 
   // =================================================================
-  // 7. EVENT LISTENERS & PUBLIC API
+  // 7. DELETE FUNCTIONS
+  // =================================================================
+  async function deleteUser(id) {
+    if (!confirm('დარწმუნებული ხართ, რომ გსურთ ამ მომხმარებლის წაშლა?')) return;
+    
+    try {
+      await apiFetch(`/users/${id}`, { method: 'DELETE' });
+      const usersRes = await apiFetch('/users');
+      state.users = Array.isArray(usersRes?.data) ? usersRes.data : usersRes || [];
+      renderAllComponents();
+      showToast('მომხმარებელი წაიშლა', 'success');
+    } catch (error) { 
+      showToast(`შეცდომა: ${error.message}`, 'error');
+    }
+  }
+
+  async function deleteGroup(id) {
+    if (!confirm('დარწმუნებული ხართ, რომ გსურთ ამ ჯგუფის წაშლა?')) return;
+    
+    try {
+      await apiFetch(`/groups/${id}`, { method: 'DELETE' });
+      const groupsRes = await apiFetch('/groups');
+      state.groups = Array.isArray(groupsRes?.data) ? groupsRes.data : groupsRes || [];
+      renderAllComponents();
+      showToast('ჯგუფი წაიშლა', 'success');
+    } catch (error) { 
+      showToast(`შეცდომა: ${error.message}`, 'error');
+    }
+  }
+
+  async function deleteVideo(id) {
+    if (!confirm('დარწმუნებული ხართ, რომ გსურთ ამ ვიდეოს წაშლა?')) return;
+    
+    try {
+      await apiFetch(`/videos/${id}`, { method: 'DELETE' });
+      const videosRes = await apiFetch('/videos');
+      state.videos = Array.isArray(videosRes?.data) ? videosRes.data : videosRes || [];
+      renderAllComponents();
+      showToast('ვიდეო წაიშლა', 'success');
+    } catch (error) { 
+      showToast(`შეცდომა: ${error.message}`, 'error');
+    }
+  }
+
+  // =================================================================
+  // 8. EVENT LISTENERS & PUBLIC API
   // =================================================================
   function setupAllEventListeners() {
     // Sidebar navigation
@@ -548,6 +747,11 @@ document.addEventListener('DOMContentLoaded', () => {
           
           if (elements.calendarControlPanel) {
             elements.calendarControlPanel.classList.toggle('hidden', targetId !== 'calendar-panel');
+          }
+          
+          // Close sidebar on mobile after selection
+          if (window.innerWidth <= 768) {
+            elements.adminSidebar.classList.remove('active');
           }
         });
       });
@@ -584,51 +788,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Global app object for inline event handlers
-  window.adminApp = {
-    editUser: (id) => setupUserModal(state.users.find(i => i._id === id)),
-    deleteUser: async (id) => {
-      if (confirm('დარწმუნებული ხართ, რომ გსურთ ამ მომხმარებლის წაშლა?')) {
-        try {
-          await apiFetch(`/users/${id}`, { method: 'DELETE' });
-          const usersRes = await apiFetch('/users');
-          state.users = Array.isArray(usersRes?.data) ? usersRes.data : usersRes || [];
-          renderAllComponents();
-        } catch (error) { 
-          alert(`შეცდომა: ${error.message}`); 
-        }
-      }
-    },
-    editGroup: (id) => setupGroupModal(state.groups.find(i => i._id === id)),
-    deleteGroup: async (id) => {
-      if (confirm('დარწმუნებული ხართ, რომ გსურთ ამ ჯგუფის წაშლა?')) {
-        try {
-          await apiFetch(`/groups/${id}`, { method: 'DELETE' });
-          const groupsRes = await apiFetch('/groups');
-          state.groups = Array.isArray(groupsRes?.data) ? groupsRes.data : groupsRes || [];
-          renderAllComponents();
-        } catch (error) { 
-          alert(`შეცდომა: ${error.message}`); 
-        }
-      }
-    },
-    editVideo: (id) => setupVideoModal(state.videos.find(i => i._id === id)),
-    deleteVideo: async (id) => {
-      if (confirm('დარწმუნებული ხართ, რომ გსურთ ამ ვიდეოს წაშლა?')) {
-        try {
-          await apiFetch(`/videos/${id}`, { method: 'DELETE' });
-          const videosRes = await apiFetch('/videos');
-          state.videos = Array.isArray(videosRes?.data) ? videosRes.data : videosRes || [];
-          renderAllComponents();
-        } catch (error) { 
-          alert(`შეცდომა: ${error.message}`); 
-        }
-      }
-    }
-  };
-
   // =================================================================
-  // 8. CALENDAR LOGIC - FIXED AND ENHANCED
+  // 9. CALENDAR LOGIC - FIXED AND ENHANCED
   // =================================================================
   function initializeCalendar() {
     if (!elements.timeColumn || !elements.dayColumns.length) return;
@@ -746,7 +907,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (error) {
       console.error('Error loading group calendars:', error);
-      alert('ჯგუფის კალენდრების ჩატვირთვის შეცდომა: ' + error.message);
+      showToast('ჯგუფის კალენდრების ჩატვირთვის შეცდომა: ' + error.message, 'error');
     }
   }
 
@@ -1025,7 +1186,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Guard against saving without a selection or title
     if (slots.length === 0 || !elements.lectureTitleInput.value.trim()) {
-      alert("გთხოვთ აირჩიოთ დროის სლოტი კალენდარზე და მიუთითოთ სათაური.");
+      showToast("გთხოვთ აირჩიოთ დროის სლოტი კალენდარზე და მიუთითოთ სათაური.", "error");
       return;
     }
     
@@ -1055,6 +1216,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const method = isUpdating ? 'PUT' : 'POST';
     
     try {
+      elements.saveLectureBtn.classList.add('loading');
       await apiFetch(endpoint, { method, body: JSON.stringify(payload) });
     
       // After successfully saving, refresh the entire calendar view for the group
@@ -1062,9 +1224,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
       // Reset the selection and sidebar form
       clearSelection();
+      showToast(isUpdating ? 'ლექცია განახლებულია' : 'ლექცია დაემატა', 'success');
     } catch (error) {
       console.error(`Error saving lecture:`, error);
-      alert(`შეცდომა: ${error.message}`); 
+      showToast(`შეცდომა: ${error.message}`, 'error');
+    } finally {
+      elements.saveLectureBtn.classList.remove('loading');
     }
   }
 
@@ -1072,11 +1237,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!calendarState.activeLecture || !confirm('დარწმუნებული ხართ, რომ გსურთ ამ ლექციის წაშლა?')) return;
     
     try {
+      elements.deleteLectureBtn.classList.add('loading');
       await apiFetch(`/lectures/${calendarState.activeLecture.id}`, { method: 'DELETE' });
       await handleGroupSelection();
       clearSelection();
+      showToast('ლექცია წაიშლა', 'success');
     } catch (error) { 
-      alert(`შეცდომა: ${error.message}`); 
+      showToast(`შეცდომა: ${error.message}`, 'error');
+    } finally {
+      elements.deleteLectureBtn.classList.remove('loading');
     }
   }
 
@@ -1166,7 +1335,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (suggestions.length === 0) {
-      alert('2-საათიანი თავისუფალი სლოტები რეკომენდაციისთვის არ მოიძებნა.');
+      showToast('2-საათიანი თავისუფალი სლოტები რეკომენდაციისთვის არ მოიძებნა.', 'info');
       return;
     }
 
@@ -1185,10 +1354,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     });
+    
+    showToast('ნაპოვნია რეკომენდირებული დროის სლოტები', 'success');
   }
 
   // =================================================================
-  // 9. UTILITY FUNCTIONS
+  // 10. UTILITY FUNCTIONS
   // =================================================================
   function getStartOfWeek(date) {
     const d = new Date(date);
@@ -1266,7 +1437,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="error-container">
         <h1>${escapeHTML(title)}</h1>
         <p>${escapeHTML(message)}</p>
-        <a href="../login/login.html" class="btn btn--primary">ავტორიზაციის გვერდზე დაბრუნება</a>
+        <a href="/login/login.html" class="btn btn--primary">ავტორიზაციის გვერდზე დაბრუნება</a>
       </div>
     `;
   }
@@ -1293,7 +1464,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =================================================================
-  // 10. START THE APPLICATION
+  // 11. START THE APPLICATION
   // =================================================================
   initializeApp();
 });
