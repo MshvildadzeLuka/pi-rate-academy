@@ -1210,13 +1210,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return new Date(d.setDate(diff));
   }
 
-  function getEndOfWeek(date) {
-    const start = getStartOfWeek(date);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    return end;
-  }
-
   function timeToMinutes(timeStr) {
     if (!timeStr) return 0;
     const [h, m] = timeStr.split(':').map(Number);
