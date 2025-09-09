@@ -1,3 +1,14 @@
+import {
+  getStartOfWeek,
+  getEndOfWeek,
+  timeToMinutes,
+  timeToSlotIndex,
+  minutesToTime,
+  formatTime,
+  ensureTimeFormat,
+  escapeHTML
+} from '../assets/js/utils.js';
+
 document.addEventListener('DOMContentLoaded', () => {
   const API_BASE_URL = '/api';
   
@@ -34,7 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
     eventForm: document.getElementById('event-form')
   };
 
-  // Show notification toast
   function showNotification(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `notification-toast ${type}`;
@@ -72,7 +82,8 @@ document.addEventListener('DOMContentLoaded', () => {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `API error: ${response.status}`);
+        const errorMessage = errorData.message || `API შეცდომა მოხდა: ${response.status}`;
+        throw new Error(errorMessage);
       }
       
       return response.status === 204 ? null : response.json();
@@ -91,7 +102,6 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAll();
       addEventListeners();
       
-      // Update time indicator every minute
       updateCurrentTimeIndicator();
       setInterval(updateCurrentTimeIndicator, 60000);
     } catch (error) {
@@ -115,7 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const endOfWeek = getEndOfWeek(startOfWeek);
     
     try {
-      // Show loading state
       document.body.classList.add('loading');
       
       const personalEventsResponse = await apiFetch(
@@ -246,7 +255,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function generateTimeSlots() {
     elements.timeColumn.innerHTML = '';
-    // Fix: The loop now correctly runs up to and includes 22 (for 22:00)
     for (let hour = 8; hour <= 22; hour++) {
       const timeLabel = document.createElement('div');
       timeLabel.className = 'time-label';
@@ -257,7 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.dayColumns.forEach((column, dayIndex) => {
       column.innerHTML = '';
       column.dataset.day = dayIndex;
-      // Fix: The loop now correctly creates 29 slots (for 8:00 to 22:00)
       for (let slot = 0; slot < 29; slot++) {
         const timeSlot = document.createElement('div');
         timeSlot.className = 'time-slot';
@@ -280,8 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderWeekDisplay() {
     const start = getStartOfWeek(state.mainViewDate);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 6);
+    const end = getEndOfWeek(start);
     
     elements.weekDisplay.textContent = 
       `${start.toLocaleDateString('ka-GE', { month: 'long', day: 'numeric' })} - ${end.toLocaleDateString('ka-GE', { month: 'long', day: 'numeric', year: 'numeric' })}`;
@@ -321,31 +327,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     
-    // Add empty days for previous month
-    for (let i = 0; i < firstDay; i++) {
+    for (let i = 0; i < (firstDay + 6) % 7; i++) {
       const day = document.createElement('div');
       day.className = 'mini-calendar-day other-month';
       elements.miniCalDaysGrid.appendChild(day);
     }
     
-    // Add days for current month
     for (let d = 1; d <= daysInMonth; d++) {
       const day = document.createElement('div');
       day.className = 'mini-calendar-day';
       day.textContent = d;
       const currentDay = new Date(year, month, d);
       
-      // Check if this day is today
       if (currentDay.toDateString() === today.toDateString()) {
         day.classList.add('current-day');
       }
       
-      // Check if this day is in the currently selected week
       if (currentDay >= startOfWeek && currentDay <= new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000)) {
         day.classList.add('in-selected-week');
       }
       
-      // Add click event to select this day's week
       day.addEventListener('click', () => {
         state.mainViewDate = new Date(currentDay);
         fetchEvents().then(() => {
@@ -362,10 +363,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     const exceptions = state.allEvents.filter(e => e.exceptionDate);
 
-    // Remove existing event blocks
     document.querySelectorAll('.event-block').forEach(el => el.remove());
 
-    // Render events for each day
     for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
       const currentDayDate = new Date(startOfWeek);
       currentDayDate.setDate(currentDayDate.getDate() + dayIndex);
