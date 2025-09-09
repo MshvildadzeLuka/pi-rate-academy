@@ -39,12 +39,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'API შეცდომა მოხდა');
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'API შეცდომა მოხდა');
+      }
+      return response.status === 204 ? null : response.json();
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw new Error('სერვერთან კავშირი ვერ მოხერხდა');
     }
-    return response.status === 204 ? null : response.json();
   }
 
   async function initializeCalendar() {
