@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     recurringCheckbox: document.getElementById('recurring-event-checkbox'),
     recurringLabelText: document.getElementById('recurring-label-text'),
     gridWrapper: document.querySelector('.calendar-grid-wrapper'),
+    currentTimeIndicator: document.getElementById('current-time-indicator'),
   };
 
   async function apiFetch(endpoint, options = {}) {
@@ -529,5 +530,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const diff = d.getDate() - day + (day === 0 ? -6 : 1); return new Date(d.setDate(diff));
   };
 
+  function updateCurrentTimeIndicator() {
+    const now = new Date();
+    const dayOfWeek = (now.getDay() + 6) % 7; // Get Monday-based day index
+    const startOfWeek = getStartOfWeek(state.mainViewDate);
+    const endOfWeek = getEndOfWeek(state.mainViewDate);
+
+    // Check if the current time falls within the visible week
+    if (now < startOfWeek || now > endOfWeek) {
+        elements.currentTimeIndicator.style.display = 'none';
+        return;
+    }
+
+    const timeInMinutes = now.getHours() * 60 + now.getMinutes();
+    // 45px is the slot height, -8*60 to start at 8am
+    const top = ((timeInMinutes - 8 * 60) / 30) * 45; 
+
+    const dayColumn = document.querySelector(`.day-column[data-day="${dayOfWeek}"]`);
+    if (dayColumn && elements.currentTimeIndicator) {
+        elements.currentTimeIndicator.style.top = `${top}px`;
+        elements.currentTimeIndicator.style.left = `${dayColumn.offsetLeft}px`;
+        elements.currentTimeIndicator.style.display = 'block';
+    }
+  }
+
+// Call this from the main init function
+  updateCurrentTimeIndicator();
+  setInterval(updateCurrentTimeIndicator, 60000);
   initializeCalendar();
 });
