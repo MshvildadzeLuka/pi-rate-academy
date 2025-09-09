@@ -164,15 +164,29 @@
     </template>
     
     <template id="template-teacher-detail-view">
-         <div class="detail-panel-grading">
+        <div class="detail-panel">
             <div class="detail-panel-header">
-                 <button class="btn back-btn" data-action="back-to-list" aria-label="დავალებების სიაზე დაბრუნება"><i class="fas fa-arrow-left"></i> სიაზე დაბრუნება</button>
-                 <h2 class="assignment-title-detail"></h2>
-                 <button class="btn btn-secondary edit-master-btn" data-action="edit-assignment" aria-label="დავალების რედაქტირება"><i class="fas fa-edit"></i> რედაქტირება</button>
-                 <button class="btn btn-danger" data-action="delete-assignment" aria-label="დავალების წაშლა"><i class="fas fa-trash"></i> წაშლა</button>
+                <button class="btn back-btn" data-action="back-to-list" aria-label="დავალებების სიაზე დაბრუნება"><i class="fas fa-arrow-left"></i> უკან</button>
+                <h2 class="assignment-title-detail"></h2>
+                <div class="teacher-assignment-actions">
+                    <button class="btn btn-secondary edit-master-btn" data-action="edit-assignment" aria-label="დავალების რედაქტირება"><i class="fas fa-edit"></i> რედაქტირება</button>
+                    <button class="btn btn-danger" data-action="delete-assignment" aria-label="დავალების წაშლა"><i class="fas fa-trash"></i> წაშლა</button>
+                </div>
             </div>
             <div class="grading-layout">
-                <div class="student-list-sidebar"></div>
+                <div class="assignment-info-sidebar">
+                    <h3>დავალების დეტალები</h3>
+                    <div class="instructions-container">
+                        <h3>ინსტრუქციები</h3>
+                        <div class="instructions-text"></div>
+                    </div>
+                    <div class="attachments-container">
+                        <h3>თქვენი მიმაგრებული ფაილები</h3>
+                        <div class="attachments-list"></div>
+                    </div>
+                    <h3>სტუდენტები</h3>
+                    <div class="student-list-sidebar"></div>
+                </div>
                 <div class="grading-main-content">
                     <div class="grading-view-placeholder">
                         <i class="fas fa-user-graduate"></i>
