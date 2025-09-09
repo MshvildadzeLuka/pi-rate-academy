@@ -1,3 +1,17 @@
+
+/**
+ * ===================================================================
+ * ADMIN DASHBOARD SCRIPT (v5.2 - Fixed Calendar & Time Handling)
+ * for Pi-Rate Academy
+ * ===================================================================
+ * - Complete CRUD functionality for all management panels
+ * - Integrated interactive calendar with availability visualization
+ * - Drag-and-drop lecture scheduling
+ * - Optimized performance and error handling
+ * - Fixed time formatting and timezone issues
+ * - Georgian language implementation
+ * ===================================================================
+ */
 document.addEventListener('DOMContentLoaded', () => {
   // =================================================================
   // 1. CONFIGURATION & API HELPER
@@ -724,7 +738,7 @@ document.addEventListener('DOMContentLoaded', () => {
       state.selectedGroupMembers = group.users || [];
       
       // Fetch both the personal availability of all group members and the official lectures
-      // for the selected group in parallel for maximum efficiency.
+      // for the selected group in parallel for a more accurate schedule.
       const [availabilityRes, lecturesRes] = await Promise.all([
         apiFetch(`/calendar-events/group/${groupId}`),
         apiFetch(`/lectures/group/${groupId}`),
