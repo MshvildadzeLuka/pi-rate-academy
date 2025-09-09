@@ -166,15 +166,15 @@ router.delete('/:id', protect, asyncHandler(async (req, res, next) => {
   }
 
   if (event.isRecurring && !deleteAllRecurring) {
-    // Create an "exception event" to mark this instance as deleted.
-    // We remove the non-existent `title` field to avoid a validation error.
+    // CORRECTED: Creating an exception event. We remove the non-existent `title` field 
+    // to avoid a validation error and use the correct field names.
     await CalendarEvent.create({
       userId: req.user._id,
       creatorId: req.user._id,
       type: event.type,
       isRecurring: false,
       exceptionDate: dateString,
-      // Removed: title: `DELETED: ${event._id}`
+      // We no longer try to set a 'title' field that doesn't exist on the schema.
     });
     res.status(200).json({ success: true, message: 'Instance removed' });
   } else {
