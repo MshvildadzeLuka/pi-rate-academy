@@ -1,4 +1,5 @@
 :root {
+  /* Reverted to original global dark theme colors */
   --background-primary: #121212;
   --background-secondary: #1e1e1e;
   --background-tertiary: #2a2a2a;
@@ -17,10 +18,15 @@
   box-sizing: border-box;
 }
 
+html, body {
+  /* Fix: Prevents the main page from scrolling on desktop */
+  height: 100%;
+  overflow: hidden;
+}
+
 body { 
   background-color: var(--background-primary); 
   font-family: 'Poppins', sans-serif; 
-  overflow-x: hidden; 
   margin: 0;
   color: var(--text-primary);
   line-height: 1.6;
@@ -28,7 +34,7 @@ body {
 
 .page-wrapper { 
   display: flex; 
-  min-height: calc(100vh - 100px);
+  height: calc(100vh - var(--header-height));
   padding: 0;
   gap: 0;
 }
@@ -329,7 +335,7 @@ select:focus {
 }
 
 .calendar-grid-wrapper {
-  overflow: auto;
+  overflow-y: auto;
   flex-grow: 1;
   border-radius: var(--border-radius);
   border: 1px solid var(--background-tertiary);
@@ -337,6 +343,7 @@ select:focus {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 .calendar-grid {
+  /* Fix: Adjusted grid to remove extra space next to Sunday */
   display: grid;
   grid-template-columns: 100px repeat(7, 1fr);
   background-color: var(--background-secondary);
@@ -400,9 +407,9 @@ select:focus {
 .day-column {
   position: relative;
   display: grid;
-  grid-template-rows: repeat(28, 1fr); /* 14 hours * 2 slots per hour */
+  grid-template-rows: repeat(29, 1fr); /* 14.5 hours * 2 slots per hour */
   border-left: 1px solid var(--background-tertiary);
-  min-height: 1260px; /* 28 slots * 45px */
+  min-height: 1260px; /* 29 slots * 45px */
 }
 .time-label {
   text-align: right;
@@ -661,6 +668,13 @@ select:focus {
 }
 
 @media (max-width: 768px) {
+  /* Fix: Allow scrolling on the entire page for mobile */
+  html, body {
+    height: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  
   .calendar-header {
     flex-direction: column;
     align-items: flex-start;
@@ -779,5 +793,4 @@ select:focus {
     flex-direction: column;
     gap: 8px;
   }
-}
 }
