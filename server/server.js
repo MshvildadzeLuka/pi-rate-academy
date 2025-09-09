@@ -75,7 +75,26 @@ app.use(cors({
 // Middleware
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
-app.use(helmet());
+// =================================================================
+// ✅ FIX: HELMET CONFIGURATION FOR CSP
+// This new configuration allows for external resources
+// like fonts, scripts, and images.
+// =================================================================
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        "img-src": ["'self'", "https://res.cloudinary.com", "https://placehold.co"],
+        "script-src": ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+        "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
+        "font-src": ["'self'", "https://fonts.gstatic.com"],
+        "connect-src": ["'self'", "https://api.cloudinary.com"],
+      },
+    },
+  })
+);
+// =================================================================
 app.use(hpp());
 app.use(mongoSanitize());
 
