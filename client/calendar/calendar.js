@@ -121,12 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function getEndOfWeek(start) {
-    const end = new Date(start);
-    end.setDate(end.getDate() + 7);
-    return end;
-  }
-
   async function saveEvent() {
     if (state.selectedSlots.size === 0) return;
 
