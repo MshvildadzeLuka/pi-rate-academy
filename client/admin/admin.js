@@ -1173,7 +1173,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     
     // Add empty days for previous month
-    for (let i = 0; i < firstDay; i++) {
+    for (let i = 0; i < (firstDay + 6) % 7; i++) {
       const day = document.createElement('div');
       day.className = 'mini-calendar-day other-month';
       elements.miniCalDaysGrid.appendChild(day);
@@ -1186,17 +1186,14 @@ document.addEventListener('DOMContentLoaded', () => {
       day.textContent = d;
       const currentDay = new Date(year, month, d);
       
-      // Check if this day is today
       if (currentDay.toDateString() === today.toDateString()) {
         day.classList.add('current-day');
       }
       
-      // Check if this day is in the currently selected week
       if (currentDay >= startOfWeek && currentDay <= new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000)) {
         day.classList.add('in-selected-week');
       }
       
-      // Add click event to select this day's week
       day.addEventListener('click', () => {
         state.mainViewDate = new Date(currentDay);
         fetchEvents().then(() => {
@@ -1213,10 +1210,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     const exceptions = state.allEvents.filter(e => e.exceptionDate);
 
-    // Remove existing event blocks
     document.querySelectorAll('.event-block').forEach(el => el.remove());
 
-    // Render events for each day
     for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
       const currentDayDate = new Date(startOfWeek);
       currentDayDate.setDate(currentDayDate.getDate() + dayIndex);
