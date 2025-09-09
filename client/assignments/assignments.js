@@ -407,6 +407,18 @@ const uiRenderer = {
 
     renderDetailView() {
         const isTeacher = [ROLES.TEACHER, ROLES.ADMIN].includes(state.currentUser.role);
+        
+        if (!state.detailedAssignment) {
+            elements.detailView.innerHTML = `
+                <div class="error-message">
+                    <p>დავალების დეტალების ჩატვირთვა ვერ მოხერხდა. გთხოვთ, დაბრუნდით და სცადოთ თავიდან.</p>
+                    <button class="btn btn-primary" data-action="back-to-list">
+                        უკან სიაში
+                    </button>
+                </div>`;
+            return;
+        }
+
         if (isTeacher) {
             this.renderTeacherDetailView();
         } else {
@@ -506,8 +518,40 @@ const uiRenderer = {
     renderTeacherDetailView() {
         const template = document.getElementById('template-teacher-detail-view').content.cloneNode(true);
         const masterAssignment = state.detailedAssignment;
+        
         template.querySelector('.assignment-title-detail').textContent = masterAssignment.templateId.title;
+        
+        // Render the teacher's attached files from the master assignment template
+        const instructionsContainer = template.querySelector('.instructions-container');
+        if (instructionsContainer) {
+            instructionsContainer.innerHTML = `
+                <h3>ინსტრუქციები</h3>
+                <div class="instructions-text">
+                    ${this.sanitizeHTML(masterAssignment.templateId.instructions || 'ინსტრუქციები არ არის მოწოდებული.')}
+                </div>
+            `;
+        }
 
+        const attachmentsContainer = template.querySelector('.attachments-container .attachments-list');
+        if (attachmentsContainer) {
+            if (masterAssignment.templateId.attachments?.length > 0) {
+                attachmentsContainer.innerHTML = masterAssignment.templateId.attachments.map(file => {
+                    const iconClass = this.getFileIconClass(file.fileType);
+                    return `
+                    <div class="file-list-item view-only">
+                        <i class="fas ${iconClass}"></i>
+                        <div class="file-info">
+                            <a href="${file.url}" target="_blank" data-action="${ACTIONS.VIEW_FILE}" data-url="${file.url}" data-type="${file.fileType}">
+                               ${this.escapeHTML(file.fileName)}
+                            </a>
+                        </div>
+                    </div>`;
+                }).join('');
+            } else {
+                attachmentsContainer.innerHTML = `<p>მიმაგრებული ფაილები არ არის.</p>`;
+            }
+        }
+        
         const allSubmissions = state.studentAssignments.filter(sa => sa.templateId._id === masterAssignment.templateId._id);
         const studentListSidebar = template.querySelector('.student-list-sidebar');
         studentListSidebar.innerHTML = allSubmissions.map(sub => {
@@ -522,7 +566,7 @@ const uiRenderer = {
                 </div>
             `;
         }).join('');
-
+        
         template.querySelectorAll('.student-list-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 if (!e.target.closest('button')) {
@@ -531,14 +575,14 @@ const uiRenderer = {
                 }
             });
         });
-
+        
         template.querySelector('.back-btn').dataset.action = ACTIONS.BACK_TO_LIST;
         template.querySelector('.edit-master-btn').dataset.action = ACTIONS.EDIT_ASSIGNMENT;
         template.querySelector('[data-action="delete-assignment"]').dataset.templateId = masterAssignment.templateId._id;
         
         elements.detailView.innerHTML = '';
         elements.detailView.appendChild(template);
-
+        
         if (state.selectedStudentIdForGrading) {
             this.renderGradingPanel(state.selectedStudentIdForGrading);
         }
@@ -888,10 +932,16 @@ const eventHandlers = {
 
     handleViewDetail(assignmentId) {
         state.detailedAssignment = state.studentAssignments.find(a => a._id === assignmentId);
+        state.currentView = 'detail';
+        
         if ([ROLES.TEACHER, ROLES.ADMIN].includes(state.currentUser.role)) {
             state.selectedStudentIdForGrading = assignmentId;
+            const masterAssignment = state.studentAssignments.find(sa => sa._id === assignmentId);
+            if (masterAssignment) {
+                // Fetch the entire master assignment data, including the template, to get attachments
+                state.detailedAssignment = masterAssignment;
+            }
         }
-        state.currentView = 'detail';
         uiRenderer.updateView();
     },
 
