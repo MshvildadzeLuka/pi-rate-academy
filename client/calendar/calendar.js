@@ -246,7 +246,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function generateTimeSlots() {
     elements.timeColumn.innerHTML = '';
-    for (let hour = 8; hour < 22; hour++) {
+    // Fix: Loop from 8 to 22 (for 10 PM)
+    for (let hour = 8; hour <= 22; hour++) {
       const timeLabel = document.createElement('div');
       timeLabel.className = 'time-label';
       timeLabel.textContent = formatTime(`${hour}:00`, false);
@@ -256,7 +257,8 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.dayColumns.forEach((column, dayIndex) => {
       column.innerHTML = '';
       column.dataset.day = dayIndex;
-      for (let slot = 0; slot < 28; slot++) {
+      // Fix: Loop 29 times for 14.5 hours of time slots
+      for (let slot = 0; slot < 29; slot++) {
         const timeSlot = document.createElement('div');
         timeSlot.className = 'time-slot';
         const hour = 8 + Math.floor(slot / 2);
@@ -425,10 +427,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const startMinutes = timeToMinutes(eventData.startTime);
     const endMinutes = timeToMinutes(eventData.endTime);
     const durationMinutes = endMinutes - startMinutes;
+    // Fix: The height of each slot is 45px. We need to use this to calculate the vertical position.
     const slotHeight = 45;
-    const slotsSpanned = durationMinutes / 30;
     const top = ((startMinutes - 8 * 60) / 30) * slotHeight;
-    const height = slotsSpanned * slotHeight - 2;
+    const height = (durationMinutes / 30) * slotHeight - 2;
 
     const eventBlock = document.createElement('div');
     eventBlock.className = `event-block event-${eventData.type}`;
@@ -738,7 +740,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateCurrentTimeIndicator() {
     const now = new Date();
-    const dayOfWeek = (now.getDay() + 6) % 7; // Convert to Monday-based week (0-6)
+    // Fix: JavaScript's getDay() returns 0 for Sunday, 1 for Monday.
+    // We need to adjust this to match our grid where Monday is data-day="0".
+    const dayOfWeek = (now.getDay() + 6) % 7; 
     const startOfWeek = getStartOfWeek(state.mainViewDate);
     const endOfWeek = getEndOfWeek(state.mainViewDate);
     
@@ -756,7 +760,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     
-    // Calculate position
+    // Fix: Calculate the `top` position relative to the calendar grid.
+    // The `45` here corresponds to the `45px` height of each `.time-slot` in CSS.
     const top = ((timeInMinutes - 8 * 60) / 30) * 45;
     const dayColumn = document.querySelector(`.day-column[data-day="${dayOfWeek}"]`);
     
