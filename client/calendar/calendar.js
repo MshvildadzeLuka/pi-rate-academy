@@ -53,6 +53,10 @@ document.addEventListener('DOMContentLoaded', () => {
       generateTimeSlots();
       renderAll();
       addEventListeners();
+      
+      // Call and update time indicator every minute
+      updateCurrentTimeIndicator();
+      setInterval(updateCurrentTimeIndicator, 60000);
     } catch (error) {
       console.error('კალენდრის ჩატვირთვა ვერ მოხერხდა:', error);
       alert('კალენდრის ჩატვირთვის შეცდომა: ' + error.message);
@@ -227,6 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderAll() {
     renderWeekDisplay();
+    renderDayHeaders();
     renderMiniCalendar();
     renderEventsForWeek();
     updateSidebarUI('add');
@@ -237,6 +242,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const end = new Date(start);
     end.setDate(end.getDate() + 6);
     elements.weekDisplay.textContent = `${start.toLocaleDateString('ka-GE', { month: 'long', day: 'numeric' })} - ${end.toLocaleDateString('ka-GE', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+  }
+  
+  function renderDayHeaders() {
+      const startOfWeek = getStartOfWeek(state.mainViewDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      document.querySelectorAll('.day-column-header').forEach((header, index) => {
+          const headerDate = new Date(startOfWeek);
+          headerDate.setDate(startOfWeek.getDate() + index);
+          
+          if (header.querySelector('.day-number')) {
+              header.querySelector('.day-number').textContent = headerDate.getDate();
+          }
+          
+          if (headerDate.toDateString() === today.toDateString()) {
+              header.classList.add('current-day-header');
+          } else {
+              header.classList.remove('current-day-header');
+          }
+      });
   }
 
   function renderMiniCalendar() {
@@ -529,24 +555,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const d = new Date(date); d.setHours(0, 0, 0, 0); const day = d.getDay();
     const diff = d.getDate() - day + (day === 0 ? -6 : 1); return new Date(d.setDate(diff));
   };
+  
+  const getEndOfWeek = (date) => {
+      const start = getStartOfWeek(date);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      return end;
+  };
 
   function updateCurrentTimeIndicator() {
     const now = new Date();
-    const dayOfWeek = (now.getDay() + 6) % 7; // Get Monday-based day index
+    const dayOfWeek = (now.getDay() + 6) % 7;
     const startOfWeek = getStartOfWeek(state.mainViewDate);
     const endOfWeek = getEndOfWeek(state.mainViewDate);
-
-    // Check if the current time falls within the visible week
+    
     if (now < startOfWeek || now > endOfWeek) {
-        elements.currentTimeIndicator.style.display = 'none';
+        if (elements.currentTimeIndicator) {
+            elements.currentTimeIndicator.style.display = 'none';
+        }
         return;
     }
-
+    
     const timeInMinutes = now.getHours() * 60 + now.getMinutes();
-    // 45px is the slot height, -8*60 to start at 8am
-    const top = ((timeInMinutes - 8 * 60) / 30) * 45; 
-
+    if (timeInMinutes < 8 * 60 || timeInMinutes > 22 * 60) {
+      if (elements.currentTimeIndicator) elements.currentTimeIndicator.style.display = 'none';
+      return;
+    }
+    
+    const top = ((timeInMinutes - 8 * 60) / 30) * 45;
     const dayColumn = document.querySelector(`.day-column[data-day="${dayOfWeek}"]`);
+    
     if (dayColumn && elements.currentTimeIndicator) {
         elements.currentTimeIndicator.style.top = `${top}px`;
         elements.currentTimeIndicator.style.left = `${dayColumn.offsetLeft}px`;
@@ -554,8 +592,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-// Call this from the main init function
-  updateCurrentTimeIndicator();
-  setInterval(updateCurrentTimeIndicator, 60000);
   initializeCalendar();
 });
