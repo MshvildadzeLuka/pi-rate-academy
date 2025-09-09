@@ -499,3 +499,31 @@ body {
         font-size: 0.9rem;
     }
 }
+/* მიმდინარე დღის სათაურის სტილი */
+.day-column-header.current-day-header .day-number {
+    background-color: var(--primary-accent);
+    color: #fff;
+    font-weight: 600;
+}
+
+/* მიმდინარე დროის ხაზის სტილი */
+.current-time-indicator {
+    position: absolute;
+    height: 2px;
+    background-color: var(--danger-accent);
+    z-index: 15;
+    box-shadow: 0 0 10px var(--danger-accent);
+    pointer-events: none;
+    display: none; /* თავდაპირველად დამალულია */
+}
+
+.current-time-indicator::before {
+    content: '';
+    position: absolute;
+    left: -5px;
+    top: -4px;
+    width: 10px;
+    height: 10px;
+    background-color: var(--danger-accent);
+    border-radius: 50%;
+}
