@@ -517,75 +517,92 @@ const uiRenderer = {
 
     renderTeacherDetailView() {
         const template = document.getElementById('template-teacher-detail-view').content.cloneNode(true);
-        const masterAssignment = state.detailedAssignment;
+        const assignment = state.detailedAssignment;
         
-        template.querySelector('.assignment-title-detail').textContent = masterAssignment.templateId.title;
+        template.querySelector('.assignment-title-detail').textContent = assignment.templateId.title;
+        template.querySelector('.edit-master-btn').dataset.action = ACTIONS.EDIT_ASSIGNMENT;
+        template.querySelector('[data-action="delete-assignment"]').dataset.templateId = assignment.templateId._id;
         
-        // Render the teacher's attached files from the master assignment template
-        const instructionsContainer = template.querySelector('.instructions-container');
-        if (instructionsContainer) {
-            instructionsContainer.innerHTML = `
-                <h3>ინსტრუქციები</h3>
-                <div class="instructions-text">
-                    ${this.sanitizeHTML(masterAssignment.templateId.instructions || 'ინსტრუქციები არ არის მოწოდებული.')}
-                </div>
-            `;
+        // Render Teacher's Attachments from the master assignment template
+        const instructionsText = template.querySelector('.instructions-text');
+        instructionsText.innerHTML = this.sanitizeHTML(assignment.templateId.instructions || 'ინსტრუქციები არ არის მოწოდებული.');
+        
+        const attachmentsList = template.querySelector('.attachments-list');
+        if (assignment.templateId.attachments?.length > 0) {
+            attachmentsList.innerHTML = assignment.templateId.attachments.map(file => {
+                const iconClass = this.getFileIconClass(file.fileType);
+                return `
+                <div class="file-list-item view-only">
+                    <i class="fas ${iconClass}"></i>
+                    <div class="file-info">
+                        <a href="${file.url}" target="_blank" data-action="${ACTIONS.VIEW_FILE}" data-url="${file.url}" data-type="${file.fileType}">
+                           ${this.escapeHTML(file.fileName)}
+                        </a>
+                    </div>
+                </div>`;
+            }).join('');
+        } else {
+            attachmentsList.innerHTML = `<p>მიმაგრებული ფაილები არ არის.</p>`;
         }
 
-        const attachmentsContainer = template.querySelector('.attachments-container .attachments-list');
-        if (attachmentsContainer) {
-            if (masterAssignment.templateId.attachments?.length > 0) {
-                attachmentsContainer.innerHTML = masterAssignment.templateId.attachments.map(file => {
-                    const iconClass = this.getFileIconClass(file.fileType);
-                    return `
-                    <div class="file-list-item view-only">
-                        <i class="fas ${iconClass}"></i>
-                        <div class="file-info">
-                            <a href="${file.url}" target="_blank" data-action="${ACTIONS.VIEW_FILE}" data-url="${file.url}" data-type="${file.fileType}">
-                               ${this.escapeHTML(file.fileName)}
-                            </a>
-                        </div>
-                    </div>`;
-                }).join('');
-            } else {
-                attachmentsContainer.innerHTML = `<p>მიმაგრებული ფაილები არ არის.</p>`;
-            }
-        }
+        const container = template.querySelector('.grading-main-content');
         
-        const allSubmissions = state.studentAssignments.filter(sa => sa.templateId._id === masterAssignment.templateId._id);
-        const studentListSidebar = template.querySelector('.student-list-sidebar');
-        studentListSidebar.innerHTML = allSubmissions.map(sub => {
-            const student = sub.studentId;
-            const isActive = sub._id === state.selectedStudentIdForGrading;
-            return `
-                <div class="student-list-item ${isActive ? 'active' : ''}" data-action="${ACTIONS.SELECT_STUDENT_FOR_GRADING}" data-id="${sub._id}">
-                    <div class="student-info">
-                        <span class="student-name">${this.escapeHTML(student.firstName)} ${this.escapeHTML(student.lastName)}</span>
-                        <span class="submission-status-meta">${this.getTeacherStatusText(sub)}</span>
+        // Render student-specific content
+        let filesHTML = '<p>ფაილები არ არის გაგზავნილი.</p>';
+        if (assignment.submission?.files?.length > 0) {
+            filesHTML = assignment.submission.files.map(file => {
+                const iconClass = this.getFileIconClass(file.fileType);
+                return `
+                <div class="file-list-item view-only">
+                    <i class="fas ${iconClass}"></i>
+                    <div class="file-info">
+                        <a href="${file.url}" target="_blank" data-action="${ACTIONS.VIEW_FILE}" data-url="${file.url}" data-type="${file.fileType}">
+                           ${this.escapeHTML(file.fileName)}
+                        </a>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        container.innerHTML = `
+            <h3>სტუდენტის ნამუშევარი: ${this.escapeHTML(assignment.studentId.firstName)} ${this.escapeHTML(assignment.studentId.lastName)}</h3>
+            <div class="submission-files-grading">${filesHTML}</div>
+            <form class="grading-form" data-id="${assignment._id}">
+                <div class="form-group">
+                    <label for="grade-score">ქულა</label>
+                    <div class="grade-input-group">
+                        <input type="number" id="grade-score" name="score" value="${assignment.grade?.score || ''}" max="${assignment.templateId.points}" min="0">
+                        <span>/ ${assignment.templateId.points}</span>
                     </div>
                 </div>
-            `;
-        }).join('');
-        
-        template.querySelectorAll('.student-list-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                if (!e.target.closest('button')) {
-                    state.selectedStudentIdForGrading = item.dataset.id;
-                    uiRenderer.renderGradingPanel(state.selectedStudentIdForGrading);
-                }
-            });
+                <div class="form-group">
+                    <label for="grade-feedback">გამოკვლევა</label>
+                    <textarea id="grade-feedback" name="feedback" rows="6">${assignment.grade?.feedback || ''}</textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">ქულის დადგენა</button>
+                </div>
+            </form>
+        `;
+
+        container.querySelector('.grading-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const score = parseInt(formData.get('score'));
+            const feedback = formData.get('feedback');
+            const assignmentId = e.target.dataset.id;
+            const assignment = state.studentAssignments.find(a => a._id === assignmentId);
+            if (isNaN(score) || score < 0 || score > assignment.templateId.points) {
+                uiRenderer.showNotification(`ქულა უნდა იყოს 0-${assignment.templateId.points} შორის`, 'error');
+                return;
+            }
+            eventHandlers.handleGradeAssignment(assignmentId, { score, feedback });
         });
-        
+
         template.querySelector('.back-btn').dataset.action = ACTIONS.BACK_TO_LIST;
-        template.querySelector('.edit-master-btn').dataset.action = ACTIONS.EDIT_ASSIGNMENT;
-        template.querySelector('[data-action="delete-assignment"]').dataset.templateId = masterAssignment.templateId._id;
         
         elements.detailView.innerHTML = '';
         elements.detailView.appendChild(template);
-        
-        if (state.selectedStudentIdForGrading) {
-            this.renderGradingPanel(state.selectedStudentIdForGrading);
-        }
     },
 
     renderGradingPanel(studentAssignmentId) {
