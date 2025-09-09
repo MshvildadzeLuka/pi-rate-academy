@@ -134,7 +134,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const dayIndex = parseInt(startSlot.dataset.day);
     const dayName = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'][dayIndex];
 
-    const payload = { type, isRecurring };
+    const payload = {
+      type,
+      isRecurring,
+      groupId: elements.groupSelect.value,
+    };
 
     if (isRecurring) {
       payload.dayOfWeek = dayName;
