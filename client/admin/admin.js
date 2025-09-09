@@ -1,16 +1,3 @@
-/**
- * ===================================================================
- * ADMIN DASHBOARD SCRIPT (v5.2 - Fixed Calendar & Time Handling)
- * for Pi-Rate Academy
- * ===================================================================
- * - Complete CRUD functionality for all management panels
- * - Integrated interactive calendar with availability visualization
- * - Drag-and-drop lecture scheduling
- * - Optimized performance and error handling
- * - Fixed time formatting and timezone issues
- * - Georgian language implementation
- * ===================================================================
- */
 document.addEventListener('DOMContentLoaded', () => {
   // =================================================================
   // 1. CONFIGURATION & API HELPER
@@ -1208,6 +1195,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const day = d.getDay();
     const diff = d.getDate() - day + (day === 0 ? -6 : 1);
     return new Date(d.setDate(diff));
+  }
+
+  function getEndOfWeek(date) {
+    const start = getStartOfWeek(date);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    return end;
   }
 
   function timeToMinutes(timeStr) {
