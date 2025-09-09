@@ -1,3 +1,4 @@
+
 document.addEventListener('DOMContentLoaded', () => {
   const API_BASE_URL = '/api';
   
@@ -78,27 +79,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const endOfWeek = getEndOfWeek(startOfWeek);
     
     try {
-      // Fetch personal availability events for the user
       const personalEventsResponse = await apiFetch(
         `/calendar-events/my-schedule?start=${startOfWeek.toISOString()}&end=${endOfWeek.toISOString()}`
       );
       const personalEvents = personalEventsResponse?.data || [];
-
+      
       let groupLectures = [];
-      // Fetch lectures for each group the user is a member of
       for (const group of state.userGroups) {
         try {
           const lecturesResponse = await apiFetch(
             `/lectures/group/${group._id}?start=${startOfWeek.toISOString()}&end=${endOfWeek.toISOString()}`
           );
-          // Add fetched lectures to the groupLectures array
           groupLectures = [...groupLectures, ...(lecturesResponse?.data || [])];
         } catch (error) {
           console.error(`ლექციების ჩატვირთვა ვერ მოხერხდა ჯგუფისთვის ${group._id}:`, error);
         }
       }
-
-      // Format lectures to match the structure of other calendar events
+      
       const formattedLectures = groupLectures.map(lecture => ({
         _id: lecture._id,
         title: lecture.title,
@@ -116,14 +113,10 @@ document.addEventListener('DOMContentLoaded', () => {
           hour: '2-digit', minute: '2-digit', hour12: false 
         })
       }));
-
-      // Combine all events into a single array and store them in the state
+      
       state.allEvents = [...personalEvents, ...formattedLectures];
-
     } catch (error) {
       console.error('მოვლენების ჩატვირთვა ვერ მოხერხდა:', error);
-      // Fallback: If a critical error occurs, the calendar will be empty,
-      // but a proper error message will be shown to the user.
       state.allEvents = [];
     }
   }
