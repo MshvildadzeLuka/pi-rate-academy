@@ -39,19 +39,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
+    
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+      
       if (!response.ok) {
+        // If the server responded with an error status (e.g., 400, 500),
+        // try to get the JSON error message.
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || 'API შეცდომა მოხდა');
       }
+      
+      // If the response is successful (e.g., 200, 204), return the data or null.
       return response.status === 204 ? null : response.json();
     } catch (error) {
+      // If the fetch call itself failed (e.g., network down, CORS issue),
+      // re-throw the original error to be caught by the calling function.
       console.error('API request failed:', error);
-      throw new Error('სერვერთან კავშირი ვერ მოხერხდა');
+      throw error;
     }
   }
-
   async function initializeCalendar() {
     try {
       await fetchUserGroups();
