@@ -172,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('მოვლენის შენახვა ვერ მოხერხდა:', error);
       alert('მოვლენის შენახვის შეცდომა: ' + error.message);
     }
-  }
+  } 
 
   async function deleteEvent(eventId) {
     if (!confirm('დარწმუნებული ხარ, რომ გსურს ამ მოვლენის წაშლა?')) return;
