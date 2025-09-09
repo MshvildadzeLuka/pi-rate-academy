@@ -11,6 +11,17 @@
  * - Georgian language implementation
  * ===================================================================
  */
+import {
+  getStartOfWeek,
+  getEndOfWeek,
+  timeToMinutes,
+  timeToSlotIndex,
+  minutesToTime,
+  formatTime,
+  ensureTimeFormat,
+  escapeHTML
+} from '../assets/js/utils.js';
+
 document.addEventListener('DOMContentLoaded', () => {
   // =================================================================
   // 1. CONFIGURATION & API HELPER
