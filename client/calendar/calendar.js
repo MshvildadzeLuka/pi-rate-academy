@@ -137,7 +137,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const payload = {
       type,
       isRecurring,
-      groupId: elements.groupSelect.value,
+      // CORRECTED: Ensure groupId is always part of the payload.
+      groupId: elements.groupSelect.value, 
     };
 
     if (isRecurring) {
