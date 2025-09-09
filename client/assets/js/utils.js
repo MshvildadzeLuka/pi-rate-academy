@@ -1,4 +1,3 @@
-// A centralized place for reusable calendar utility functions.
 
 export function getStartOfWeek(date) {
   const d = new Date(date);
