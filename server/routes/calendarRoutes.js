@@ -166,8 +166,6 @@ router.delete('/:id', protect, asyncHandler(async (req, res, next) => {
   }
 
   if (event.isRecurring && !deleteAllRecurring) {
-    // CORRECTED: Creating an exception event. We remove the non-existent `title` field 
-    // to avoid a validation error and use the correct field names.
     await CalendarEvent.create({
       userId: req.user._id,
       creatorId: req.user._id,
