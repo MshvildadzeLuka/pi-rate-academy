@@ -22,6 +22,7 @@
                 <ul>
                     <li><a href="#" class="sidebar-link active" data-target="dashboard-panel"><i class="fa-solid fa-chart-pie fa-fw"></i><span>დაფა</span></a></li>
                     <li><a href="#" class="sidebar-link" data-target="users-panel"><i class="fa-solid fa-users fa-fw"></i><span>მომხმარებლები</span></a></li>
+                    <li><a href="#" class="sidebar-link" data-target="students-panel"><i class="fa-solid fa-user-graduate fa-fw"></i><span>სტუდენტები</span></a></li>
                     <li><a href="#" class="sidebar-link" data-target="groups-panel"><i class="fa-solid fa-user-group fa-fw"></i><span>ჯგუფები</span></a></li>
                     <li><a href="#" class="sidebar-link" data-target="videos-panel"><i class="fa-solid fa-video fa-fw"></i><span>ვიდეოები</span></a></li>
                     <li><a href="#" class="sidebar-link" data-target="calendar-panel"><i class="fa-solid fa-calendar-days fa-fw"></i><span>კალენდარი</span></a></li>
@@ -56,6 +57,16 @@
             </div>
 
             <div id="users-panel" class="admin-panel"><div class="panel-header"><h1>მომხმარებელთა მართვა</h1><button id="create-user-btn" class="btn btn--primary"><i class="fa-solid fa-plus"></i> მომხმარებლის დამატება</button></div><div class="table-container" id="users-table-container"></div></div>
+            
+            <div id="students-panel" class="admin-panel">
+                <div id="student-list-view">
+                    <div class="panel-header"><h1>სტუდენტების ქულები</h1></div>
+                    <div class="table-container" id="students-table-container"></div>
+                </div>
+                <div id="student-points-detail-view" class="hidden">
+                    </div>
+            </div>
+
             <div id="groups-panel" class="admin-panel"><div class="panel-header"><h1>ჯგუფების მართვა</h1><button id="create-group-btn" class="btn btn--primary"><i class="fa-solid fa-plus"></i> ჯგუფის შექმნა</button></div><div class="table-container" id="groups-table-container"></div></div>
             <div id="videos-panel" class="admin-panel"><div class="panel-header"><h1>ვიდეოების მართვა</h1><button id="upload-video-btn" class="btn btn--primary"><i class="fa-solid fa-plus"></i> ვიდეოს დამატება</button></div><div class="table-container" id="videos-table-container"></div></div>
 
