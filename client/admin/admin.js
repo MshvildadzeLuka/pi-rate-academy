@@ -167,9 +167,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
       // FIXED: Handle videos response with the correct structure
       let videos = [];
-      if (videosRes && videosRes.success) {
-        videos = Array.isArray(videosRes.data?.videos) ? videosRes.data.videos : 
-                Array.isArray(videosRes.videos) ? videosRes.videos : [];
+      if (videosRes && videosRes.success && videosRes.data && videosRes.data.videos) {
+        videos = videosRes.data.videos;
       }
 
       const students = users.filter(u => u.role === 'Student');
@@ -818,8 +817,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
       // Refresh videos list
       const videosRes = await apiFetch('/videos');
-      state.videos = Array.isArray(videosRes?.data) ? videosRes.data : 
-                    Array.isArray(videosRes?.videos) ? videosRes.videos : videosRes || [];
+      state.videos = (videosRes && videosRes.data && videosRes.data.videos) || [];
     
       renderAllComponents();
       closeModal(elements.videoModal);
@@ -906,7 +904,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       await apiFetch(`/videos/${id}`, { method: 'DELETE' });
       const videosRes = await apiFetch('/videos');
-      state.videos = Array.isArray(videosRes?.data) ? videosRes.data : videosRes || [];
+      state.videos = (videosRes && videosRes.data && videosRes.data.videos) || [];
       renderAllComponents();
       showToast('ვიდეო წაიშლა', 'success');
     } catch (error) { 
