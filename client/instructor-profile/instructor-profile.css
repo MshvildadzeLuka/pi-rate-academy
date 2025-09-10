@@ -7,16 +7,21 @@
     --primary-accent: #3A86FF;
     --star-color: #ffc107;
 }
+
 body {
     background-color: var(--background-primary);
     color: var(--text-primary);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: 'Poppins', sans-serif;
+    margin: 0;
+    padding-top: 70px;
 }
+
 .profile-container {
     max-width: 900px;
     margin: 40px auto;
     padding: 20px;
 }
+
 .profile-card {
     background-color: var(--background-secondary);
     border-radius: 16px;
@@ -24,6 +29,7 @@ body {
     overflow: hidden;
     box-shadow: 0 10px 30px rgba(0,0,0,0.2);
 }
+
 .profile-header {
     display: flex;
     align-items: center;
@@ -31,6 +37,7 @@ body {
     padding: 40px;
     background-color: #20262c;
 }
+
 .profile-photo {
     width: 150px;
     height: 150px;
@@ -38,44 +45,69 @@ body {
     object-fit: cover;
     border: 4px solid var(--primary-accent);
 }
+
+.profile-header-info {
+    flex-grow: 1;
+}
+
 .profile-name {
     font-size: 2.5rem;
     font-weight: 700;
     margin: 0 0 5px;
 }
+
 .profile-role {
     font-size: 1.2rem;
     color: var(--text-secondary);
     margin: 0 0 20px;
 }
-.social-links a {
-    color: var(--text-secondary);
-    text-decoration: none;
-    margin-right: 15px;
-    transition: color 0.2s ease;
+
+.contact-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: center;
 }
-.social-links a:hover {
+
+.contact-info a {
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    transition: color 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.contact-info a:hover {
     color: var(--primary-accent);
 }
+
+.contact-info a.phone-link {
+    font-size: 1rem;
+}
+
 .profile-body, .rating-container {
     padding: 40px;
     border-top: 1px solid var(--border-color);
 }
+
+h2, h3 { color: var(--text-primary); }
+
 .rating-container {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 40px;
     align-items: flex-start;
 }
-h2, h3 { color: var(--text-primary); }
+
 .rating-summary { display: flex; align-items: center; gap: 10px; }
 .avg-rating-score { font-size: 2.5rem; font-weight: 700; }
 .stars svg { width: 24px; height: 24px; }
 .total-ratings { color: var(--text-secondary); }
 .star-rating-interactive { cursor: pointer; }
 .star-wrapper { display: inline-block; }
-.btn { /* Basic button styles */ }
-.btn--primary { background-color: var(--primary-accent); color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; }
+.btn-primary { background-color: var(--primary-accent); color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; }
 .btn:disabled { background-color: #333; cursor: not-allowed; }
 
 /* Mobile Responsive Styles */
@@ -86,23 +118,25 @@ h2, h3 { color: var(--text-primary); }
         gap: 20px;
         padding: 30px 20px;
     }
-    
+    .profile-header-info {
+        text-align: center;
+    }
     .profile-photo {
         width: 120px;
         height: 120px;
     }
-    
     .profile-name {
         font-size: 2rem;
     }
-    
     .profile-body, .rating-container {
         padding: 30px 20px;
     }
-    
     .rating-container {
         grid-template-columns: 1fr;
         gap: 30px;
+    }
+    .contact-info {
+        justify-content: center;
     }
 }
 
@@ -111,63 +145,32 @@ h2, h3 { color: var(--text-primary); }
         margin: 20px auto;
         padding: 15px;
     }
-    
     .profile-header {
         padding: 20px 15px;
     }
-    
     .profile-photo {
         width: 100px;
         height: 100px;
     }
-    
     .profile-name {
         font-size: 1.8rem;
     }
-    
     .profile-role {
         font-size: 1.1rem;
     }
-    
     .profile-body, .rating-container {
         padding: 20px 15px;
     }
-    
     .rating-summary {
         flex-direction: column;
         align-items: flex-start;
         gap: 15px;
     }
-    
     .avg-rating-score {
         font-size: 2rem;
     }
-    
     .stars svg {
         width: 20px;
         height: 20px;
-    }
-}
-
-@media (max-width: 480px) {
-    .profile-name {
-        font-size: 1.5rem;
-    }
-    
-    .profile-role {
-        font-size: 1rem;
-    }
-    
-    .social-links a {
-        margin-right: 10px;
-        font-size: 0.9rem;
-    }
-    
-    h2 {
-        font-size: 1.5rem;
-    }
-    
-    h3 {
-        font-size: 1.3rem;
     }
 }
