@@ -55,19 +55,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const completionPercentage = document.getElementById('completion-percentage');
     const infoForm = document.getElementById('info-form');
     const passwordForm = document.getElementById('password-form');
+    const aboutForm = document.getElementById('about-form'); // New form for 'about me'
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
     const newPasswordInput = document.getElementById('password-new');
     const strengthBar = document.querySelector('.strength-level');
     const strengthText = document.querySelector('.strength-text');
-    const teacherFields = document.getElementById('teacher-fields');
     const socialFields = document.getElementById('social-fields');
     const mobileField = document.getElementById('mobile-field');
-    const pointsTabBtn = document.getElementById('points-tab');
+    const pointsTabBtn = document.getElementById('points-tab-btn'); // Corrected ID
+    const pointsSummary = document.getElementById('points-summary');
+    const weeklyPointsListWrapper = document.getElementById('weekly-points-list-wrapper'); // Added wrapper
     const pointsHistoryList = document.getElementById('weekly-points-list');
     const pointsLoadingState = document.getElementById('points-loading');
     const totalPointsDisplay = document.getElementById('total-points');
     const pointsDetailModal = document.getElementById('points-detail-modal');
+    const teacherAboutCard = document.getElementById('teacher-about-card'); // New about me card
 
     /**
      * Main initialization function
@@ -80,7 +83,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 setupEventListeners();
                 if (currentUser.role === ROLES.STUDENT) {
                     pointsTabBtn.classList.remove('hidden');
+                    pointsSummary.classList.remove('hidden');
                     fetchStudentPoints();
+                } else {
+                    socialFields.classList.remove('hidden');
+                    mobileField.classList.remove('hidden');
+                    teacherAboutCard.classList.remove('hidden');
                 }
             } else {
                 throw new Error('User not found.');
@@ -123,7 +131,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const totalEarned = studentPointsHistory.reduce((sum, week) => sum + week.totalPointsEarned, 0);
-        totalPointsDisplay.textContent = totalEarned;
+        const totalPossible = studentPointsHistory.reduce((sum, week) => sum + week.totalPointsPossible, 0);
+        const percentage = totalPossible > 0 ? ((totalEarned / totalPossible) * 100).toFixed(0) : 0;
+        
+        totalPointsDisplay.textContent = `${totalEarned} / ${totalPossible} (${percentage}%)`;
 
         studentPointsHistory.forEach(week => {
             const weekStart = getStartOfWeekFromYearAndWeek(week._id.year, week._id.week);
@@ -157,21 +168,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
         modalTitle.textContent = `კვირა ${weekData._id.week}, ${weekData._id.year} - დეტალები`;
         detailsList.innerHTML = '';
+        
+        // Ensure the modal body is scrollable if content overflows
+        pointsDetailModal.querySelector('.modal-body').style.overflowY = 'auto';
 
         weekData.activities.forEach(activity => {
             const item = document.createElement('li');
             item.className = 'activity-item';
+            
+            // Correctly calculate score and percentage
+            const pointsEarned = activity.pointsEarned !== null ? activity.pointsEarned : 'N/A';
+            const pointsPossible = activity.pointsPossible !== null ? activity.pointsPossible : 'N/A';
+            const percentage = pointsPossible > 0 ? ((activity.pointsEarned / activity.pointsPossible) * 100).toFixed(0) : 0;
+            
             item.innerHTML = `
                 <h5>${activity.sourceTitle}</h5>
                 <p class="activity-details">
                     ტიპი: ${activity.sourceType === 'assignment' ? 'დავალება' : 'ქვიზი'}<br>
-                    ქულა: <span class="score">${activity.pointsEarned} / ${activity.pointsPossible}</span><br>
+                    ქულა: <span class="score">${pointsEarned} / ${pointsPossible} (${percentage}%)</span><br>
                     თარიღი: ${new Date(activity.awardedAt).toLocaleString('ka-GE')}
                 </p>
             `;
             detailsList.appendChild(item);
         });
-
+        
         pointsDetailModal.classList.remove('hidden');
     }
 
@@ -190,18 +210,27 @@ document.addEventListener('DOMContentLoaded', () => {
         infoForm.querySelector('[name="email"]').value = user.email;
         infoForm.querySelector('[name="mobileNumber"]').value = user.mobileNumber || '';
 
-        if ([ROLES.TEACHER, ROLES.ADMIN].includes(user.role)) {
-            teacherFields.classList.remove('hidden');
-            socialFields.classList.remove('hidden');
-            mobileField.classList.remove('hidden');
-            infoForm.querySelector('[name="aboutMe"]').value = user.aboutMe || '';
+        // Handle role-specific field visibility
+        if (user.role === ROLES.STUDENT) {
+            document.getElementById('points-tab-btn').classList.remove('hidden');
+            document.getElementById('points-summary').classList.remove('hidden');
+            document.getElementById('social-fields').classList.add('hidden');
+            document.getElementById('mobile-field').classList.add('hidden');
+            document.getElementById('teacher-about-card').classList.add('hidden');
+        } else {
+            document.getElementById('points-tab-btn').classList.add('hidden');
+            document.getElementById('points-summary').classList.add('hidden');
+            document.getElementById('social-fields').classList.remove('hidden');
+            document.getElementById('mobile-field').classList.remove('hidden');
+            document.getElementById('teacher-about-card').classList.remove('hidden');
+            
+            // Populate social links and about me
+            aboutForm.querySelector('[name="aboutMe"]').value = user.aboutMe || '';
+            infoForm.querySelector('[name="socials.facebook"]').value = user.socials?.facebook || '';
+            infoForm.querySelector('[name="socials.instagram"]').value = user.socials?.instagram || '';
             infoForm.querySelector('[name="socials.twitter"]').value = user.socials?.twitter || '';
             infoForm.querySelector('[name="socials.linkedin"]').value = user.socials?.linkedin || '';
             infoForm.querySelector('[name="socials.github"]').value = user.socials?.github || '';
-        } else {
-            teacherFields.classList.add('hidden');
-            socialFields.classList.add('hidden');
-            mobileField.classList.add('hidden');
         }
 
         updateProfileCompletion(user);
@@ -224,6 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pictureUploadInput.addEventListener('change', handlePictureUpload);
         infoForm.addEventListener('submit', handleInfoUpdate);
         passwordForm.addEventListener('submit', handlePasswordUpdate);
+        aboutForm.addEventListener('submit', handleAboutMeUpdate);
         newPasswordInput.addEventListener('input', () => updatePasswordStrength(newPasswordInput.value));
         pointsDetailModal.querySelector('.close-modal-btn').addEventListener('click', () => pointsDetailModal.classList.add('hidden'));
     }
@@ -238,8 +268,9 @@ document.addEventListener('DOMContentLoaded', () => {
             firstName: formData.get('firstName'),
             lastName: formData.get('lastName'),
             mobileNumber: formData.get('mobileNumber'),
-            aboutMe: formData.get('aboutMe'),
             socials: {
+                facebook: formData.get('socials.facebook'),
+                instagram: formData.get('socials.instagram'),
                 twitter: formData.get('socials.twitter'),
                 linkedin: formData.get('socials.linkedin'),
                 github: formData.get('socials.github'),
@@ -252,7 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(updatedData),
             });
 
-            currentUser = { ...currentUser, ...response.data };
+            currentUser = { ...currentUser, ...response };
             populateProfileData(currentUser);
             showNotification('პროფილი წარმატებით განახლდა!', 'success');
 
@@ -262,6 +293,30 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotification(`შეცდომა: ${error.message}`, 'error');
         }
     }
+    
+    /**
+     * Handles the submission of the "About Me" form.
+     */
+    async function handleAboutMeUpdate(e) {
+        e.preventDefault();
+        const formData = new FormData(aboutForm);
+        const updatedData = {
+            aboutMe: formData.get('aboutMe'),
+        };
+
+        try {
+            const response = await apiFetch('/api/users/profile', {
+                method: 'PUT',
+                body: JSON.stringify(updatedData),
+            });
+            currentUser = { ...currentUser, ...response };
+            populateProfileData(currentUser);
+            showNotification('ბიოგრაფია წარმატებით განახლდა!', 'success');
+        } catch (error) {
+            showNotification(`შეცდომა: ${error.message}`, 'error');
+        }
+    }
+
 
     /**
      * Handles the submission of the password change form.
@@ -275,11 +330,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (newPass !== confirmPass) {
             return showNotification('შეცდომა: ახალი პაროლები არ ემთხვევა.', 'error');
         }
+        
+        // Client-side password validation
+        if (newPass.length < 8) {
+             return showNotification('შეცდომა: პაროლი უნდა შედგებოდეს მინიმუმ 8 სიმბოლოსგან.', 'error');
+        }
 
         try {
             await apiFetch('/api/users/profile/password', {
                 method: 'PUT',
-                body: JSON.stringify({ currentPassword: currentPass, newPassword: newPass }),
+                body: JSON.stringify({ currentPassword: currentPass, newPassword: newPass, confirmPassword: confirmPass }),
             });
             showNotification('პაროლი წარმატებით შეიცვალა!', 'success');
             passwordForm.reset();
@@ -322,17 +382,29 @@ document.addEventListener('DOMContentLoaded', () => {
      * Calculates and displays the profile completion percentage.
      */
     function updateProfileCompletion(user) {
-        const totalPoints = [ROLES.TEACHER, ROLES.ADMIN].includes(user.role) ? 4 : 2;
+        const isTeacherOrAdmin = [ROLES.TEACHER, ROLES.ADMIN].includes(user.role);
+        
+        const totalPoints = isTeacherOrAdmin ? 6 : 2; // + mobile, about, socials
         let score = 0;
+        
         if (user.firstName && user.lastName) score++;
         if (user.photoUrl && !user.photoUrl.includes('placehold.co')) score++;
-        if (user.role !== ROLES.STUDENT && user.aboutMe && user.aboutMe.trim() !== '') score++;
-        if (user.role !== ROLES.STUDENT && user.mobileNumber) score++;
+        
+        if (isTeacherOrAdmin) {
+          if (user.aboutMe && user.aboutMe.trim() !== '') score++;
+          if (user.mobileNumber) score++;
+          
+          if (user.socials) {
+            if (user.socials.facebook) score++;
+            if (user.socials.instagram) score++;
+          }
+        }
         
         const percentage = Math.round((score / totalPoints) * 100);
         if (completionProgress) completionProgress.style.width = `${percentage}%`;
         if (completionPercentage) completionPercentage.textContent = `${percentage}%`;
     }
+
 
     /**
      * Updates the password strength meter based on the input value.
@@ -367,17 +439,20 @@ document.addEventListener('DOMContentLoaded', () => {
      * Displays a temporary notification on the screen.
      */
     function showNotification(message, type) {
-        const existing = document.querySelector('.notification');
-        if (existing) existing.remove();
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.textContent = message;
-        document.body.appendChild(notification);
-        setTimeout(() => notification.classList.add('show'), 10);
-        setTimeout(() => {
-            notification.classList.remove('show');
-            setTimeout(() => notification.remove(), 300);
-        }, 3000);
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.innerHTML = `
+        <span class="icon">
+          <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+        </span>
+        <span class="message">${message}</span>
+      `;
+      document.body.appendChild(notification);
+      setTimeout(() => notification.classList.add('show'), 10);
+      setTimeout(() => {
+          notification.classList.remove('show');
+          setTimeout(() => notification.remove(), 300);
+      }, 3000);
     }
     
     function getStartOfWeekFromYearAndWeek(year, week) {
