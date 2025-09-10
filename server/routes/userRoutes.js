@@ -58,9 +58,16 @@ router.get('/profile', protect, asyncHandler(async (req, res) => {
 }));
 
 // @route   GET /api/users/profile/points
-// @desc    Get current student's points history (Private/Student)
-router.get('/profile/points', protect, restrictTo('Student'), asyncHandler(async (req, res) => {
-  const pointsHistory = await PointsLedger.getStudentWeeklyPoints(req.user._id);
+// @desc    Get a student's points history (Private/Student or Admin)
+// CORRECTED: This route now correctly handles the userId query parameter for admins.
+router.get('/profile/points', protect, asyncHandler(async (req, res, next) => {
+  const userId = req.query.userId || req.user._id;
+
+  if (req.user.role !== 'Admin' && req.user._id.toString() !== userId) {
+      return next(new ErrorResponse('Not authorized to view these points', 403));
+  }
+
+  const pointsHistory = await PointsLedger.getStudentWeeklyPoints(userId);
   res.status(200).json({ success: true, data: pointsHistory });
 }));
 
@@ -153,7 +160,7 @@ router.put('/profile/password', protect, asyncHandler(async (req, res, next) => 
 // @route   GET /api/users
 // @desc    Get all users (Admin)
 router.get('/', protect, admin, asyncHandler(async (req, res) => {
-  const users = await User.find({}).select('-password -refreshToken').lean();
+  const users = await User.find({}).select('-password -refreshToken').populate('groups').lean();
   res.json(users);
 }));
 
