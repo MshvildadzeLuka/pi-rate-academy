@@ -351,7 +351,7 @@ select:focus {
   /* Fix: Use background-primary to match the page background, removing the black space */
   background-color: var(--background-primary);
   position: relative;
-  min-width: 1000px;
+  /* Removed min-width to allow the table to fit the container */
 }
 
 .grid-header {
@@ -411,7 +411,6 @@ select:focus {
 
 .day-column {
   position: relative;
-  /* Fix: The height of this column must be exactly equal to all time slots below it. */
   display: grid;
   grid-template-rows: repeat(28, 45px); /* 14 hours * 2 slots per hour */
   min-height: 1260px; /* 28 slots * 45px */
@@ -423,7 +422,6 @@ select:focus {
   padding-right: 10px;
   color: var(--text-secondary);
   font-size: 0.85rem;
-  /* Fix: This is a crucial alignment fix. The label should occupy two rows. */
   height: 90px;
   border-top: 1px solid var(--background-tertiary);
   display: flex;
@@ -438,7 +436,6 @@ select:focus {
 }
 
 .time-slot {
-  /* Fix: The height must be a precise fraction of the hour. */
   height: 45px;
   border-top: 1px solid var(--background-tertiary);
   cursor: pointer;
