@@ -1,11 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/userModel');
-// **FIX**: Import `restrictTo` to create the admin middleware correctly.
+const PointsLedger = require('../models/pointsLedgerModel');
 const { protect, restrictTo } = require('../middleware/authMiddleware');
+const { upload, createCloudinaryUploader, handleUploadErrors, deleteCloudinaryFile } = require('../middleware/uploadMiddleware');
 const asyncHandler = require('express-async-handler');
+const ErrorResponse = require('../utils/errorResponse');
 
-// **NEW**: Create the admin middleware using the restrictTo function.
+// Create uploader instances for different routes
+const profilePhotoUploader = createCloudinaryUploader('profile-photos');
 const admin = restrictTo('Admin');
 
 // Utility function for public teacher data
@@ -14,6 +17,7 @@ const getPublicTeacherData = (teacher) => ({
   firstName: teacher.firstName,
   lastName: teacher.lastName,
   photoUrl: teacher.photoUrl,
+  mobileNumber: teacher.mobileNumber, // NEW
   aboutMe: teacher.aboutMe,
   socials: teacher.socials,
   averageRating: (teacher.averageRating || 0).toFixed(1),
@@ -24,7 +28,7 @@ const getPublicTeacherData = (teacher) => ({
 // @desc    Get all teachers/admins (Public)
 router.get('/teachers', asyncHandler(async (req, res) => {
   const teachers = await User.find({ role: { $in: ['Teacher', 'Admin'] } })
-    .select('firstName lastName photoUrl role averageRating totalRatings')
+    .select('firstName lastName photoUrl role averageRating totalRatings socials mobileNumber') // NEW FIELDS
     .lean();
   res.json(teachers);
 }));
@@ -33,7 +37,7 @@ router.get('/teachers', asyncHandler(async (req, res) => {
 // @desc    Get teacher profile (Public)
 router.get('/teacher/:id', asyncHandler(async (req, res) => {
   const teacher = await User.findById(req.params.id)
-    .select('firstName lastName photoUrl aboutMe socials role averageRating totalRatings')
+    .select('firstName lastName photoUrl aboutMe socials role averageRating totalRatings mobileNumber') // NEW FIELD
     .lean();
 
   if (!teacher || !['Teacher', 'Admin'].includes(teacher.role)) {
@@ -45,11 +49,19 @@ router.get('/teacher/:id', asyncHandler(async (req, res) => {
 
 // @route   GET /api/users/profile
 // @desc    Get current user profile (Private)
-// In userRoutes.js, update the profile endpoint to include groups
 router.get('/profile', protect, asyncHandler(async (req, res) => {
-  // Populate groups in the user profile
-  const user = await User.findById(req.user._id).populate('groups');
+  const user = await User.findById(req.user._id).populate('groups').lean();
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
   res.json(user);
+}));
+
+// @route   GET /api/users/profile/points
+// @desc    Get current student's points history (Private/Student)
+router.get('/profile/points', protect, restrictTo('Student'), asyncHandler(async (req, res) => {
+  const pointsHistory = await PointsLedger.getStudentWeeklyPoints(req.user._id);
+  res.status(200).json({ success: true, data: pointsHistory });
 }));
 
 // @route   PUT /api/users/profile
@@ -58,11 +70,12 @@ router.put('/profile', protect, asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
   if (!user) return res.status(404).json({ message: 'User not found' });
 
-  const { firstName, lastName, aboutMe, socials } = req.body;
+  const { firstName, lastName, aboutMe, socials, mobileNumber } = req.body;
   if (firstName) user.firstName = firstName;
   if (lastName) user.lastName = lastName;
   if (aboutMe !== undefined) user.aboutMe = aboutMe;
   if (socials) user.socials = socials;
+  if (mobileNumber !== undefined) user.mobileNumber = mobileNumber; // NEW FIELD
 
   const updatedUser = await user.save();
   res.json({
@@ -73,9 +86,43 @@ router.put('/profile', protect, asyncHandler(async (req, res) => {
     role: updatedUser.role,
     photoUrl: updatedUser.photoUrl,
     aboutMe: updatedUser.aboutMe,
-    socials: updatedUser.socials
+    socials: updatedUser.socials,
+    mobileNumber: updatedUser.mobileNumber // NEW FIELD
   });
 }));
+
+// @route   PUT /api/users/profile/photo
+// @desc    Upload new profile photo (Private)
+// NEW ROUTE
+router.put('/profile/photo', protect, upload.single('photo'), profilePhotoUploader, handleUploadErrors, asyncHandler(async (req, res, next) => {
+  if (!req.file || !req.file.url) {
+    return next(new ErrorResponse('Photo upload failed.', 400));
+  }
+  
+  const user = await User.findById(req.user._id);
+  if (!user) return next(new ErrorResponse('User not found', 404));
+
+  // If an old photo exists, delete it from Cloudinary
+  if (user.photoPublicId) {
+    try {
+      await deleteCloudinaryFile(user.photoPublicId);
+    } catch (error) {
+      console.error('Failed to delete old photo from Cloudinary:', error);
+      // We log the error but do not fail the request.
+    }
+  }
+
+  user.photoUrl = req.file.url;
+  user.photoPublicId = req.file.public_id;
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    photoUrl: user.photoUrl,
+    message: 'Profile picture updated successfully'
+  });
+}));
+
 
 // @route   PUT /api/users/profile/password
 // @desc    Update password (Private)
@@ -95,6 +142,7 @@ router.put('/profile/password', protect, asyncHandler(async (req, res) => {
     return res.status(401).json({ message: 'Current password is incorrect' });
   }
 
+  // CORRECTED: Manually set the password to trigger the pre-save hook
   user.password = newPassword;
   await user.save();
   res.json({ message: 'Password updated successfully' });
@@ -104,7 +152,6 @@ router.put('/profile/password', protect, asyncHandler(async (req, res) => {
 
 // @route   GET /api/users
 // @desc    Get all users (Admin)
-// **FIX**: The `admin` middleware is now a valid function.
 router.get('/', protect, admin, asyncHandler(async (req, res) => {
   const users = await User.find({}).select('-password -refreshToken').lean();
   res.json(users);
@@ -139,10 +186,17 @@ router.delete('/:id', protect, admin, asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Cannot delete your own account' });
   }
 
+  // Delete profile picture from Cloudinary
+  if (user.photoPublicId) {
+    try {
+      await deleteCloudinaryFile(user.photoPublicId);
+    } catch (error) {
+      console.error('Failed to delete user photo from Cloudinary during deletion:', error);
+    }
+  }
+
   await user.deleteOne();
   res.json({ message: 'User removed successfully' });
 }));
-
-
 
 module.exports = router;
