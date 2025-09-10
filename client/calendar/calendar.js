@@ -1,4 +1,3 @@
-
 document.addEventListener('DOMContentLoaded', () => {
   const API_BASE_URL = '/api';
   
@@ -259,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.dayColumns.forEach((column, dayIndex) => {
       column.innerHTML = '';
       column.dataset.day = dayIndex;
-      // Corrected loop to create 28 slots for the 14 hours (8 AM to 10 PM)
+      // Corrected loop to create 28 slots for the 14 hours (8 AM to 9:59 PM)
       for (let slot = 0; slot < 28; slot++) {
         const timeSlot = document.createElement('div');
         timeSlot.className = 'time-slot';
