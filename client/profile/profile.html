@@ -37,13 +37,22 @@
                     <div id="completion-progress" class="completion-progress" style="width: 0%"></div>
                 </div>
             </div>
+            <div id="points-summary" class="hidden">
+                 <div class="total-points-card">
+                     <i class="fas fa-trophy"></i>
+                     <div>
+                         <h3>სულ დაგროვებული ქულები</h3>
+                         <p id="total-points">0</p>
+                     </div>
+                 </div>
+            </div>
         </aside>
 
         <div class="content">
             <div class="tabs">
                 <button class="tab-btn active" data-tab="info"><i class="fas fa-user-circle"></i> პროფილი</button>
                 <button class="tab-btn" data-tab="security"><i class="fas fa-shield-alt"></i> უსაფრთხოება</button>
-                <button class="tab-btn hidden" id="points-tab" data-tab="points"><i class="fas fa-medal"></i> ქულები</button>
+                <button class="tab-btn hidden" id="points-tab-btn" data-tab="points"><i class="fas fa-medal"></i> ქულები</button>
             </div>
 
             <div class="tab-content active" id="info-tab">
@@ -68,12 +77,16 @@
                             <label for="info-mobile-number">მობილურის ნომერი</label>
                             <input type="text" id="info-mobile-number" name="mobileNumber" placeholder="მაგ: +995 555 123 456">
                         </div>
-                        <div class="input-group hidden" id="teacher-fields">
-                            <label for="info-about">ჩემს შესახებ</label>
-                            <textarea id="info-about" name="aboutMe" rows="4"></textarea>
-                        </div>
                         <div class="input-group hidden" id="social-fields">
                             <label>სოციალური ბმულები</label>
+                            <div class="social-input-row">
+                                <i class="fab fa-facebook"></i>
+                                <input type="text" name="socials.facebook" placeholder="Facebook URL">
+                            </div>
+                            <div class="social-input-row">
+                                <i class="fab fa-instagram"></i>
+                                <input type="text" name="socials.instagram" placeholder="Instagram URL">
+                            </div>
                             <div class="social-input-row">
                                 <i class="fab fa-twitter"></i>
                                 <input type="text" name="socials.twitter" placeholder="Twitter URL">
@@ -89,6 +102,18 @@
                         </div>
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary">ცვლილებების შენახვა</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="card hidden" id="teacher-about-card">
+                    <h2>ჩემს შესახებ</h2>
+                    <form id="about-form" class="profile-form">
+                        <div class="input-group">
+                            <label for="info-about">ბიოგრაფია</label>
+                            <textarea id="info-about" name="aboutMe" rows="4"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">ბიოგრაფიის შენახვა</button>
                         </div>
                     </form>
                 </div>
@@ -130,17 +155,10 @@
                         <div class="loading-spinner"></div>
                         <p>ქულების ჩატვირთვა...</p>
                     </div>
-                    <div id="points-overview">
-                        <div class="total-points-card">
-                            <i class="fas fa-trophy"></i>
-                            <div>
-                                <h3>სულ დაგროვებული ქულები</h3>
-                                <p id="total-points">0</p>
-                            </div>
-                        </div>
+                    <div class="weekly-points-list-wrapper" id="weekly-points-list-wrapper">
+                      <div class="weekly-points-list" id="weekly-points-list">
+                      </div>
                     </div>
-                    <div class="weekly-points-list" id="weekly-points-list">
-                        </div>
                     <div id="points-detail-modal" class="modal-backdrop hidden">
                         <div class="modal">
                             <div class="modal-header">
@@ -149,7 +167,7 @@
                             </div>
                             <div class="modal-body">
                                 <ul id="weekly-details-list">
-                                    </ul>
+                                </ul>
                             </div>
                         </div>
                     </div>
