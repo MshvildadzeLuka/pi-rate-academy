@@ -260,10 +260,23 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const groupList = zoomModal.querySelector('#group-list');
                 groupList.innerHTML = '';
+
+                // Get the admin user from the state
+                const adminUser = state.allUsers.find(u => u.role === 'Admin');
+
                 state.myGroups.forEach(group => {
                     if (group.zoomLink) {
                         const btn = document.createElement('button');
-                        btn.textContent = group.name;
+                        
+                        // Find the group's teacher or default to admin
+                        const teacher = group.users.find(u => u.role === 'Teacher') || adminUser;
+
+                        if (teacher) {
+                            btn.textContent = `ჯგუფის შეკრება: ${group.name} (${teacher.firstName} ${teacher.lastName})`;
+                        } else {
+                            btn.textContent = `ჯგუფის შეკრება: ${group.name}`;
+                        }
+                        
                         btn.onclick = () => window.open(group.zoomLink, '_blank');
                         groupList.appendChild(btn);
                     }
