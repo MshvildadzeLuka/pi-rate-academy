@@ -116,6 +116,37 @@ pointsLedgerSchema.statics.getCourseLeaderboard = function(courseId, limit = 10)
   ]);
 };
 
+// NEW: Static method to get a student's weekly points history
+pointsLedgerSchema.statics.getStudentWeeklyPoints = function(studentId) {
+  return this.aggregate([
+    { $match: { studentId: studentId } },
+    { $sort: { awardedAt: 1 } },
+    {
+      $group: {
+        _id: {
+          year: { $year: '$awardedAt' },
+          week: { $week: '$awardedAt' }
+        },
+        activities: {
+          $push: {
+            sourceId: '$sourceId',
+            sourceType: '$sourceType',
+            sourceTitle: '$sourceTitle',
+            pointsEarned: '$pointsEarned',
+            pointsPossible: '$pointsPossible',
+            percentage: '$percentage',
+            awardedAt: '$awardedAt'
+          }
+        },
+        totalPointsEarned: { $sum: '$pointsEarned' },
+        totalPointsPossible: { $sum: '$pointsPossible' },
+        averagePercentage: { $avg: '$percentage' }
+      }
+    },
+    { $sort: { '_id.year': -1, '_id.week': -1 } }
+  ]);
+};
+
 const PointsLedger = mongoose.model('PointsLedger', pointsLedgerSchema);
 
 module.exports = PointsLedger;
