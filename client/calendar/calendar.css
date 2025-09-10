@@ -341,6 +341,7 @@ select:focus {
   border: 1px solid var(--background-tertiary);
   background-color: var(--background-secondary);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  /* Fix: Removed min-width to prevent horizontal scrollbar */
 }
 
 .calendar-grid {
@@ -704,6 +705,17 @@ select:focus {
   .calendar-grid {
     grid-template-columns: 60px repeat(7, minmax(100px, 1fr));
     min-width: 700px;
+    font-size: 0.8rem;
+  }
+  
+  .grid-header {
+    padding: 10px 4px;
+  }
+  
+  .day-column-header .day-number {
+    font-size: 1.1rem;
+    width: 32px;
+    height: 32px;
   }
   
   .time-label {
