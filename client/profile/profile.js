@@ -465,4 +465,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- INITIALIZE THE APP ---
     init();
-});
+}); 
