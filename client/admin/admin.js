@@ -130,6 +130,8 @@ document.addEventListener('DOMContentLoaded', () => {
     lectureTitleInput: document.getElementById('lecture-title-input'),
     currentTimeIndicator: document.getElementById('current-time-indicator'),
     suggestLecturesBtn: document.getElementById('suggest-schedule-btn'),
+    // New Calendar Controls
+    recurringCheckbox: document.getElementById('recurring-event-checkbox'),
     // Mobile sidebar toggle
     sidebarToggle: document.getElementById('sidebar-toggle'),
     adminSidebar: document.querySelector('.admin-sidebar'),
@@ -167,8 +169,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
       // FIXED: Handle videos response with the correct structure
       let videos = [];
-      if (videosRes && videosRes.success && videosRes.data && videosRes.data.videos) {
-        videos = videosRes.data.videos;
+      if (videosRes && videosRes.success) {
+        videos = Array.isArray(videosRes.data?.videos) ? videosRes.data.videos : 
+                Array.isArray(videosRes.videos) ? videosRes.videos : [];
       }
 
       const students = users.filter(u => u.role === 'Student');
@@ -817,7 +820,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
       // Refresh videos list
       const videosRes = await apiFetch('/videos');
-      state.videos = (videosRes && videosRes.data && videosRes.data.videos) || [];
+      state.videos = (videosRes && videosRes.data && videosRes.data.videos) || []; // CORRECTED LINE
     
       renderAllComponents();
       closeModal(elements.videoModal);
@@ -904,7 +907,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       await apiFetch(`/videos/${id}`, { method: 'DELETE' });
       const videosRes = await apiFetch('/videos');
-      state.videos = (videosRes && videosRes.data && videosRes.data.videos) || [];
+      state.videos = (videosRes && videosRes.data && videosRes.data.videos) || []; // CORRECTED LINE
       renderAllComponents();
       showToast('ვიდეო წაიშლა', 'success');
     } catch (error) { 
@@ -998,6 +1001,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     elements.saveLectureBtn?.addEventListener('click', saveLecture);
     elements.deleteLectureBtn?.addEventListener('click', deleteLecture);
+
+    // Add listener for new recurring checkbox
+    elements.recurringCheckbox?.addEventListener('change', () => {
+      const panelTitle = document.getElementById('calendar-panel-title');
+      if (panelTitle && calendarState.activeLecture) {
+        panelTitle.textContent = elements.recurringCheckbox.checked ? 'ლექციის რედაქტირება' : 'ლექციის ასლის რედაქტირება';
+      }
+    });
   }
 
   function populateGroupDropdown() {
@@ -1321,6 +1332,8 @@ document.addEventListener('DOMContentLoaded', () => {
     calendarState.activeLecture = null;
     
     if (elements.lectureTitleInput) elements.lectureTitleInput.value = '';
+    // Reset recurring checkbox
+    if (elements.recurringCheckbox) elements.recurringCheckbox.checked = false;
     updateSidebarWithSelection();
     
     const panelTitle = document.getElementById('calendar-panel-title');
@@ -1335,10 +1348,27 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (!hasSelection && !calendarState.activeLecture) {
       if (elements.sidebarTimeRange) elements.sidebarTimeRange.textContent = 'აირჩიეთ დრო კალენდარზე';
+      // Hide recurring checkbox for new events
+      if (elements.recurringCheckbox) elements.recurringCheckbox.parentElement.classList.add('hidden');
       return;
     }
     
-    if (calendarState.activeLecture && !hasSelection) return; // Don't override edit view
+    if (calendarState.activeLecture) {
+        // Show recurring checkbox for editing an existing lecture
+        if (elements.recurringCheckbox) {
+            elements.recurringCheckbox.checked = calendarState.activeLecture.isRecurring;
+            elements.recurringCheckbox.parentElement.classList.remove('hidden');
+        }
+    } else {
+        // Show recurring checkbox for new events
+        if (elements.recurringCheckbox) {
+            elements.recurringCheckbox.checked = false;
+            elements.recurringCheckbox.parentElement.classList.remove('hidden');
+        }
+    }
+    
+    // Don't override edit view
+    if (calendarState.activeLecture && !hasSelection) return; 
     
     const times = Array.from(calendarState.selectedSlots)
       .map(s => s.dataset.time)
@@ -1386,13 +1416,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // Calculate end time based on the number of 30-minute slots selected
     const endTime = new Date(startTime.getTime() + slots.length * 30 * 60000);
 
+    const isRecurring = elements.recurringCheckbox.checked;
+
     const payload = {
       title: elements.lectureTitleInput.value.trim(),
       startTime: startTime.toISOString(),
       endTime: endTime.toISOString(),
       groupId: elements.groupSelect.value,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone // Add current timezone
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      isRecurring
     };
+
+    if (isRecurring) {
+        const dayOfWeek = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'][parseInt(startSlot.dataset.day)];
+        payload.recurrenceRule = {
+            freq: 'WEEKLY',
+            dtstart: startTime.toISOString(),
+            byweekday: [dayOfWeek]
+        };
+    }
 
     // Determine if we are creating a new lecture or updating an existing one
     const isUpdating = !!calendarState.activeLecture;
@@ -1418,11 +1460,31 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function deleteLecture() {
-    if (!calendarState.activeLecture || !confirm('დარწმუნებული ხართ, რომ გსურთ ამ ლექციის წაშლა?')) return;
+    if (!calendarState.activeLecture) return;
     
+    const lectureDate = new Date(calendarState.activeLecture.startTime);
+    let confirmationMessage = 'დარწმუნებული ხართ, რომ გსურთ ამ ლექციის წაშლა? ეს ქმედება შეუქცევადია.';
+    let deleteAllRecurring = true;
+
+    if (calendarState.activeLecture.isRecurring) {
+        const choice = confirm('ეს არის განმეორებადი ლექციის ნაწილი. გსურთ წაშალოთ მხოლოდ ეს ლექცია თუ მთელი სერია? OK - მთელი სერიის წაშლა, Cancel - მხოლოდ ამ ლექციის წაშლა');
+        if (!choice) {
+            deleteAllRecurring = false;
+            confirmationMessage = 'დარწმუნებული ხართ, რომ გსურთ მხოლოდ ამ ლექციის წაშლა?';
+        }
+    }
+    
+    if (!confirm(confirmationMessage)) return;
+
     try {
       elements.deleteLectureBtn.classList.add('loading');
-      await apiFetch(`/lectures/${calendarState.activeLecture.id}`, { method: 'DELETE' });
+      await apiFetch(`/lectures/${calendarState.activeLecture.id}`, { 
+        method: 'DELETE',
+        body: JSON.stringify({
+            deleteAllRecurring,
+            dateString: lectureDate.toISOString().split('T')[0]
+        })
+      });
       await handleGroupSelection();
       clearSelection();
       showToast('ლექცია წაიშლა', 'success');
