@@ -58,9 +58,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (instructor.mobileNumber) {
             contactContainer.innerHTML += `<a href="tel:${instructor.mobileNumber}" class="phone-link"><i class="fas fa-phone"></i> ${instructor.mobileNumber}</a>`;
         }
+        
+        // Add email link
+        if (instructor.email) {
+            contactContainer.innerHTML += `<a href="mailto:${instructor.email}" class="email-link"><i class="fas fa-envelope"></i> ${instructor.email}</a>`;
+        }
 
         // Add social links if available
         const socials = instructor.socials || {};
+        if (socials.facebook) {
+            contactContainer.innerHTML += `<a href="${socials.facebook}" target="_blank" aria-label="Facebook"><i class="fab fa-facebook"></i></a>`;
+        }
+        if (socials.instagram) {
+            contactContainer.innerHTML += `<a href="${socials.instagram}" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a>`;
+        }
         if (socials.twitter) {
             contactContainer.innerHTML += `<a href="${socials.twitter}" target="_blank" aria-label="Twitter"><i class="fab fa-twitter"></i></a>`;
         }
@@ -88,32 +99,46 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderInteractiveStars(rating) {
+    function renderInteractiveStars(rating, isHover = false) {
         const container = document.getElementById('interactive-stars');
+        if (!container) return;
+        
+        const currentRating = isHover ? rating : state.selectedRating;
         container.innerHTML = '';
         for (let i = 1; i <= 5; i++) {
             const starWrapper = document.createElement('div');
             starWrapper.className = 'star-wrapper';
             starWrapper.dataset.rating = i;
             starWrapper.innerHTML = `
-                <svg class="star-icon" width="32" height="32" viewBox="0 0 24 24" fill="${i <= rating ? 'var(--star-color)' : '#4a4a4a'}">
+                <svg class="star-icon" width="32" height="32" viewBox="0 0 24 24" fill="${i <= currentRating ? 'var(--star-color)' : '#4a4a4a'}">
                     <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
                 </svg>
             `;
-            starWrapper.addEventListener('click', () => updateStarDisplay(i));
-            starWrapper.addEventListener('mouseenter', () => updateStarDisplay(i, true));
+            if (!isHover) {
+                starWrapper.addEventListener('click', () => updateStarDisplay(i));
+            }
             container.appendChild(starWrapper);
         }
         container.addEventListener('mouseleave', () => updateStarDisplay(state.selectedRating));
+        
+        if (!isHover) {
+            const stars = document.querySelectorAll('.star-rating-interactive .star-icon');
+            stars.forEach((star, index) => {
+                const newRating = index + 1;
+                star.parentElement.addEventListener('mouseenter', () => updateStarDisplay(newRating, true));
+            });
+        }
     }
 
     function updateStarDisplay(rating, isHover = false) {
-        if (!isHover) state.selectedRating = rating;
+        if (!isHover) {
+            state.selectedRating = rating;
+        }
         const stars = document.querySelectorAll('.star-rating-interactive .star-icon');
         stars.forEach((star, index) => {
             star.style.fill = index < rating ? 'var(--star-color)' : '#4a4a4a';
         });
-        document.getElementById('submit-rating-btn').disabled = rating === 0;
+        document.getElementById('submit-rating-btn').disabled = state.selectedRating === 0;
     }
 
     async function submitRating() {
