@@ -49,6 +49,7 @@ body {
   flex-direction: column;
   overflow-y: auto;
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+  transition: transform var(--transition-speed) ease;
 }
 
 .main-calendar-view {
@@ -347,11 +348,12 @@ select:focus {
 .calendar-grid {
   /* Fix: Adjusted grid to remove extra space next to Sunday */
   display: grid;
-  grid-template-columns: 100px repeat(7, minmax(0, 1fr)); /* Equal columns */
+  grid-template-columns: 100px repeat(7, 1fr);
   /* Fix: Use background-primary to match the page background, removing the black space */
   background-color: var(--background-primary);
   position: relative;
-  width: 100%; /* Use 100% width instead of min-width */
+  min-width: 1000px;
+  width: 100%;
 }
 
 .grid-header {
@@ -416,7 +418,6 @@ select:focus {
   grid-template-rows: repeat(28, 45px); /* 14 hours * 2 slots per hour */
   min-height: 1260px; /* 28 slots * 45px */
   border-left: 1px solid var(--background-tertiary);
-  min-width: 0; /* Allow columns to shrink */
 }
 
 .time-label {
@@ -432,7 +433,6 @@ select:focus {
   justify-content: flex-end;
   box-sizing: border-box;
   padding-top: 5px;
-  margin-top: -1px; /* Align with border */
   user-select: none;
   font-weight: 500;
   grid-row: span 2;
@@ -442,7 +442,6 @@ select:focus {
   /* Fix: The height must be a precise fraction of the hour. */
   height: 45px;
   border-top: 1px solid var(--background-tertiary);
-  margin-top: -1px; /* Fix border alignment */
   cursor: pointer;
   user-select: none;
   transition: background-color var(--transition-speed) ease;
@@ -618,44 +617,29 @@ select:focus {
 }
 
 /* Mobile Navigation */
-.mobile-nav-toggle {
+.mobile-nav {
   display: none;
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--background-secondary);
+  background-color: var(--background-secondary);
   border-top: 1px solid var(--background-tertiary);
   z-index: 100;
-  padding: 8px;
+  padding: 12px;
+  justify-content: space-around;
 }
 
 .mobile-nav-btn {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   background: none;
   border: none;
-  color: var(--text-secondary);
-  padding: 8px;
-  font-size: 0.75rem;
+  color: var(--text-primary);
+  font-size: 0.8rem;
   gap: 4px;
-}
-
-.mobile-nav-btn.active {
-  color: var(--primary-accent);
-}
-
-.mobile-nav-btn svg {
-  width: 24px;
-  height: 24px;
-}
-
-/* Mobile sidebar initially hidden */
-.mobile-sidebar {
-  display: none;
+  cursor: pointer;
 }
 
 /* Mobile Responsive Styles */
@@ -663,50 +647,38 @@ select:focus {
   .page-wrapper {
     flex-direction: column;
     height: auto;
-    padding-bottom: 60px; /* Space for mobile nav */
-  }
-  
-  .mobile-nav-toggle {
-    display: flex;
   }
   
   .calendar-sidebar {
     width: 100%;
     border-right: none;
     border-bottom: 1px solid var(--background-tertiary);
-    max-height: calc(100vh - 120px);
-    display: none;
-  }
-  
-  .calendar-sidebar.active {
-    display: flex;
+    max-height: 50vh;
   }
   
   .main-calendar-view {
-    padding: 15px;
-    width: 100%;
+    padding: 20px;
   }
   
   .calendar-grid {
-    grid-template-columns: 60px repeat(7, minmax(80px, 1fr));
-    min-width: 700px;
+    grid-template-columns: 80px repeat(7, 1fr);
+    min-width: 800px;
   }
   
   .grid-header {
-    padding: 10px 5px;
+    padding: 12px 8px;
     font-size: 0.9rem;
   }
   
   .day-column-header .day-number {
-    font-size: 1.2rem;
-    width: 32px;
-    height: 32px;
+    font-size: 1.3rem;
+    width: 36px;
+    height: 36px;
   }
   
   .time-label {
     font-size: 0.8rem;
-    height: 80px;
-    padding-right: 5px;
+    height: 70px;
   }
   
   .day-column {
@@ -719,41 +691,54 @@ select:focus {
   }
   
   .event-block {
-    font-size: 0.75rem;
-    padding: 5px;
+    font-size: 0.8rem;
+    padding: 6px 8px;
   }
 
   .current-time-indicator {
-    width: calc(100% - 60px);
-    left: 60px;
+    width: calc(100% - 80px);
+    left: 80px;
   }
   
   #current-week-display {
-    font-size: 1.4rem;
-    min-width: auto;
-    margin: 0 10px;
-  }
-  
-  /* Improve touch targets */
-  .btn {
-    padding: 16px;
-    min-height: 50px;
-  }
-  
-  .time-slot {
-    min-height: 40px;
-  }
-  
-  .mini-calendar-day {
-    min-height: 40px;
+    font-size: 1.5rem;
+    min-width: 250px;
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 992px) {
+  .mobile-nav {
+    display: flex;
+  }
+  
+  .calendar-sidebar {
+    position: fixed;
+    top: var(--header-height, 70px);
+    left: 0;
+    right: 0;
+    bottom: 70px;
+    z-index: 90;
+    transform: translateX(-100%);
+    max-height: none;
+    width: 100%;
+    border-right: none;
+    border-bottom: none;
+  }
+  
+  .calendar-sidebar.active {
+    transform: translateX(0);
+  }
+  
+  .main-calendar-view {
+    padding: 15px;
+    height: calc(100vh - var(--header-height) - 70px);
+  }
+  
   .calendar-header {
     flex-direction: column;
-    align-items: stretch;
+    align-items: flex-start;
     gap: 15px;
+    margin-bottom: 15px;
   }
   
   .week-nav {
@@ -762,19 +747,41 @@ select:focus {
   }
   
   #current-week-display {
-    font-size: 1.3rem;
+    font-size: 1.4rem;
+    min-width: auto;
     text-align: center;
+    flex-grow: 1;
+  }
+  
+  .calendar-grid-wrapper {
+    border-radius: 8px;
+    overflow-x: auto;
   }
   
   .calendar-grid {
-    grid-template-columns: 50px repeat(7, minmax(70px, 1fr));
-    min-width: 600px;
+    grid-template-columns: 60px repeat(7, minmax(120px, 1fr));
+    min-width: 900px;
     font-size: 0.8rem;
+  }
+  
+  .grid-header {
+    padding: 10px 4px;
+  }
+  
+  .day-column-header .day-name {
+    font-size: 0.8rem;
+  }
+  
+  .day-column-header .day-number {
+    font-size: 1.1rem;
+    width: 32px;
+    height: 32px;
   }
   
   .time-label {
     font-size: 0.75rem;
-    height: 70px;
+    height: 60px;
+    padding-right: 6px;
   }
   
   .day-column {
@@ -786,24 +793,44 @@ select:focus {
     height: 35px;
   }
   
+  .event-block {
+    font-size: 0.75rem;
+    padding: 4px 6px;
+  }
+  
+  .current-time-indicator {
+    width: calc(100% - 60px);
+    left: 60px;
+  }
+  
+  #mini-calendar,
+  #add-event-panel {
+    padding: 20px;
+  }
+  
+  .btn {
+    padding: 12px;
+    font-size: 0.9rem;
+  }
+  
   .today-btn {
     width: 100%;
     text-align: center;
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 576px) {
   .main-calendar-view {
     padding: 10px;
   }
   
   .calendar-grid {
-    grid-template-columns: 40px repeat(7, minmax(60px, 1fr));
-    min-width: 500px;
+    grid-template-columns: 50px repeat(7, minmax(90px, 1fr));
+    min-width: 800px;
   }
   
   .grid-header {
-    padding: 8px 3px;
+    padding: 8px 2px;
   }
   
   .day-column-header .day-name {
@@ -818,8 +845,13 @@ select:focus {
   
   .time-label {
     font-size: 0.7rem;
-    height: 60px;
-    padding-right: 3px;
+    height: 50px;
+    padding-right: 4px;
+  }
+  
+  .today-btn {
+    padding: 8px 16px;
+    font-size: 0.9rem;
   }
   
   #add-event-panel {
@@ -827,17 +859,18 @@ select:focus {
   }
   
   #add-event-panel h2 {
-    font-size: 1.3rem;
+    font-size: 1.4rem;
+    margin-bottom: 15px;
   }
   
   .btn {
-    padding: 12px;
-    font-size: 0.8rem;
+    padding: 10px;
+    font-size: 0.85rem;
   }
 
   .current-time-indicator {
-    width: calc(100% - 40px);
-    left: 40px;
+    width: calc(100% - 50px);
+    left: 50px;
   }
   
   .radio-group-tabs {
@@ -845,7 +878,15 @@ select:focus {
     gap: 8px;
   }
   
-  .form-actions {
-    flex-direction: column;
+  .input-group {
+    margin-bottom: 15px;
+  }
+  
+  .mini-calendar-header {
+    margin-bottom: 15px;
+  }
+  
+  #mini-calendar {
+    padding: 15px;
   }
 }
