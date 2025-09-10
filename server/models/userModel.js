@@ -48,10 +48,11 @@ const userSchema = new Schema({
     default: '',
   },
   socials: {
+    facebook: String,
+    instagram: String,
     twitter: String,
     linkedin: String,
     github: String,
-    facebook: String // Added for consistency
   },
   
   // Authentication & Role
@@ -179,3 +180,4 @@ userSchema.index({ 'meta.devices.id': 1 });
 // Model
 const User = mongoose.model('User', userSchema);
 module.exports = User;
+
