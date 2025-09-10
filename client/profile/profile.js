@@ -3,10 +3,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // =============== CONFIG & API HELPERS =================
     // ======================================================
     const API_BASE_URL = ''; // Use relative paths for better portability
+    const ROLES = {
+        STUDENT: 'Student',
+        TEACHER: 'Teacher',
+        ADMIN: 'Admin'
+    };
 
     /**
-     * An intelligent helper function to make authenticated API requests.
-     * It now correctly handles both JSON data and FormData for file uploads.
+     * A robust and centralized helper function to make authenticated API requests.
      */
     async function apiFetch(endpoint, options = {}) {
         const token = localStorage.getItem('piRateToken');
@@ -16,26 +20,29 @@ document.addEventListener('DOMContentLoaded', () => {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
-        // Do NOT set Content-Type for FormData; the browser does it automatically.
         if (!(options.body instanceof FormData)) {
             headers['Content-Type'] = 'application/json';
         }
 
         const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
 
+        if (response.status === 401 || response.status === 403) {
+            localStorage.removeItem('piRateToken');
+            window.location.href = '/login/login.html';
+            throw new Error('Authentication required');
+        }
+
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'An API error occurred');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `An API error occurred: ${response.statusText}`);
         }
         
-        if (response.status === 204 || response.headers.get('content-length') === '0') {
-            return null;
-        }
-        return response.json();
+        return response.status === 204 || response.headers.get('content-length') === '0' ? null : response.json();
     }
 
     // --- STATE MANAGEMENT ---
     let currentUser = null;
+    let studentPointsHistory = [];
 
     // --- DOM ELEMENT SELECTORS ---
     const imgDisplay = document.getElementById('profile-img-display');
@@ -54,6 +61,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const strengthBar = document.querySelector('.strength-level');
     const strengthText = document.querySelector('.strength-text');
     const teacherFields = document.getElementById('teacher-fields');
+    const socialFields = document.getElementById('social-fields');
+    const mobileField = document.getElementById('mobile-field');
+    const pointsTabBtn = document.getElementById('points-tab');
+    const pointsHistoryList = document.getElementById('weekly-points-list');
+    const pointsLoadingState = document.getElementById('points-loading');
+    const totalPointsDisplay = document.getElementById('total-points');
+    const pointsDetailModal = document.getElementById('points-detail-modal');
 
     /**
      * Main initialization function
@@ -64,21 +78,108 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentUser) {
                 populateProfileData(currentUser);
                 setupEventListeners();
+                if (currentUser.role === ROLES.STUDENT) {
+                    pointsTabBtn.classList.remove('hidden');
+                    fetchStudentPoints();
+                }
             } else {
                 throw new Error('User not found.');
             }
         } catch (error) {
             console.error('Failed to initialize profile page:', error);
             localStorage.removeItem('piRateToken');
-            window.location.href = '../login/login.html';
+            window.location.href = '/login/login.html';
         }
+    }
+
+    /**
+     * Fetches the student's points history.
+     */
+    async function fetchStudentPoints() {
+        if (!currentUser || currentUser.role !== ROLES.STUDENT) return;
+
+        pointsLoadingState.classList.remove('hidden');
+        try {
+            const response = await apiFetch('/api/users/profile/points');
+            studentPointsHistory = response.data || [];
+            renderPointsHistory();
+        } catch (error) {
+            console.error('Failed to fetch points history:', error);
+            pointsHistoryList.innerHTML = `<p style="text-align: center; color: var(--danger-accent);">ქულების ისტორიის ჩატვირთვა ვერ მოხერხდა.</p>`;
+        } finally {
+            pointsLoadingState.classList.add('hidden');
+        }
+    }
+
+    /**
+     * Renders the student's points history on the page.
+     */
+    function renderPointsHistory() {
+        pointsHistoryList.innerHTML = '';
+        if (studentPointsHistory.length === 0) {
+            pointsHistoryList.innerHTML = `<p style="text-align: center; color: var(--text-secondary);">ქულების ისტორია არ მოიძებნა.</p>`;
+            totalPointsDisplay.textContent = '0';
+            return;
+        }
+
+        const totalEarned = studentPointsHistory.reduce((sum, week) => sum + week.totalPointsEarned, 0);
+        totalPointsDisplay.textContent = totalEarned;
+
+        studentPointsHistory.forEach(week => {
+            const weekStart = getStartOfWeekFromYearAndWeek(week._id.year, week._id.week);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+
+            const item = document.createElement('div');
+            item.className = 'weekly-item';
+            item.dataset.weekId = `${week._id.year}-${week._id.week}`;
+            item.innerHTML = `
+                <div class="week-info">
+                    <h4>კვირა ${week._id.week}, ${week._id.year}</h4>
+                    <p>${weekStart.toLocaleDateString('ka-GE')} - ${weekEnd.toLocaleDateString('ka-GE')}</p>
+                </div>
+                <div class="week-total">${week.totalPointsEarned} / ${week.totalPointsPossible}</div>
+            `;
+            pointsHistoryList.appendChild(item);
+
+            item.addEventListener('click', () => {
+                renderWeeklyDetails(week);
+            });
+        });
+    }
+
+    /**
+     * Renders detailed points for a specific week in a modal.
+     */
+    function renderWeeklyDetails(weekData) {
+        const modalTitle = pointsDetailModal.querySelector('#points-modal-title');
+        const detailsList = pointsDetailModal.querySelector('#weekly-details-list');
+
+        modalTitle.textContent = `კვირა ${weekData._id.week}, ${weekData._id.year} - დეტალები`;
+        detailsList.innerHTML = '';
+
+        weekData.activities.forEach(activity => {
+            const item = document.createElement('li');
+            item.className = 'activity-item';
+            item.innerHTML = `
+                <h5>${activity.sourceTitle}</h5>
+                <p class="activity-details">
+                    ტიპი: ${activity.sourceType === 'assignment' ? 'დავალება' : 'ქვიზი'}<br>
+                    ქულა: <span class="score">${activity.pointsEarned} / ${activity.pointsPossible}</span><br>
+                    თარიღი: ${new Date(activity.awardedAt).toLocaleString('ka-GE')}
+                </p>
+            `;
+            detailsList.appendChild(item);
+        });
+
+        pointsDetailModal.classList.remove('hidden');
     }
 
     /**
      * Fills all UI elements with the current user's data.
      */
     function populateProfileData(user) {
-        imgDisplay.src = user.photoUrl || `https://placehold.co/150x150/2A2A2A/EAEAEA?text=${user.firstName[0]}${user.lastName[0]}`;
+        imgDisplay.src = user.photoUrl || `https://placehold.co/150x150/121212/EAEAEA?text=${user.firstName[0]}${user.lastName[0]}`;
         fullNameDisplay.textContent = `${user.firstName} ${user.lastName}`;
         emailDisplay.textContent = user.email;
         roleBadge.textContent = user.role;
@@ -87,12 +188,20 @@ document.addEventListener('DOMContentLoaded', () => {
         infoForm.querySelector('[name="firstName"]').value = user.firstName;
         infoForm.querySelector('[name="lastName"]').value = user.lastName;
         infoForm.querySelector('[name="email"]').value = user.email;
+        infoForm.querySelector('[name="mobileNumber"]').value = user.mobileNumber || '';
 
-        if (user.role === 'Teacher' || user.role === 'Admin') {
+        if ([ROLES.TEACHER, ROLES.ADMIN].includes(user.role)) {
             teacherFields.classList.remove('hidden');
+            socialFields.classList.remove('hidden');
+            mobileField.classList.remove('hidden');
             infoForm.querySelector('[name="aboutMe"]').value = user.aboutMe || '';
+            infoForm.querySelector('[name="socials.twitter"]').value = user.socials?.twitter || '';
+            infoForm.querySelector('[name="socials.linkedin"]').value = user.socials?.linkedin || '';
+            infoForm.querySelector('[name="socials.github"]').value = user.socials?.github || '';
         } else {
             teacherFields.classList.add('hidden');
+            socialFields.classList.add('hidden');
+            mobileField.classList.add('hidden');
         }
 
         updateProfileCompletion(user);
@@ -116,6 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
         infoForm.addEventListener('submit', handleInfoUpdate);
         passwordForm.addEventListener('submit', handlePasswordUpdate);
         newPasswordInput.addEventListener('input', () => updatePasswordStrength(newPasswordInput.value));
+        pointsDetailModal.querySelector('.close-modal-btn').addEventListener('click', () => pointsDetailModal.classList.add('hidden'));
     }
 
     /**
@@ -124,22 +234,32 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleInfoUpdate(e) {
         e.preventDefault();
         const formData = new FormData(infoForm);
-        const updatedData = Object.fromEntries(formData.entries());
+        const updatedData = {
+            firstName: formData.get('firstName'),
+            lastName: formData.get('lastName'),
+            mobileNumber: formData.get('mobileNumber'),
+            aboutMe: formData.get('aboutMe'),
+            socials: {
+                twitter: formData.get('socials.twitter'),
+                linkedin: formData.get('socials.linkedin'),
+                github: formData.get('socials.github'),
+            }
+        };
 
         try {
-            const updatedUser = await apiFetch('/api/users/profile', {
+            const response = await apiFetch('/api/users/profile', {
                 method: 'PUT',
                 body: JSON.stringify(updatedData),
             });
 
-            currentUser = { ...currentUser, ...updatedUser };
+            currentUser = { ...currentUser, ...response.data };
             populateProfileData(currentUser);
-            showNotification('Profile updated successfully!', 'success');
+            showNotification('პროფილი წარმატებით განახლდა!', 'success');
 
             const headerName = document.querySelector('.header-container .profile-name');
             if (headerName) headerName.textContent = `${currentUser.firstName} ${currentUser.lastName}`;
         } catch (error) {
-            showNotification(`Error: ${error.message}`, 'error');
+            showNotification(`შეცდომა: ${error.message}`, 'error');
         }
     }
 
@@ -148,28 +268,29 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     async function handlePasswordUpdate(e) {
         e.preventDefault();
+        const currentPass = document.getElementById('password-current').value;
         const newPass = newPasswordInput.value;
         const confirmPass = document.getElementById('password-confirm').value;
 
         if (newPass !== confirmPass) {
-            return showNotification('Error: New passwords do not match.', 'error');
+            return showNotification('შეცდომა: ახალი პაროლები არ ემთხვევა.', 'error');
         }
 
         try {
-            await apiFetch('/api/users/profile', {
+            await apiFetch('/api/users/profile/password', {
                 method: 'PUT',
-                body: JSON.stringify({ password: newPass }),
+                body: JSON.stringify({ currentPassword: currentPass, newPassword: newPass }),
             });
-            showNotification('Password changed successfully!', 'success');
+            showNotification('პაროლი წარმატებით შეიცვალა!', 'success');
             passwordForm.reset();
             updatePasswordStrength('');
         } catch (error) {
-            showNotification(`Error: ${error.message}`, 'error');
+            showNotification(`შეცდომა: ${error.message}`, 'error');
         }
     }
 
     /**
-     * Handles the file selection and uploads the profile picture as a file.
+     * Handles the file selection and uploads the profile picture.
      */
     async function handlePictureUpload(e) {
         const file = e.target.files[0];
@@ -179,21 +300,21 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('photo', file);
 
         try {
-            const updatedUser = await apiFetch('/api/users/profile/photo', {
+            const response = await apiFetch('/api/users/profile/photo', {
                 method: 'PUT',
                 body: formData,
             });
             
-            imgDisplay.src = updatedUser.photoUrl;
-            currentUser.photoUrl = updatedUser.photoUrl;
+            imgDisplay.src = response.photoUrl;
+            currentUser.photoUrl = response.photoUrl;
             
             updateProfileCompletion(currentUser);
-            showNotification('Profile picture updated!', 'success');
+            showNotification('პროფილის სურათი განახლდა!', 'success');
 
             const headerImg = document.querySelector('.header-container .profile-img');
-            if (headerImg) headerImg.src = updatedUser.photoUrl;
+            if (headerImg) headerImg.src = response.photoUrl;
         } catch (error) {
-            showNotification(`Error updating picture: ${error.message}`, 'error');
+            showNotification(`შეცდომა სურათის განახლებისას: ${error.message}`, 'error');
         }
     }
     
@@ -201,11 +322,13 @@ document.addEventListener('DOMContentLoaded', () => {
      * Calculates and displays the profile completion percentage.
      */
     function updateProfileCompletion(user) {
-        const totalPoints = user.role === 'Teacher' ? 3 : 2;
+        const totalPoints = [ROLES.TEACHER, ROLES.ADMIN].includes(user.role) ? 4 : 2;
         let score = 0;
         if (user.firstName && user.lastName) score++;
         if (user.photoUrl && !user.photoUrl.includes('placehold.co')) score++;
-        if (user.role === 'Teacher' && user.aboutMe && user.aboutMe.trim() !== '') score++;
+        if (user.role !== ROLES.STUDENT && user.aboutMe && user.aboutMe.trim() !== '') score++;
+        if (user.role !== ROLES.STUDENT && user.mobileNumber) score++;
+        
         const percentage = Math.round((score / totalPoints) * 100);
         if (completionProgress) completionProgress.style.width = `${percentage}%`;
         if (completionPercentage) completionPercentage.textContent = `${percentage}%`;
@@ -226,17 +349,17 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const levels = {
             0: { text: '', color: 'transparent', width: '0%' },
-            1: { text: 'Very Weak', color: '#e74c3c', width: '20%' },
-            2: { text: 'Weak', color: '#f39c12', width: '40%' },
-            3: { text: 'Medium', color: '#f1c40f', width: '60%' },
-            4: { text: 'Strong', color: '#2ecc71', width: '80%' },
-            5: { text: 'Very Strong', color: '#27ae60', width: '100%' },
+            1: { text: 'ძალიან სუსტი', color: '#e74c3c', width: '20%' },
+            2: { text: 'სუსტი', color: '#f39c12', width: '40%' },
+            3: { text: 'საშუალო', color: '#f1c40f', width: '60%' },
+            4: { text: 'ძლიერი', color: '#2ecc71', width: '80%' },
+            5: { text: 'ძალიან ძლიერი', color: '#27ae60', width: '100%' },
         };
 
         const level = levels[strength];
         strengthBar.style.width = level.width;
         strengthBar.style.backgroundColor = level.color;
-        strengthText.textContent = password.length === 0 ? '' : `Password strength: ${level.text}`;
+        strengthText.textContent = password.length === 0 ? '' : `პაროლის სიძლიერე: ${level.text}`;
         strengthText.style.color = level.color;
     }
 
@@ -256,6 +379,14 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => notification.remove(), 300);
         }, 3000);
     }
+    
+    function getStartOfWeekFromYearAndWeek(year, week) {
+        const date = new Date(year, 0, 1 + (week - 1) * 7);
+        const day = date.getDay();
+        const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+        return new Date(date.setDate(diff));
+    }
+
 
     // --- INITIALIZE THE APP ---
     init();
