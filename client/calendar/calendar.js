@@ -1,3 +1,4 @@
+
 document.addEventListener('DOMContentLoaded', () => {
   const API_BASE_URL = '/api';
   
@@ -246,8 +247,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function generateTimeSlots() {
     elements.timeColumn.innerHTML = '';
-    // Fix: Loop from 8 to 22 (for 10 PM)
-    for (let hour = 8; hour <= 22; hour++) {
+    
+    // Corrected loop to go from 8 AM (hour 8) to 9 PM (hour 21)
+    for (let hour = 8; hour < 22; hour++) {
       const timeLabel = document.createElement('div');
       timeLabel.className = 'time-label';
       timeLabel.textContent = formatTime(`${hour}:00`, false);
@@ -257,8 +259,8 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.dayColumns.forEach((column, dayIndex) => {
       column.innerHTML = '';
       column.dataset.day = dayIndex;
-      // Fix: Loop 29 times for 14.5 hours of time slots
-      for (let slot = 0; slot < 29; slot++) {
+      // Corrected loop to create 28 slots for the 14 hours (8 AM to 10 PM)
+      for (let slot = 0; slot < 28; slot++) {
         const timeSlot = document.createElement('div');
         timeSlot.className = 'time-slot';
         const hour = 8 + Math.floor(slot / 2);
@@ -658,8 +660,10 @@ document.addEventListener('DOMContentLoaded', () => {
       .map(s => s.dataset.time)
       .sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
       
-    elements.sidebarTimeRange.textContent = 
-      `${formatTime(times[0])} - ${formatTime(getEndTime(times[times.length - 1]))}`;
+    if (elements.sidebarTimeRange && times.length > 0) {
+      elements.sidebarTimeRange.textContent = 
+        `${formatTime(times[0])} - ${formatTime(getEndTime(times[times.length - 1]))}`;
+    }
   }
   
   function clearSelection(resetSidebar = true) {
@@ -754,8 +758,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const timeInMinutes = now.getHours() * 60 + now.getMinutes();
     
-    // Hide indicator if outside calendar hours (8am-10pm)
-    if (timeInMinutes < 8 * 60 || timeInMinutes > 22 * 60) {
+    // Hide indicator if outside calendar hours (8am-9:59pm)
+    if (timeInMinutes < 8 * 60 || timeInMinutes >= 22 * 60) {
       elements.currentTimeIndicator.style.display = 'none';
       return;
     }
