@@ -1,12 +1,11 @@
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
 const bcrypt = require('bcryptjs');
-const rateLimit = require('express-rate-limit');
 const { v4: uuidv4 } = require('uuid');
 
 // Storage Quota Sub-Schema
 const storageSchema = new Schema({
-  total: { type: Number, default: 1073741824 }, // 1GB default
+  total: { type: Number, default: 1073741824 },
   used: { type: Number, default: 0 },
   lastReset: { type: Date, default: Date.now },
   files: { type: Number, default: 0 }
@@ -14,8 +13,8 @@ const storageSchema = new Schema({
 
 // API Rate Limit Sub-Schema
 const apiLimitSchema = new Schema({
-  windowMs: { type: Number, default: 15 * 60 * 1000 }, // 15 minutes
-  max: { type: Number, default: 100 }, // 100 requests per window
+  windowMs: { type: Number, default: 15 * 60 * 1000 },
+  max: { type: Number, default: 100 },
   current: { type: Number, default: 0 },
   lastHit: Date
 }, { _id: false });
@@ -35,6 +34,15 @@ const userSchema = new Schema({
     type: String,
     default: '',
   },
+  photoPublicId: {
+    type: String,
+    default: '',
+  },
+  // NEW FIELDS
+  mobileNumber: {
+    type: String,
+    default: '',
+  },
   aboutMe: {
     type: String,
     default: '',
@@ -43,6 +51,7 @@ const userSchema = new Schema({
     twitter: String,
     linkedin: String,
     github: String,
+    facebook: String // Added for consistency
   },
   
   // Authentication & Role
@@ -57,7 +66,7 @@ const userSchema = new Schema({
   password: {
     type: String,
     required: true,
-    minlength: 8 // Lowered for development, consider increasing for production
+    minlength: 8
   },
   groups: [{
     type: Schema.Types.ObjectId,
