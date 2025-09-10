@@ -1,3 +1,4 @@
+
 const express = require('express');
 const router = express.Router();
 const User = require('../models/userModel');
@@ -6,6 +7,7 @@ const { protect, restrictTo } = require('../middleware/authMiddleware');
 const { upload, createCloudinaryUploader, handleUploadErrors, deleteCloudinaryFile } = require('../middleware/uploadMiddleware');
 const asyncHandler = require('express-async-handler');
 const ErrorResponse = require('../utils/errorResponse');
+const mongoose = require('mongoose'); // <-- Added this import
 
 // Create uploader instances for different routes
 const profilePhotoUploader = createCloudinaryUploader('profile-photos');
@@ -61,9 +63,19 @@ router.get('/profile', protect, asyncHandler(async (req, res) => {
 // @desc    Get a student's points history (Private/Student or Admin)
 // CORRECTED: This route now correctly handles the userId query parameter for admins.
 router.get('/profile/points', protect, asyncHandler(async (req, res, next) => {
-  const userId = req.query.userId || req.user._id;
+  let userId;
+  // Use the ID from the query parameter if available, otherwise use the logged-in user's ID.
+  if (req.query.userId) {
+      // Explicitly cast the userId string to a Mongoose ObjectId
+      if (!mongoose.Types.ObjectId.isValid(req.query.userId)) {
+          return next(new ErrorResponse('Invalid user ID format', 400));
+      }
+      userId = new mongoose.Types.ObjectId(req.query.userId);
+  } else {
+      userId = req.user._id;
+  }
 
-  if (req.user.role !== 'Admin' && req.user._id.toString() !== userId) {
+  if (req.user.role !== 'Admin' && req.user._id.toString() !== userId.toString()) {
       return next(new ErrorResponse('Not authorized to view these points', 403));
   }
 
@@ -207,4 +219,3 @@ router.delete('/:id', protect, admin, asyncHandler(async (req, res) => {
 }));
 
 module.exports = router;
-
