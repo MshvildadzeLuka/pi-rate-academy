@@ -83,9 +83,12 @@ document.addEventListener('DOMContentLoaded', () => {
     users: [],
     groups: [],
     videos: [],
+    students: [],
+    studentPoints: [],
     currentUser: null,
     editingId: null,
     selectedGroup: null,
+    selectedStudent: null,
     selectedGroupMembers: [],
   };
 
@@ -129,7 +132,10 @@ document.addEventListener('DOMContentLoaded', () => {
     suggestLecturesBtn: document.getElementById('suggest-schedule-btn'),
     // Mobile sidebar toggle
     sidebarToggle: document.getElementById('sidebar-toggle'),
-    adminSidebar: document.querySelector('.admin-sidebar')
+    adminSidebar: document.querySelector('.admin-sidebar'),
+    // Student Points View
+    studentListView: document.getElementById('student-list-view'),
+    studentDetailView: document.getElementById('student-points-detail-view'),
   };
 
   // =================================================================
@@ -166,7 +172,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 Array.isArray(videosRes.videos) ? videosRes.videos : [];
       }
 
-      Object.assign(state, { currentUser, users, groups, videos });
+      const students = users.filter(u => u.role === 'Student');
+
+      Object.assign(state, { currentUser, users, groups, videos, students });
 
       renderAllComponents();
       setupAllEventListeners();
@@ -211,6 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderAllComponents() {
     renderDashboard();
     renderUsersTable();
+    renderStudentsTable();
     renderGroupsTable();
     renderVideosTable();
   }
@@ -309,6 +318,170 @@ document.addEventListener('DOMContentLoaded', () => {
         const userId = btn.getAttribute('data-id');
         deleteUser(userId);
       });
+    });
+  }
+
+  function renderStudentsTable() {
+    const container = document.getElementById('students-table-container');
+    if (!container) return;
+    
+    if (state.students.length === 0) {
+      container.innerHTML = '<p class="empty-list-message">სტუდენტები არ მოიძებნა.</p>';
+      return;
+    }
+
+    container.innerHTML = `
+      <table class="admin-list-table">
+        <thead>
+          <tr>
+            <th>სახელი</th>
+            <th>Email</th>
+            <th>ჯგუფები</th>
+            <th>მოქმედებები</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${state.students.map(student => `
+            <tr class="student-row" data-id="${student._id}">
+              <td>${escapeHTML(student.firstName)} ${escapeHTML(student.lastName)}</td>
+              <td>${escapeHTML(student.email)}</td>
+              <td>${student.groups.map(g => escapeHTML(g.name)).join(', ')}</td>
+              <td class="action-btns">
+                <button class="btn-view-points" data-id="${student._id}">
+                  <i class="fa-solid fa-medal"></i>
+                </button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+
+    container.querySelectorAll('.btn-view-points').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const studentId = btn.getAttribute('data-id');
+        const student = state.students.find(s => s._id === studentId);
+        if (student) viewStudentPoints(student);
+      });
+    });
+  }
+
+  async function viewStudentPoints(student) {
+    elements.studentListView.classList.add('hidden');
+    elements.studentDetailView.classList.remove('hidden');
+
+    elements.studentDetailView.innerHTML = `
+      <div class="detail-header">
+        <button class="btn btn--secondary" id="back-to-students-btn">
+          <i class="fa-solid fa-arrow-left"></i> უკან
+        </button>
+        <h2>${escapeHTML(student.firstName)} ${escapeHTML(student.lastName)} - ქულები</h2>
+      </div>
+      <div id="student-points-content">
+        <div class="loading-state">
+          <div class="loading-spinner"></div>
+          <p>ქულების ჩატვირთვა...</p>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('back-to-students-btn').addEventListener('click', () => {
+      elements.studentListView.classList.remove('hidden');
+      elements.studentDetailView.classList.add('hidden');
+      elements.studentDetailView.innerHTML = '';
+    });
+
+    try {
+      const response = await apiFetch(`/users/profile/points?userId=${student._id}`);
+      state.studentPoints = response.data || [];
+      renderStudentPointsDetails(student);
+    } catch (error) {
+      console.error('Failed to fetch student points:', error);
+      document.getElementById('student-points-content').innerHTML = `
+        <p style="text-align: center; color: var(--danger-accent);">ქულების ისტორიის ჩატვირთვა ვერ მოხერხდა.</p>
+      `;
+    }
+  }
+
+  function renderStudentPointsDetails(student) {
+    const container = document.getElementById('student-points-content');
+    if (!container) return;
+
+    let totalEarned = 0;
+    let totalPossible = 0;
+    if (state.studentPoints.length > 0) {
+      totalEarned = state.studentPoints.reduce((sum, week) => sum + week.totalPointsEarned, 0);
+      totalPossible = state.studentPoints.reduce((sum, week) => sum + week.totalPointsPossible, 0);
+    }
+    const percentage = totalPossible > 0 ? ((totalEarned / totalPossible) * 100).toFixed(0) : 0;
+
+    container.innerHTML = `
+      <div class="total-points-card">
+        <i class="fas fa-trophy"></i>
+        <div>
+          <h3>სულ დაგროვებული ქულები</h3>
+          <p>${totalEarned} / ${totalPossible} (${percentage}%)</p>
+        </div>
+      </div>
+      <h3>ქულების ისტორია</h3>
+      <div class="weekly-points-list-wrapper">
+        <div class="weekly-points-list" id="weekly-points-list">
+          ${state.studentPoints.length > 0 ? state.studentPoints.map(week => {
+            const weekStart = getStartOfWeekFromYearAndWeek(week._id.year, week._id.week);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            return `
+              <div class="weekly-item" data-week-id="${week._id.year}-${week._id.week}">
+                <div class="week-info">
+                  <h4>კვირა ${week._id.week}, ${week._id.year}</h4>
+                  <p>${weekStart.toLocaleDateString('ka-GE')} - ${weekEnd.toLocaleDateString('ka-GE')}</p>
+                </div>
+                <div class="week-total">${week.totalPointsEarned} / ${week.totalPointsPossible}</div>
+              </div>
+            `;
+          }).join('') : '<p class="empty-list-message">ქულების ისტორია არ მოიძებნა.</p>'}
+        </div>
+      </div>
+    `;
+
+    document.querySelectorAll('.weekly-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const weekId = item.dataset.weekId;
+        const weekData = state.studentPoints.find(week => `${week._id.year}-${week._id.week}` === weekId);
+        if (weekData) renderWeeklyDetails(weekData);
+      });
+    });
+  }
+
+  function renderWeeklyDetails(weekData) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-content points-detail-modal">
+        <div class="modal-header">
+            <h2 id="points-modal-title">კვირა ${weekData._id.week}, ${weekData._id.year} - დეტალები</h2>
+            <button class="close-modal" aria-label="დახურვა">×</button>
+        </div>
+        <div class="modal-body">
+            <ul id="weekly-details-list">
+                ${weekData.activities.map(activity => `
+                    <li class="activity-item">
+                        <h5>${escapeHTML(activity.sourceTitle)}</h5>
+                        <p class="activity-details">
+                            ტიპი: ${activity.sourceType === 'assignment' ? 'დავალება' : 'ქვიზი'}<br>
+                            ქულა: <span class="score">${activity.pointsEarned} / ${activity.pointsPossible}</span><br>
+                            თარიღი: ${new Date(activity.awardedAt).toLocaleString('ka-GE')}
+                        </p>
+                    </li>
+                `).join('')}
+            </ul>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    modal.querySelector('.close-modal').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
     });
   }
 
@@ -1374,6 +1547,14 @@ document.addEventListener('DOMContentLoaded', () => {
     end.setDate(start.getDate() + 6);
     return end;
   }
+
+  function getStartOfWeekFromYearAndWeek(year, week) {
+      const date = new Date(year, 0, 1 + (week - 1) * 7);
+      const day = date.getDay();
+      const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+      return new Date(date.setDate(diff));
+  }
+
 
   function timeToMinutes(timeStr) {
     if (!timeStr) return 0;
