@@ -1,3 +1,4 @@
+
 :root {
   /* Reverted to original global dark theme colors */
   --background-primary: #121212;
@@ -65,7 +66,7 @@ body {
 #mini-calendar { 
   padding: 25px; 
   background-color: var(--background-secondary);
-  border-bottom: 1px solid var(--background-tertiary);
+  border-bottom: 1.5px solid var(--background-tertiary);
 }
 
 .mini-calendar-header {
