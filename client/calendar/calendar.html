@@ -19,7 +19,23 @@
     <div id="header-placeholder"></div>
 
     <div class="page-wrapper">
-        <aside class="calendar-sidebar">
+        <!-- Mobile Navigation Toggle -->
+        <div class="mobile-nav-toggle">
+            <button id="view-calendar-btn" class="mobile-nav-btn active">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19a2 2 0 002 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/>
+                </svg>
+                <span>კალენდარი</span>
+            </button>
+            <button id="view-events-btn" class="mobile-nav-btn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17 10H7v2h10v-2zm2-7h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19a2 2 0 002 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/>
+                </svg>
+                <span>ივენთები</span>
+            </button>
+        </div>
+
+        <aside class="calendar-sidebar mobile-sidebar">
             <div id="mini-calendar">
                 <div class="mini-calendar-header">
                     <button id="mini-cal-prev-month" aria-label="წინა თვე">
