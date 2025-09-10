@@ -10,8 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedSlots: new Set(),
     activeEvent: null,
     userGroups: [],
-    isRecurring: false,
-    isMobileView: window.innerWidth < 992
+    isRecurring: false
   };
 
   const elements = {
@@ -32,11 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     recurringLabelText: document.getElementById('recurring-label-text'),
     gridWrapper: document.querySelector('.calendar-grid-wrapper'),
     currentTimeIndicator: document.getElementById('current-time-indicator'),
-    eventForm: document.getElementById('event-form'),
-    calendarSidebar: document.querySelector('.calendar-sidebar'),
-    mobileViewToggle: document.getElementById('mobile-view-toggle'),
-    mobileViewText: document.getElementById('mobile-view-text'),
-    mobileAddEvent: document.getElementById('mobile-add-event')
+    eventForm: document.getElementById('event-form')
   };
 
   // Show notification toast
@@ -95,7 +90,6 @@ document.addEventListener('DOMContentLoaded', () => {
       generateTimeSlots();
       renderAll();
       addEventListeners();
-      setupMobileNavigation();
       
       // Update time indicator every minute
       updateCurrentTimeIndicator();
@@ -104,40 +98,6 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Calendar initialization failed:', error);
       showNotification('Calendar initialization failed', 'error');
     }
-  }
-
-  function setupMobileNavigation() {
-    if (!elements.mobileViewToggle) return;
-    
-    elements.mobileViewToggle.addEventListener('click', () => {
-      if (state.isMobileView) {
-        // Toggle sidebar visibility on mobile
-        elements.calendarSidebar.classList.toggle('active');
-        elements.mobileViewText.textContent = elements.calendarSidebar.classList.contains('active') 
-          ? 'გამოდი' 
-          : 'კალენდარი';
-      }
-    });
-    
-    elements.mobileAddEvent.addEventListener('click', () => {
-      if (state.isMobileView) {
-        // Show sidebar and scroll to add event panel
-        elements.calendarSidebar.classList.add('active');
-        elements.mobileViewText.textContent = 'გამოდი';
-        document.querySelector('#add-event-panel').scrollIntoView({ behavior: 'smooth' });
-      }
-    });
-    
-    // Close sidebar when clicking outside on mobile
-    document.addEventListener('click', (e) => {
-      if (state.isMobileView && 
-          elements.calendarSidebar.classList.contains('active') &&
-          !elements.calendarSidebar.contains(e.target) &&
-          !elements.mobileViewToggle.contains(e.target)) {
-        elements.calendarSidebar.classList.remove('active');
-        elements.mobileViewText.textContent = 'კალენდარი';
-      }
-    });
   }
 
   async function fetchUserGroups() {
@@ -251,12 +211,6 @@ document.addEventListener('DOMContentLoaded', () => {
       clearSelection();
       renderEventsForWeek();
       showNotification('Event saved successfully!', 'success');
-      
-      // Close sidebar on mobile after saving
-      if (state.isMobileView) {
-        elements.calendarSidebar.classList.remove('active');
-        elements.mobileViewText.textContent = 'კალენდარი';
-      }
     } catch (error) {
       console.error('Failed to save event:', error);
       showNotification('Failed to save event: ' + error.message, 'error');
@@ -264,8 +218,6 @@ document.addEventListener('DOMContentLoaded', () => {
   } 
 
   async function deleteEvent(eventId) {
-    if (!eventId) return;
-    
     if (!confirm('Are you sure you want to delete this event?')) return;
 
     const event = state.allEvents.find(e => e._id === eventId);
@@ -286,12 +238,6 @@ document.addEventListener('DOMContentLoaded', () => {
       clearSelection();
       renderEventsForWeek();
       showNotification('Event deleted successfully!', 'success');
-      
-      // Close sidebar on mobile after deleting
-      if (state.isMobileView) {
-        elements.calendarSidebar.classList.remove('active');
-        elements.mobileViewText.textContent = 'კალენდარი';
-      }
     } catch (error) {
       console.error('Failed to delete event:', error);
       showNotification('Failed to delete event: ' + error.message, 'error');
@@ -405,12 +351,6 @@ document.addEventListener('DOMContentLoaded', () => {
         state.mainViewDate = new Date(currentDay);
         fetchEvents().then(() => {
           renderAll();
-          
-          // On mobile, switch to calendar view after selecting a date
-          if (state.isMobileView) {
-            elements.calendarSidebar.classList.remove('active');
-            elements.mobileViewText.textContent = 'კალენდარი';
-          }
         });
       });
       
@@ -584,19 +524,6 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       saveEvent();
     });
-    
-    // Handle window resize for mobile/desktop switching
-    window.addEventListener('resize', () => {
-      const wasMobile = state.isMobileView;
-      state.isMobileView = window.innerWidth < 992;
-      
-      if (wasMobile !== state.isMobileView) {
-        // View mode changed
-        if (!state.isMobileView && elements.calendarSidebar.classList.contains('active')) {
-          elements.calendarSidebar.classList.remove('active');
-        }
-      }
-    });
   }
 
   // Touch handling for mobile
@@ -663,12 +590,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const eventElement = document.querySelector(`[data-event-id="${eventData._id}"]`);
     if (eventElement) {
       eventElement.classList.add('active-event');
-    }
-    
-    // On mobile, show sidebar when event is clicked
-    if (state.isMobileView) {
-      elements.calendarSidebar.classList.add('active');
-      elements.mobileViewText.textContent = 'გამოდი';
     }
   }
 
