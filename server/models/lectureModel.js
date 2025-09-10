@@ -156,4 +156,4 @@ lectureSchema.index({ startTime: 1, endTime: 1 });
 
 const Lecture = mongoose.model('Lecture', lectureSchema);
 
-module.exports = Lecture;
+module.exports = Lecture; 
