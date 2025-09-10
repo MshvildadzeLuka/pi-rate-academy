@@ -777,4 +777,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize the calendar
   initializeCalendar();
-});
+}); 
