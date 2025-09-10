@@ -407,12 +407,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('student-points-content');
     if (!container) return;
 
-    let totalEarned = 0;
-    let totalPossible = 0;
-    if (state.studentPoints.length > 0) {
-      totalEarned = state.studentPoints.reduce((sum, week) => sum + week.totalPointsEarned, 0);
-      totalPossible = state.studentPoints.reduce((sum, week) => sum + week.totalPointsPossible, 0);
-    }
+    // Correctly calculate total earned and possible points by summing up weekly data
+    const totalEarned = state.studentPoints.reduce((sum, week) => sum + week.totalPointsEarned, 0);
+    const totalPossible = state.studentPoints.reduce((sum, week) => sum + week.totalPointsPossible, 0);
     const percentage = totalPossible > 0 ? ((totalEarned / totalPossible) * 100).toFixed(0) : 0;
 
     container.innerHTML = `
