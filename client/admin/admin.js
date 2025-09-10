@@ -367,6 +367,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function viewStudentPoints(student) {
+    if (!student || !student._id) {
+        console.error('Error: Invalid student object or missing student ID.');
+        return;
+    }
+
     elements.studentListView.classList.add('hidden');
     elements.studentDetailView.classList.remove('hidden');
 
@@ -392,13 +397,24 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     try {
+      // Log the API endpoint to ensure it's being called correctly
+      console.log('Fetching points for student ID:', student._id);
       const response = await apiFetch(`/users/profile/points?userId=${student._id}`);
-      state.studentPoints = response.data || [];
-      renderStudentPointsDetails(student);
+      
+      // Log the full API response to the console for debugging
+      console.log('API Response for student points:', response);
+      
+      if (response && response.success && Array.isArray(response.data)) {
+        state.studentPoints = response.data;
+        renderStudentPointsDetails(student);
+      } else {
+        throw new Error(response?.message || 'API-დან მიღებული მონაცემები არასწორია');
+      }
+
     } catch (error) {
       console.error('Failed to fetch student points:', error);
       document.getElementById('student-points-content').innerHTML = `
-        <p style="text-align: center; color: var(--danger-accent);">ქულების ისტორიის ჩატვირთვა ვერ მოხერხდა.</p>
+        <p style="text-align: center; color: var(--danger-accent);">ქულების ისტორიის ჩატვირთვა ვერ მოხერხდა: ${escapeHTML(error.message)}</p>
       `;
     }
   }
