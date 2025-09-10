@@ -126,20 +126,20 @@ router.put('/profile/photo', protect, upload.single('photo'), profilePhotoUpload
 
 // @route   PUT /api/users/profile/password
 // @desc    Update password (Private)
-router.put('/profile/password', protect, asyncHandler(async (req, res) => {
+router.put('/profile/password', protect, asyncHandler(async (req, res, next) => {
   const { currentPassword, newPassword, confirmPassword } = req.body;
   
   if (!currentPassword || !newPassword || !confirmPassword) {
-    return res.status(400).json({ message: 'All password fields are required' });
+    return next(new ErrorResponse('All password fields are required', 400));
   }
 
   if (newPassword !== confirmPassword) {
-    return res.status(400).json({ message: 'New passwords do not match' });
+    return next(new ErrorResponse('New passwords do not match', 400));
   }
 
   const user = await User.findById(req.user._id);
   if (!user || !(await user.matchPassword(currentPassword))) {
-    return res.status(401).json({ message: 'Current password is incorrect' });
+    return next(new ErrorResponse('Current password is incorrect', 401));
   }
 
   // CORRECTED: Manually set the password to trigger the pre-save hook
@@ -200,3 +200,4 @@ router.delete('/:id', protect, admin, asyncHandler(async (req, res) => {
 }));
 
 module.exports = router;
+
