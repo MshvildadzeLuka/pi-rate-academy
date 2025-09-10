@@ -5,15 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ინსტრუქტორის პროფილი | Pi-Rate Academy</title>
     <link rel="stylesheet" href="/assets/css/global.css">
-    <script src="/assets/js/auth.js" defer></script>
     <link rel="stylesheet" href="/header/header.css">
     <link rel="stylesheet" href="/instructor-profile/instructor-profile.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="/assets/js/auth.js" defer></script>
 </head>
 
-<script src="/header/header.js"></script>
-<script src="/instructor-profile/instructor-profile.js"></script>
 <body>
-
     <div id="header-placeholder"></div>
 
     <main class="profile-container">
@@ -23,7 +21,8 @@
                 <div class="profile-header-info">
                     <h1 id="instructor-name" class="profile-name"></h1>
                     <p id="instructor-role" class="profile-role"></p>
-                    <div id="instructor-socials" class="social-links"></div>
+                    <div id="instructor-contact" class="contact-info">
+                        </div>
                 </div>
             </div>
 
@@ -45,7 +44,7 @@
                     <h3>თქვენი შეფასება</h3>
                     <p id="rating-prompt">აირჩიეთ ქულები</p>
                     <div class="star-rating-interactive" id="interactive-stars"></div>
-                    <button id="submit-rating-btn" class="btn btn--primary" disabled>შეფასების გაგზავნა</button>
+                    <button id="submit-rating-btn" class="btn btn-primary" disabled>შეფასების გაგზავნა</button>
                 </div>
             </div>
         </div>
