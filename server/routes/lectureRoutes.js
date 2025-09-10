@@ -93,14 +93,35 @@ router.put('/:id', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async (
   res.json({ success: true, data: lecture });
 }));
 
-// @desc    Delete a lecture
+// @desc    Delete a lecture, with support for single or recurring instances
 // @route   DELETE /api/lectures/:id
 // @access  Private/Teacher/Admin
 router.delete('/:id', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async (req, res, next) => {
-  const lecture = await Lecture.findById(req.params.id);
+  const { id } = req.params;
+  const { deleteAllRecurring, dateString } = req.body;
+  
+  const lecture = await Lecture.findById(id);
   if (!lecture) return next(new ErrorResponse('Lecture not found', 404));
 
-  await lecture.deleteOne(); // Updated to deleteOne() to fix "remove is not a function" and trigger post-remove hooks
+  if (lecture.isRecurring && !deleteAllRecurring) {
+      // Logic to delete only a single instance by adding an exception
+      const exceptionDate = new Date(dateString);
+      // Create a new exception event to hide this instance
+      const newException = new Lecture({
+          title: `DELETED: ${lecture.title}`,
+          startTime: exceptionDate,
+          endTime: new Date(exceptionDate.getTime() + (lecture.endTime - lecture.startTime)),
+          assignedGroup: lecture.assignedGroup,
+          instructor: req.user._id,
+          isRecurring: false,
+          timezone: lecture.timezone
+      });
+      await newException.save();
+  } else {
+      // Delete the entire recurring series or a single non-recurring event
+      await lecture.deleteOne();
+  }
+
   res.json({ success: true, message: 'Lecture removed' });
 }));
 
