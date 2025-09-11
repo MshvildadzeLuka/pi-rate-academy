@@ -17,7 +17,7 @@ const User = require('../models/userModel.js');
 router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
     const userId = req.user._id;
     const { start, end } = req.query;
-    
+
     // Get user's groups
     const user = await User.findById(userId).populate('groups');
     const userGroupIds = user.groups ? user.groups.map(group => group._id) : [];
@@ -28,12 +28,12 @@ router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
     // Format personal events with local time strings
     const formattedPersonal = personalEvents.map(event => ({
         ...event,
-        startTimeLocal: event.isRecurring 
-            ? ensureTimeFormat(event.recurringStartTime) 
-            : new Date(event.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }),
-        endTimeLocal: event.isRecurring 
-            ? ensureTimeFormat(event.recurringEndTime) 
-            : new Date(event.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
+        startTimeLocal: event.isRecurring ?
+            ensureTimeFormat(event.recurringStartTime) :
+            new Date(event.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }),
+        endTimeLocal: event.isRecurring ?
+            ensureTimeFormat(event.recurringEndTime) :
+            new Date(event.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
     }));
 
     // Get lectures for user's groups with date range if provided
@@ -50,11 +50,11 @@ router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
                     }
                 ];
             }
-            
+
             const lectures = await Lecture.find(lectureQuery)
                 .populate('assignedGroup', 'name')
                 .lean();
-            
+
             groupLectures = [...groupLectures, ...lectures];
         } catch (error) {
             console.error(`Failed to fetch lectures for group ${groupId}:`, error);
@@ -72,11 +72,11 @@ router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
         groupName: lecture.assignedGroup.name,
         isRecurring: lecture.isRecurring,
         recurrenceRule: lecture.recurrenceRule,
-        startTimeLocal: new Date(lecture.startTime).toLocaleTimeString('en-GB', { 
-            hour: '2-digit', minute: '2-digit', hour12: false 
+        startTimeLocal: new Date(lecture.startTime).toLocaleTimeString('en-GB', {
+            hour: '2-digit', minute: '2-digit', hour12: false
         }),
-        endTimeLocal: new Date(lecture.endTime).toLocaleTimeString('en-GB', { 
-            hour: '2-digit', minute: '2-digit', hour12: false 
+        endTimeLocal: new Date(lecture.endTime).toLocaleTimeString('en-GB', {
+            hour: '2-digit', minute: '2-digit', hour12: false
         })
     }));
 
@@ -132,7 +132,7 @@ function ensureTimeFormat(timeStr) {
 // @access  Private
 router.post('/', protect, asyncHandler(async (req, res, next) => {
     const { type, isRecurring, dayOfWeek, recurringStartTime, recurringEndTime, startTime, endTime } = req.body;
-    
+
     if (!['busy', 'preferred'].includes(type)) {
         return next(new ErrorResponse('Invalid event type', 400));
     }
