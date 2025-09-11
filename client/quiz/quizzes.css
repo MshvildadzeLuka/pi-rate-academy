@@ -56,7 +56,7 @@
     --transition-fast: 0.15s ease-in-out;
     --transition-medium: 0.3s ease-in-out;
     --transition-slow: 0.5s ease-in-out;
-    --transition-bounce: 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --transition-bounce: 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.275);
     
     /* Typography */
     --font-size-xs: 0.75rem;
@@ -340,9 +340,14 @@ body {
 }
 /* ===== MAIN LAYOUT & STRUCTURE ===== */
 .quizzes-container {
-    padding: var(--spacing-md);
     max-width: 1400px;
     margin: 0 auto;
+    padding: 20px 15px;
+    min-height: calc(100vh - var(--header-height));
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    animation: fadeIn 0.5s var(--transition-medium);
 }
 
 .quizzes-main-header {
@@ -354,7 +359,50 @@ body {
 }
 
 .content-area {
-    margin-top: var(--spacing-md);
+    flex-grow: 1;
+    position: relative;
+}
+
+/* Added for mobile horizontal scrolling tabs */
+.mobile-tabs-scroll-wrapper {
+    display: flex;
+    flex-shrink: 0;
+    padding: 0 15px 5px 15px; /* Adjust padding to match assignments style */
+    border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin: 0 -15px;
+}
+
+.mobile-tabs-scroll-wrapper::-webkit-scrollbar {
+    display: none;
+}
+
+.mobile-tab-btn-scroll {
+    padding: 8px 12px;
+    background-color: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    position: relative;
+    border-bottom: 3px solid transparent;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.mobile-tab-btn-scroll:hover {
+    color: var(--text-primary);
+    background-color: var(--background-tertiary);
+}
+
+.mobile-tab-btn-scroll.active {
+    color: var(--primary-accent);
+    font-weight: 600;
+    border-bottom-color: var(--primary-accent);
 }
 
 .view {
@@ -864,6 +912,10 @@ body {
     display: inline-block;
     position: relative;
     transition: all var(--transition-fast);
+}
+
+.agreement-checkbox:hover .checkmark {
+    border-color: var(--primary-accent);
 }
 
 .agreement-checkbox input[type="checkbox"]:checked ~ .checkmark {
@@ -1743,6 +1795,10 @@ body {
     .mobile-nav {
         display: none;
     }
+
+    .quizzes-container {
+      padding: 25px 20px;
+    }
     
     .quizzes-main-header {
         display: flex;
@@ -1784,7 +1840,6 @@ body {
         position: relative;
         border-bottom: 3px solid transparent;
         transition: all var(--transition-fast);
-        border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
         white-space: nowrap;
         flex-shrink: 0;
     }
@@ -1879,27 +1934,135 @@ body {
         grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     }
 }
+@media (max-width: 767px) {
+    .assignments-main-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
 
-/* Touch device optimizations */
-@media (hover: none) and (pointer: coarse) {
-    .quiz-item {
-        padding: var(--spacing-md);
+    .assignments-main-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .header-actions {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
     }
     
-    .option-taking {
-        padding: var(--spacing-md);
+    .tabs-nav {
+        display: none;
+    }
+
+    .mobile-header {
+        display: none;
+    }
+
+    .content-area {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 5px; /* Added for scrollable content area */
+    }
+
+    .content-area::-webkit-scrollbar {
+        display: none;
     }
     
-    /* Increase spacing for touch */
+    /* This makes sure the content in the scrollable area doesn't wrap */
+    .view.active {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        min-width: 600px; /* Adjust this value as needed for content to not be too cramped */
+    }
+
     .list-container {
-        gap: var(--spacing-md);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .assignment-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 15px;
     }
     
-    .options-container-taking {
-        gap: var(--spacing-sm);
+    .assignment-item-icon {
+        font-size: 1.8rem;
+    }
+
+    .assignment-item-info {
+        flex-grow: 1;
+        width: 100%;
+    }
+    
+    .assignment-item-title {
+        white-space: normal;
+        overflow: visible;
+        text-overflow: unset;
+        font-size: 1.1rem;
+    }
+    
+    .assignment-item-status {
+        min-width: unset;
+        justify-content: flex-start;
+    }
+
+    .detail-panel {
+        padding: 15px;
+    }
+    
+    .detail-panel-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .assignment-title-detail {
+        font-size: 1.3rem;
+        margin-top: 10px;
+    }
+
+    .teacher-assignment-actions {
+        order: 3;
+    }
+
+    .grading-layout, .detail-content {
+        flex-direction: column;
+    }
+
+    .student-list-sidebar {
+        max-height: 250px;
+    }
+    
+    .grading-main-content {
+        padding: 15px 0;
+    }
+    
+    .submission-sidebar {
+        padding: 15px 0;
+        border-top: 1px solid var(--border-color);
+    }
+    
+    .modal {
+        max-width: 95%;
+        margin: 10px;
+    }
+
+    .modal-footer {
+        flex-direction: column;
+        gap: 10px;
+        padding: 15px;
+    }
+
+    .form-row {
+        flex-direction: column;
+        gap: 15px;
     }
 }
-
 /* Print styles */
 @media print {
     .mobile-header,
