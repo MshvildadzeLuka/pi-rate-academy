@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function apiFetch(endpoint, options = {}) {
-      const token = localStorage.getItem('piRateToken');
+      const token = localStorage.localStorage.getItem('piRateToken');
       const headers = { ...(options.headers || {}) };
 
       if (token) {
@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Handle authentication errors
         if (response.status === 401 || response.status === 403) {
-          localStorage.removeItem('piRateToken');
+          localStorage.localStorage.removeItem('piRateToken');
           window.location.href = '../login/login.html';
           throw new Error('Authentication required');
         }
@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // =================================================================
     async function initializeApp() {
       // Check if user is authenticated
-      const token = localStorage.getItem('piRateToken');
+      const token = localStorage.localStorage.getItem('piRateToken');
       if (!token) {
         window.location.href = '../login/login.html';
         return;
@@ -1195,45 +1195,24 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderLectures() {
       const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
       const endOfWeek = getEndOfWeek(calendarState.mainViewDate);
-      endOfWeek.setHours(23, 59, 59, 999);
+      endOfWeek.setHours(23, 59, 59, 999); // Ensure we include the whole last day
 
       calendarState.lectures.forEach(lecture => {
-        if (lecture.isRecurring) {
-          const weekdayMap = { MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6, SU: 0 };
-          const rruleWeekdays = lecture.recurrenceRule?.byweekday || [];
-          
-          for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-              if (rruleWeekdays.some(wd => weekdayMap[wd] === dayIndex)) {
-                  const lectureDate = new Date(startOfWeek);
-                  lectureDate.setDate(startOfWeek.getDate() + dayIndex);
+        const lectureDate = new Date(lecture.startTime);
 
-                  const dtstart = new Date(lecture.recurrenceRule.dtstart);
-                  const until = lecture.recurrenceRule.until ? new Date(lecture.recurrenceRule.until) : null;
+        // Check if the lecture falls within the currently displayed week
+        if (lectureDate >= startOfWeek && lectureDate <= endOfWeek) {
+          const dayIndex = (lectureDate.getDay() + 6) % 7; // Monday is 0
 
-                  if (lectureDate >= dtstart && (!until || lectureDate <= until)) {
-                      createEventBlock({
-                          _id: lecture._id,
-                          title: lecture.title,
-                          start: new Date(lecture.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                          end: new Date(lecture.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                          type: 'lecture',
-                      }, dayIndex);
-                  }
-              }
-          }
-        } else {
-          const lectureDate = new Date(lecture.startTime);
-          
-          if (lectureDate >= startOfWeek && lectureDate <= endOfWeek) {
-            const dayIndex = (lectureDate.getDay() + 6) % 7;
-            createEventBlock({
-              _id: lecture._id,
-              title: lecture.title,
-              start: lectureDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-              end: new Date(lecture.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-              type: 'lecture',
-            }, dayIndex);
-          }
+          // Create the visual event block on the calendar
+          createEventBlock({
+            _id: lecture._id,
+            title: lecture.title,
+            start: lectureDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+            end: new Date(lecture.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+            type: 'lecture',
+            isRecurring: lecture.isRecurring
+          }, dayIndex);
         }
       });
     }
@@ -1484,6 +1463,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.deleteLectureBtn.classList.remove('loading');
       }
     }
+
     function generateTimeSlots() {
       if (!elements.timeColumn || !elements.dayColumns) return;
 
