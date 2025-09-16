@@ -1451,10 +1451,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function deleteLecture() {
       if (!calendarState.activeLecture) return;
-    
+
+      const lectureDate = new Date(calendarState.activeLecture.startTime);
       let confirmationMessage = 'დარწმუნებული ხართ, რომ გსურთ ამ ლექციის წაშლა? ეს ქმედება შეუქცევადია.';
       let deleteAllRecurring = true;
-    
+
       if (calendarState.activeLecture.isRecurring) {
         const choice = confirm('ეს არის განმეორებადი ლექციის ნაწილი. გსურთ წაშალოთ მხოლოდ ეს ლექცია თუ მთელი სერია? OK - მთელი სერიის წაშლა, Cancel - მხოლოდ ამ ლექციის წაშლა');
         if (!choice) {
@@ -1462,16 +1463,16 @@ document.addEventListener('DOMContentLoaded', () => {
           confirmationMessage = 'დარწმუნებული ხართ, რომ გსურთ მხოლოდ ამ ლექციის წაშლა?';
         }
       }
-    
+
       if (!confirm(confirmationMessage)) return;
-    
+
       try {
         elements.deleteLectureBtn.classList.add('loading');
         await apiFetch(`/lectures/${calendarState.activeLecture._id}`, {
           method: 'DELETE',
           body: JSON.stringify({
             deleteAllRecurring,
-            dateString: new Date(calendarState.activeLecture.startTime).toISOString().split('T')[0]
+            dateString: lectureDate.toISOString().split('T')[0]
           })
         });
         await handleGroupSelection();
