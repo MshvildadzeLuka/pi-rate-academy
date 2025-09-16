@@ -343,6 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const dayColumn = elements.dayColumns[dayIndex];
 
       state.allEvents.forEach(event => {
+        // Ignore deleted instances of recurring events
         if (event.title && event.title.startsWith('DELETED:')) return;
 
         let render = false;
@@ -351,16 +352,18 @@ document.addEventListener('DOMContentLoaded', () => {
         let endTimeStr = event.endTimeLocal;
 
         if (event.isRecurring) {
-          if (event.dayOfWeek === dayNames[dayIndex]) {
-            isException = exceptions.some(exc =>
-              exc.exceptionDate === dayStr && exc.title === `DELETED: ${event._id}`
-            );
-            if (!isException) {
-              render = true;
-              startTimeStr = ensureTimeFormat(event.recurringStartTime || startTimeStr);
-              endTimeStr = ensureTimeFormat(event.recurringEndTime || endTimeStr);
+          if (event.dayOfWeek) { // From CalendarEvent model
+            if (event.dayOfWeek === dayNames[dayIndex]) {
+              isException = exceptions.some(exc =>
+                exc.exceptionDate === dayStr && exc.title === `DELETED: ${event._id}`
+              );
+              if (!isException) {
+                render = true;
+                startTimeStr = ensureTimeFormat(event.recurringStartTime || startTimeStr);
+                endTimeStr = ensureTimeFormat(event.recurringEndTime || endTimeStr);
+              }
             }
-          } else if (event.type === 'lecture' && event.recurrenceRule) {
+          } else if (event.type === 'lecture' && event.recurrenceRule) { // From Lecture model
             const rruleWeekdays = event.recurrenceRule.byweekday || [];
             const weekdayMap = { MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6, SU: 0 };
             if (rruleWeekdays.some(wd => weekdayMap[wd] === dayIndex)) {
