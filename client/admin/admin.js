@@ -1452,16 +1452,13 @@ document.addEventListener('DOMContentLoaded', () => {
     async function deleteLecture() {
       if (!calendarState.activeLecture) return;
 
-      const lectureDate = new Date(calendarState.activeLecture.startTime);
       let confirmationMessage = 'დარწმუნებული ხართ, რომ გსურთ ამ ლექციის წაშლა? ეს ქმედება შეუქცევადია.';
       let deleteAllRecurring = true;
 
       if (calendarState.activeLecture.isRecurring) {
-        const choice = confirm('ეს არის განმეორებადი ლექციის ნაწილი. გსურთ წაშალოთ მხოლოდ ეს ლექცია თუ მთელი სერია? OK - მთელი სერიის წაშლა, Cancel - მხოლოდ ამ ლექციის წაშლა');
-        if (!choice) {
-          deleteAllRecurring = false;
-          confirmationMessage = 'დარწმუნებული ხართ, რომ გსურთ მხოლოდ ამ ლექციის წაშლა?';
-        }
+        // The previous implementation was buggy. We now force the deletion of the entire series.
+        // A more advanced system would require schema changes to handle exceptions.
+        confirmationMessage = 'ეს არის განმეორებადი ლექციის ნაწილი. გაითვალისწინეთ, რომ მისი წაშლა წაშლის მთელ სერიას. გსურთ გაგრძელება?';
       }
 
       if (!confirm(confirmationMessage)) return;
@@ -1471,8 +1468,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await apiFetch(`/lectures/${calendarState.activeLecture._id}`, {
           method: 'DELETE',
           body: JSON.stringify({
-            deleteAllRecurring,
-            dateString: lectureDate.toISOString().split('T')[0]
+            deleteAllRecurring: true
           })
         });
         await handleGroupSelection();
