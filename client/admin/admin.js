@@ -1451,39 +1451,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function deleteLecture() {
       if (!calendarState.activeLecture) return;
-
-      const lectureDate = new Date(calendarState.activeLecture.startTime);
+    
       let confirmationMessage = 'დარწმუნებული ხართ, რომ გსურთ ამ ლექციის წაშლა? ეს ქმედება შეუქცევადია.';
       let deleteAllRecurring = true;
-      let deleteSingleInstance = false;
-
+    
       if (calendarState.activeLecture.isRecurring) {
-        const userChoice = prompt('ეს არის განმეორებადი ლექციის ნაწილი. გსურთ წაშალოთ მხოლოდ ეს ლექცია თუ მთელი სერია? (აკრიფეთ "ერთი" ან "ყველა")');
-        if (userChoice && userChoice.toLowerCase() === 'ერთი') {
+        const choice = confirm('ეს არის განმეორებადი ლექციის ნაწილი. გსურთ წაშალოთ მხოლოდ ეს ლექცია თუ მთელი სერია? OK - მთელი სერიის წაშლა, Cancel - მხოლოდ ამ ლექციის წაშლა');
+        if (!choice) {
           deleteAllRecurring = false;
-          deleteSingleInstance = true;
           confirmationMessage = 'დარწმუნებული ხართ, რომ გსურთ მხოლოდ ამ ლექციის წაშლა?';
         }
       }
-
+    
       if (!confirm(confirmationMessage)) return;
-
+    
       try {
         elements.deleteLectureBtn.classList.add('loading');
-        
-        const payload = {};
-        if (deleteSingleInstance) {
-          payload.deleteAllRecurring = false;
-          payload.dateString = lectureDate.toISOString().split('T')[0];
-        } else {
-          payload.deleteAllRecurring = true;
-        }
-
         await apiFetch(`/lectures/${calendarState.activeLecture._id}`, {
           method: 'DELETE',
-          body: JSON.stringify(payload)
+          body: JSON.stringify({
+            deleteAllRecurring,
+            dateString: new Date(calendarState.activeLecture.startTime).toISOString().split('T')[0]
+          })
         });
-        
         await handleGroupSelection();
         clearSelection();
         showToast('ლექცია წაიშლა', 'success');
