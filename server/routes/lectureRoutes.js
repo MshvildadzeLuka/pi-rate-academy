@@ -122,4 +122,4 @@ router.delete('/:id', protect, restrictTo('Teacher', 'Admin'), asyncHandler(asyn
     res.json({ success: true, message: 'Lecture removed' });
 }));
 
-module.exports = router;
+module.exports = router; 
