@@ -1452,25 +1452,38 @@ document.addEventListener('DOMContentLoaded', () => {
     async function deleteLecture() {
       if (!calendarState.activeLecture) return;
 
+      const lectureDate = new Date(calendarState.activeLecture.startTime);
       let confirmationMessage = 'დარწმუნებული ხართ, რომ გსურთ ამ ლექციის წაშლა? ეს ქმედება შეუქცევადია.';
       let deleteAllRecurring = true;
+      let deleteSingleInstance = false;
 
       if (calendarState.activeLecture.isRecurring) {
-        // The previous implementation was buggy. We now force the deletion of the entire series.
-        // A more advanced system would require schema changes to handle exceptions.
-        confirmationMessage = 'ეს არის განმეორებადი ლექციის ნაწილი. გაითვალისწინეთ, რომ მისი წაშლა წაშლის მთელ სერიას. გსურთ გაგრძელება?';
+        const userChoice = prompt('ეს არის განმეორებადი ლექციის ნაწილი. გსურთ წაშალოთ მხოლოდ ეს ლექცია თუ მთელი სერია? (აკრიფეთ "ერთი" ან "ყველა")');
+        if (userChoice && userChoice.toLowerCase() === 'ერთი') {
+          deleteAllRecurring = false;
+          deleteSingleInstance = true;
+          confirmationMessage = 'დარწმუნებული ხართ, რომ გსურთ მხოლოდ ამ ლექციის წაშლა?';
+        }
       }
 
       if (!confirm(confirmationMessage)) return;
 
       try {
         elements.deleteLectureBtn.classList.add('loading');
+        
+        const payload = {};
+        if (deleteSingleInstance) {
+          payload.deleteAllRecurring = false;
+          payload.dateString = lectureDate.toISOString().split('T')[0];
+        } else {
+          payload.deleteAllRecurring = true;
+        }
+
         await apiFetch(`/lectures/${calendarState.activeLecture._id}`, {
           method: 'DELETE',
-          body: JSON.stringify({
-            deleteAllRecurring: true
-          })
+          body: JSON.stringify(payload)
         });
+        
         await handleGroupSelection();
         clearSelection();
         showToast('ლექცია წაიშლა', 'success');
@@ -1480,7 +1493,6 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.deleteLectureBtn.classList.remove('loading');
       }
     }
-
     function generateTimeSlots() {
       if (!elements.timeColumn || !elements.dayColumns) return;
 
