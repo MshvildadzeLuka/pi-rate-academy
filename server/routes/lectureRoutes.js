@@ -1,3 +1,4 @@
+
 // Updated lectureRoutes.js - Fix delete method to use deleteOne() instead of remove()
 const express = require('express');
 const router = express.Router();
@@ -8,6 +9,7 @@ const ErrorResponse = require('../utils/errorResponse.js');
 
 const Lecture = require('../models/lectureModel.js');
 const Group = require('../models/groupModel.js');
+const CalendarEvent = require('../models/calendarEventModel.js');
 
 // @desc    Create a new lecture (single document per lecture)
 // @route   POST /api/lectures
@@ -104,19 +106,15 @@ router.delete('/:id', protect, restrictTo('Teacher', 'Admin'), asyncHandler(asyn
     if (!lecture) return next(new ErrorResponse('Lecture not found', 404));
 
     if (lecture.isRecurring && !deleteAllRecurring) {
-        // Logic to delete only a single instance by adding an exception
-        const exceptionDate = new Date(dateString);
-        // Create a new exception event to hide this instance
-        const newException = new Lecture({
-            title: `DELETED: ${lecture.title}`,
-            startTime: exceptionDate,
-            endTime: new Date(exceptionDate.getTime() + (lecture.endTime - lecture.startTime)),
-            assignedGroup: lecture.assignedGroup,
-            instructor: req.user._id,
+        // Corrected Logic: Create a new CalendarEvent document to act as an exception
+        await CalendarEvent.create({
+            userId: req.user._id,
+            creatorId: req.user._id,
+            type: 'busy', // Using 'busy' as a proxy for a cancelled time slot
             isRecurring: false,
-            timezone: lecture.timezone
+            exceptionDate: dateString,
+            title: `DELETED: ${id}` // Link the exception to the original lecture ID
         });
-        await newException.save();
     } else {
         // Delete the entire recurring series or a single non-recurring event
         await lecture.deleteOne();
