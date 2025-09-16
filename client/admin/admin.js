@@ -1195,24 +1195,45 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderLectures() {
       const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
       const endOfWeek = getEndOfWeek(calendarState.mainViewDate);
-      endOfWeek.setHours(23, 59, 59, 999); // Ensure we include the whole last day
+      endOfWeek.setHours(23, 59, 59, 999);
 
       calendarState.lectures.forEach(lecture => {
-        const lectureDate = new Date(lecture.startTime);
+        if (lecture.isRecurring) {
+          const weekdayMap = { MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6, SU: 0 };
+          const rruleWeekdays = lecture.recurrenceRule?.byweekday || [];
+          
+          for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+              if (rruleWeekdays.some(wd => weekdayMap[wd] === dayIndex)) {
+                  const lectureDate = new Date(startOfWeek);
+                  lectureDate.setDate(startOfWeek.getDate() + dayIndex);
 
-        // Check if the lecture falls within the currently displayed week
-        if (lectureDate >= startOfWeek && lectureDate <= endOfWeek) {
-          const dayIndex = (lectureDate.getDay() + 6) % 7; // Monday is 0
+                  const dtstart = new Date(lecture.recurrenceRule.dtstart);
+                  const until = lecture.recurrenceRule.until ? new Date(lecture.recurrenceRule.until) : null;
 
-          // Create the visual event block on the calendar
-          createEventBlock({
-            _id: lecture._id,
-            title: lecture.title,
-            start: lectureDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-            end: new Date(lecture.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-            type: 'lecture',
-            isRecurring: lecture.isRecurring
-          }, dayIndex);
+                  if (lectureDate >= dtstart && (!until || lectureDate <= until)) {
+                      createEventBlock({
+                          _id: lecture._id,
+                          title: lecture.title,
+                          start: new Date(lecture.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                          end: new Date(lecture.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                          type: 'lecture',
+                      }, dayIndex);
+                  }
+              }
+          }
+        } else {
+          const lectureDate = new Date(lecture.startTime);
+          
+          if (lectureDate >= startOfWeek && lectureDate <= endOfWeek) {
+            const dayIndex = (lectureDate.getDay() + 6) % 7;
+            createEventBlock({
+              _id: lecture._id,
+              title: lecture.title,
+              start: lectureDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+              end: new Date(lecture.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+              type: 'lecture',
+            }, dayIndex);
+          }
         }
       });
     }
@@ -1463,7 +1484,6 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.deleteLectureBtn.classList.remove('loading');
       }
     }
-
     function generateTimeSlots() {
       if (!elements.timeColumn || !elements.dayColumns) return;
 
