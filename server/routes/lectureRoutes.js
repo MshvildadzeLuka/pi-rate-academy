@@ -1,4 +1,3 @@
-
 // Updated lectureRoutes.js - Fix delete method to use deleteOne() instead of remove()
 const express = require('express');
 const router = express.Router();
