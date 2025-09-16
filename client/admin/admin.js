@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function apiFetch(endpoint, options = {}) {
-      const token = localStorage.localStorage.getItem('piRateToken');
+      const token = localStorage.getItem('piRateToken');
       const headers = { ...(options.headers || {}) };
 
       if (token) {
@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Handle authentication errors
         if (response.status === 401 || response.status === 403) {
-          localStorage.localStorage.removeItem('piRateToken');
+          localStorage.removeItem('piRateToken');
           window.location.href = '../login/login.html';
           throw new Error('Authentication required');
         }
@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // =================================================================
     async function initializeApp() {
       // Check if user is authenticated
-      const token = localStorage.localStorage.getItem('piRateToken');
+      const token = localStorage.getItem('piRateToken');
       if (!token) {
         window.location.href = '../login/login.html';
         return;
