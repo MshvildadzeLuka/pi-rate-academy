@@ -730,7 +730,7 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       if (!elements.userForm) return;
 
-      const submitBtn = elements.userForm.querySelector('button[type="submit']');
+      const submitBtn = elements.userForm.querySelector('button[type="submit"]');
       submitBtn.classList.add('loading');
 
       try {
@@ -1196,42 +1196,34 @@ document.addEventListener('DOMContentLoaded', () => {
       const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
       const endOfWeek = getEndOfWeek(calendarState.mainViewDate);
       endOfWeek.setHours(23, 59, 59, 999);
-    
+
       calendarState.lectures.forEach(lecture => {
         if (lecture.isRecurring) {
           const weekdayMap = { MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6, SU: 0 };
           const rruleWeekdays = lecture.recurrenceRule?.byweekday || [];
-    
+          
           for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-            if (rruleWeekdays.some(wd => weekdayMap[wd] === dayIndex)) {
-              const lectureDate = new Date(startOfWeek);
-              lectureDate.setDate(startOfWeek.getDate() + dayIndex);
-              const dateString = lectureDate.toISOString().split('T')[0];
-    
-              // Check if this specific recurring instance has a deletion exception
-              const isException = calendarState.memberEvents.some(ex =>
-                ex.exceptionDate === dateString && ex.title === `DELETED: ${lecture._id}`
-              );
-    
-              if (!isException) {
-                const dtstart = new Date(lecture.recurrenceRule.dtstart);
-                const until = lecture.recurrenceRule.until ? new Date(lecture.recurrenceRule.until) : null;
-    
-                if (lectureDate >= dtstart && (!until || lectureDate <= until)) {
-                  createEventBlock({
-                    _id: lecture._id,
-                    title: lecture.title,
-                    start: new Date(lecture.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                    end: new Date(lecture.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                    type: 'lecture',
-                  }, dayIndex);
-                }
+              if (rruleWeekdays.some(wd => weekdayMap[wd] === dayIndex)) {
+                  const lectureDate = new Date(startOfWeek);
+                  lectureDate.setDate(startOfWeek.getDate() + dayIndex);
+
+                  const dtstart = new Date(lecture.recurrenceRule.dtstart);
+                  const until = lecture.recurrenceRule.until ? new Date(lecture.recurrenceRule.until) : null;
+
+                  if (lectureDate >= dtstart && (!until || lectureDate <= until)) {
+                      createEventBlock({
+                          _id: lecture._id,
+                          title: lecture.title,
+                          start: new Date(lecture.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                          end: new Date(lecture.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                          type: 'lecture',
+                      }, dayIndex);
+                  }
               }
-            }
           }
         } else {
           const lectureDate = new Date(lecture.startTime);
-    
+          
           if (lectureDate >= startOfWeek && lectureDate <= endOfWeek) {
             const dayIndex = (lectureDate.getDay() + 6) % 7;
             createEventBlock({
@@ -1389,10 +1381,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const endTime = lecture.endTime ? new Date(lecture.endTime) : null;
         
         if (startTime && endTime && !isNaN(startTime.getTime()) && !isNaN(endTime.getTime())) {
-          elements.sidebarTimeRange.textContent = 
-            `${formatTime(startTime)} - ${formatTime(endTime)}`;
+            elements.sidebarTimeRange.textContent = 
+                `${formatTime(startTime)} - ${formatTime(endTime)}`;
         } else {
-          elements.sidebarTimeRange.textContent = 'Invalid time range';
+            elements.sidebarTimeRange.textContent = 'Invalid time range';
         }
       }
 
@@ -1476,7 +1468,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (isRecurring && !deleteAllRecurring) {
         confirmationMessage = 'დარწმუნებული ხართ, რომ გსურთ მხოლოდ ამ ლექციის წაშლა?';
-      }  
+      } 
       
       if (!confirm(confirmationMessage)) return;
 
@@ -1653,6 +1645,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return new Date(date.setDate(diff));
     }
 
+
     function timeToMinutes(timeStr) {
       if (!timeStr) return 0;
       const [h, m] = timeStr.split(':').map(Number);
@@ -1708,20 +1701,6 @@ document.addEventListener('DOMContentLoaded', () => {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
-    }
-
-    function formatDateForApi(date) {
-      if (!date) return null;
-      
-      // Handle both Date objects and ISO strings
-      const dateObj = typeof date === 'string' ? new Date(date) : date;
-      
-      if (isNaN(dateObj.getTime())) {
-        console.error('Invalid date:', date);
-        return null;
-      }
-      
-      return dateObj.toISOString().split('T')[0];
     }
 
     function showErrorPage(title, message) {
