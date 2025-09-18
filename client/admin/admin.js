@@ -1196,27 +1196,27 @@ document.addEventListener('DOMContentLoaded', () => {
       const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
       const endOfWeek = getEndOfWeek(calendarState.mainViewDate);
       endOfWeek.setHours(23, 59, 59, 999);
-
+    
       calendarState.lectures.forEach(lecture => {
         if (lecture.isRecurring) {
           const weekdayMap = { MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6, SU: 0 };
           const rruleWeekdays = lecture.recurrenceRule?.byweekday || [];
-
+    
           for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
             if (rruleWeekdays.some(wd => weekdayMap[wd] === dayIndex)) {
               const lectureDate = new Date(startOfWeek);
               lectureDate.setDate(startOfWeek.getDate() + dayIndex);
               const dateString = lectureDate.toISOString().split('T')[0];
-
+    
               // Check if this specific recurring instance has a deletion exception
               const isException = calendarState.memberEvents.some(ex =>
                 ex.exceptionDate === dateString && ex.title === `DELETED: ${lecture._id}`
               );
-
+    
               if (!isException) {
                 const dtstart = new Date(lecture.recurrenceRule.dtstart);
                 const until = lecture.recurrenceRule.until ? new Date(lecture.recurrenceRule.until) : null;
-
+    
                 if (lectureDate >= dtstart && (!until || lectureDate <= until)) {
                   createEventBlock({
                     _id: lecture._id,
@@ -1231,7 +1231,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         } else {
           const lectureDate = new Date(lecture.startTime);
-
+    
           if (lectureDate >= startOfWeek && lectureDate <= endOfWeek) {
             const dayIndex = (lectureDate.getDay() + 6) % 7;
             createEventBlock({
