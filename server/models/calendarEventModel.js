@@ -19,6 +19,10 @@ const calendarEventSchema = new Schema(
       enum: ['busy', 'preferred'], // Removed 'lecture'
       required: true,
     },
+    title: { // <-- ADD THIS NEW FIELD
+      type: String,
+      trim: true,
+    },
     // For single events
     startTime: {
       type: Date,
@@ -55,7 +59,6 @@ const calendarEventSchema = new Schema(
 );
 
 calendarEventSchema.index({ userId: 1, startTime: 1, endTime: 1 });
-
 // Pre-save validation for times
 calendarEventSchema.pre('save', function(next) {
   if (this.isRecurring) {
