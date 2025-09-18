@@ -111,7 +111,7 @@ router.delete('/:id', protect, restrictTo('Teacher', 'Admin'), asyncHandler(asyn
             creatorId: req.user._id,
             type: 'busy', // Using 'busy' as a proxy for a cancelled time slot
             isRecurring: false,
-            exceptionDate: dateString,
+            exceptionDate: dateString, 
             title: `DELETED: ${id}` // Link the exception to the original lecture ID
         });
     } else {
