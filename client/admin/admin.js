@@ -913,23 +913,20 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Modal Triggers
-      document.getElementById('add-user-btn')?.addEventListener('click', () => setupUserModal());
-      document.getElementById('add-video-btn')?.addEventListener('click', () => setupVideoModal());
-      document.getElementById('add-group-btn')?.addEventListener('click', () => setupGroupModal());
+      document.getElementById('create-user-btn')?.addEventListener('click', () => setupUserModal());
+      document.getElementById('quick-create-user-btn')?.addEventListener('click', () => setupUserModal());
+      document.getElementById('upload-video-btn')?.addEventListener('click', () => setupVideoModal());
+      document.getElementById('quick-upload-video-btn')?.addEventListener('click', () => setupVideoModal());
+      document.getElementById('create-group-btn')?.addEventListener('click', () => setupGroupModal());
+      document.getElementById('quick-create-group-btn')?.addEventListener('click', () => setupGroupModal());
 
-      // Modal Close Buttons
-      document.querySelectorAll('.modal-close-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const modal = btn.closest('.modal');
-          closeModal(modal);
-        });
-      });
-
-      // Modal Overlay Clicks
-      document.querySelectorAll('.modal').forEach(modal => {
+      // Modal Close Triggers
+      document.querySelectorAll('.modal-overlay').forEach(modal => {
         modal.addEventListener('click', e => {
           if (e.target === modal) closeModal(modal);
         });
+
+        modal.querySelector('.close-modal')?.addEventListener('click', () => closeModal(modal));
       });
 
       // Form Submissions
@@ -937,362 +934,448 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.videoForm?.addEventListener('submit', handleVideoFormSubmit);
       elements.groupForm?.addEventListener('submit', handleGroupFormSubmit);
 
-      // Role toggle for user form
-      const roleSelect = document.getElementById('user-role');
-      const teacherFields = document.getElementById('teacher-fields');
-      if (roleSelect && teacherFields) {
-        roleSelect.addEventListener('change', () => {
-          if (['Teacher', 'Admin'].includes(roleSelect.value)) {
-            teacherFields.classList.remove('hidden');
-          } else {
-            teacherFields.classList.add('hidden');
-          }
-        });
-      }
+      // Dynamic UI Listeners
+      elements.userForm?.querySelector('#user-role')?.addEventListener('change', e => {
+        const teacherFields = document.getElementById('teacher-fields');
+        if (teacherFields) {
+          teacherFields.classList.toggle('hidden', !['Teacher', 'Admin'].includes(e.target.value));
+        }
+      });
     }
 
     // =================================================================
-    // 9. CALENDAR FUNCTIONS
+    // 9. CALENDAR LOGIC - FIXED AND ENHANCED
     // =================================================================
     function initializeCalendar() {
-      if (!elements.groupSelect) return;
+      if (!elements.timeColumn || !elements.dayColumns.length) return;
 
-      // Populate group select
-      elements.groupSelect.innerHTML = '<option value="">-- აირჩიეთ ჯგუფი --</option>' +
-        state.groups.map(g => `<option value="${g._id}">${escapeHTML(g.name)}</option>`).join('');
-
-      // Set up event listeners
-      setupCalendarEventListeners();
-      setupCalendarGrid();
-
-      // Initial load
-      handleGroupSelection();
+      generateTimeSlots();
+      populateGroupDropdown();
+      addCalendarEventListeners();
+      renderCalendarWeek();
     }
 
-    function setupCalendarEventListeners() {
-      // Calendar navigation
+    function addCalendarEventListeners() {
       elements.prevWeekBtn?.addEventListener('click', () => navigateWeek(-1));
       elements.nextWeekBtn?.addEventListener('click', () => navigateWeek(1));
-      elements.todayBtn?.addEventListener('click', () => navigateToToday());
-
-      // Group selection
+      elements.todayBtn?.addEventListener('click', () => navigateWeek(0));
       elements.groupSelect?.addEventListener('change', handleGroupSelection);
+      elements.suggestLecturesBtn?.addEventListener('click', suggestLectures);
 
-      // Calendar interaction
-      setupCalendarSlotInteractions();
+      const calendarGrid = document.querySelector('.calendar-grid-wrapper');
+      calendarGrid?.addEventListener('mousedown', startDragSelection);
+      calendarGrid?.addEventListener('mouseover', duringDragSelection);
+      document.addEventListener('mouseup', endDragSelection);
 
-      // Save/delete lecture buttons
       elements.saveLectureBtn?.addEventListener('click', saveLecture);
       elements.deleteLectureBtn?.addEventListener('click', deleteLecture);
 
-      // Suggest lectures button
-      elements.suggestLecturesBtn?.addEventListener('click', suggestLectures);
+      // Add listener for new recurring checkbox
+      elements.recurringCheckbox?.addEventListener('change', () => {
+        const panelTitle = document.getElementById('calendar-panel-title');
+        if (panelTitle && calendarState.activeLecture) {
+          panelTitle.textContent = elements.recurringCheckbox.checked ? 'ლექციის რედაქტირება' : 'ლექციის ასლის რედაქტირება';
+        }
+      });
     }
 
-    function setupCalendarGrid() {
-      if (!elements.timeColumn || !elements.dayColumns) return;
+    function populateGroupDropdown() {
+      if (!elements.groupSelect) return;
 
-      // Clear existing content
-      elements.timeColumn.innerHTML = '';
-      elements.dayColumns.forEach(col => col.innerHTML = '');
-
-      // Create time slots (8am to 10pm)
-      for (let hour = 8; hour <= 22; hour++) {
-        // Time column
-        const timeSlot = document.createElement('div');
-        timeSlot.className = 'time-slot';
-        timeSlot.textContent = `${hour}:00`;
-        elements.timeColumn.appendChild(timeSlot);
-
-        // Day columns
-        elements.dayColumns.forEach(col => {
-          const slot = document.createElement('div');
-          slot.className = 'calendar-slot';
-          slot.dataset.hour = hour;
-          slot.dataset.day = col.dataset.day;
-          col.appendChild(slot);
-        });
-      }
+      elements.groupSelect.innerHTML = '<option value="">-- აირჩიეთ ჯგუფი --</option>' +
+        state.groups.map(g => `<option value="${g._id}">${escapeHTML(g.name)}</option>`).join('');
     }
 
     function navigateWeek(direction) {
-      const newDate = new Date(calendarState.mainViewDate);
-      newDate.setDate(newDate.getDate() + (direction * 7));
-      calendarState.mainViewDate = newDate;
-      updateWeekDisplay();
-      handleGroupSelection();
+      if (direction === 0) {
+        calendarState.mainViewDate = new Date();
+      } else {
+        calendarState.mainViewDate.setDate(calendarState.mainViewDate.getDate() + (direction * 7));
+      }
+
+      renderCalendarWeek();
     }
 
-    function navigateToToday() {
-      calendarState.mainViewDate = new Date();
-      updateWeekDisplay();
-      handleGroupSelection();
-    }
+    function renderCalendarWeek() {
+      const start = getStartOfWeek(calendarState.mainViewDate);
+      const end = getEndOfWeek(calendarState.mainViewDate);
 
-    function updateWeekDisplay() {
-      if (!elements.weekDisplay) return;
+      if (elements.weekDisplay) {
+        elements.weekDisplay.textContent =
+          `${start.toLocaleDateString('ka-GE', { month: 'short', day: 'numeric' })} - ` +
+          `${end.toLocaleDateString('ka-GE', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      }
 
-      const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(endOfWeek.getDate() + 6);
+      const today = new Date();
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(start);
+        date.setDate(start.getDate() + i);
 
-      const options = { month: 'long', day: 'numeric' };
-      elements.weekDisplay.textContent = `${startOfWeek.toLocaleDateString('ka-GE', options)} - ${endOfWeek.toLocaleDateString('ka-GE', options)}`;
-    }
-
-    function updateCurrentTimeIndicator() {
-      if (!elements.currentTimeIndicator) return;
-
-      const now = new Date();
-      const currentHour = now.getHours();
-      const currentMinute = now.getMinutes();
-      const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1; // Adjust for Monday start
-
-      // Check if current time is within visible hours (8am-10pm)
-      if (currentHour >= 8 && currentHour <= 22) {
-        const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(endOfWeek.getDate() + 6);
-
-        // Only show if current day is in the displayed week
-        if (now >= startOfWeek && now <= endOfWeek) {
-          const position = ((currentHour - 8) * 60 + currentMinute) * 100 / (14 * 60); // 14 hours from 8am to 10pm
-          elements.currentTimeIndicator.style.top = `${position}%`;
-          elements.currentTimeIndicator.style.left = `${(dayOfWeek * 14.2857) + 7.14285}%`; // Center in the day column
-          elements.currentTimeIndicator.classList.remove('hidden');
-          return;
+        const header = document.querySelector(`.day-column-header[data-day-header="${i}"]`);
+        if (header) {
+          header.querySelector('.day-number').textContent = date.getDate();
+          header.classList.toggle('current-day-header', date.toDateString() === today.toDateString());
         }
       }
 
-      elements.currentTimeIndicator.classList.add('hidden');
+      // Only load group data if a group is already selected
+      if (state.selectedGroup) {
+        handleGroupSelection();
+      }
     }
 
-    function setupCalendarSlotInteractions() {
-      const dayColumns = document.querySelectorAll('.day-column');
-      dayColumns.forEach(col => {
-        col.addEventListener('mousedown', handleSlotMouseDown);
-        col.addEventListener('mouseover', handleSlotMouseOver);
-        col.addEventListener('mouseup', handleSlotMouseUp);
+    // UPDATED: Handle group selection with corrected time handling
+    async function handleGroupSelection() {
+      // Clear any existing calendar data from the grid
+      clearAllCalendarEvents();
+      clearSlotClasses();
+      elements.suggestLecturesBtn.disabled = true;
+
+      const groupId = elements.groupSelect.value;
+      if (!groupId) {
+        // If no group is selected, do nothing.
+        return;
+      }
+
+      try {
+        // Store the selected group
+        state.selectedGroup = groupId;
+
+        // Get the group details to find members
+        const group = state.groups.find(g => g._id === groupId);
+        if (!group) return;
+
+        state.selectedGroupMembers = group.users || [];
+
+        // Fetch both the personal availability of all group members and the official lectures
+        // for the selected group in parallel for maximum efficiency.
+        const [availabilityRes, lecturesRes] = await Promise.all([
+          apiFetch(`/calendar-events/group/${groupId}`),
+          apiFetch(`/lectures/group/${groupId}`),
+        ]);
+
+        // Process the raw event data into a structured availability map
+        calendarState.memberEvents = availabilityRes.data || [];
+        calendarState.aggregatedAvailability = aggregateAvailability(calendarState.memberEvents, state.selectedGroupMembers.length);
+
+        // Store the official lectures in the calendar's state
+        calendarState.lectures = lecturesRes.data || [];
+
+        // Render the visual layers onto the calendar grid
+        renderAggregatedAvailability();
+        renderLectures();
+
+        // Enable the suggestion button now that we have availability data
+        elements.suggestLecturesBtn.disabled = false;
+
+      } catch (error) {
+        console.error('Error loading group calendars:', error);
+        showToast('ჯგუფის კალენდრების ჩატვირთვის შეცდომა: ' + error.message, 'error');
+      }
+    }
+
+    /**
+     * Processes an array of raw events from all group members into a simple
+     * day-by-day, slot-by-slot availability map. The rule is: if any one
+     * member is 'busy', the slot is considered 'busy' for the whole group.
+     * @param {Array} memberEvents - Array of event objects from the API.
+     * @param {Number} memberCount - Number of members in the group
+     * @returns {Object} An object representing the aggregated availability.
+     */
+    function aggregateAvailability(memberEvents, memberCount) {
+      const availabilityMap = {};
+      const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
+
+      // 1. Initialize the entire week's grid as 'free'
+      for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+        availabilityMap[dayIndex] = {};
+        // 48 slots per day (24 hours * 2 slots/hour) from 00:00 to 23:30
+        for (let slot = 0; slot < 48; slot++) {
+          availabilityMap[dayIndex][slot] = { busy: 0, preferred: 0 };
+        }
+      }
+
+      // 2. Process each event and mark the corresponding slots
+      memberEvents.forEach(event => {
+        // Skip events that are not 'busy' or 'preferred'
+        if (!['busy', 'preferred'].includes(event.type)) {
+          return;
+        }
+
+        const eventDays = [];
+        let eventStartMin, eventEndMin;
+
+        if (event.isRecurring) {
+          // For recurring events, we apply them to the correct day of the current week
+          const dayIndex = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].indexOf(event.dayOfWeek);
+          if (dayIndex !== -1) {
+            const currentDate = new Date(startOfWeek);
+            currentDate.setDate(startOfWeek.getDate() + dayIndex);
+            const dateString = currentDate.toISOString().split('T')[0];
+
+            // Check if this instance was deleted by an exception
+            const isException = memberEvents.some(ex => ex.exceptionDate === dateString && ex.title === `DELETED: ${event._id}`);
+            if (!isException) {
+              eventDays.push(dayIndex);
+              // Ensure time is in HH:MM format
+              eventStartMin = timeToMinutes(ensureTimeFormat(event.recurringStartTime));
+              eventEndMin = timeToMinutes(ensureTimeFormat(event.recurringEndTime));
+            }
+          }
+        } else if (event.startTime) {
+          // For single-instance events, find which day of the week it falls on
+          const eventDate = new Date(event.startTime);
+          const dayIndex = (eventDate.getDay() + 6) % 7; // Monday is 0
+          eventDays.push(dayIndex);
+          eventStartMin = eventDate.getHours() * 60 + eventDate.getMinutes();
+          eventEndMin = new Date(event.endTime).getHours() * 60 + new Date(event.endTime).getMinutes();
+        }
+
+        // 3. Mark the slots in the availability map
+        for (const day of eventDays) {
+          const startSlot = Math.floor(eventStartMin / 30);
+          const endSlot = Math.ceil(eventEndMin / 30);
+
+          for (let slot = startSlot; slot < endSlot; slot++) {
+            // Count the number of busy and preferred events in each slot
+            if (event.type === 'busy') {
+              availabilityMap[day][slot].busy++;
+            } else if (event.type === 'preferred') {
+              availabilityMap[day][slot].preferred++;
+            }
+          }
+        }
       });
 
-      // Prevent text selection during drag
-      document.addEventListener('selectstart', e => {
-        if (calendarState.isDragging) e.preventDefault();
-      });
+      // 4. Classify each slot based on the counts
+      for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+        for (let slot = 0; slot < 48; slot++) {
+          const counts = availabilityMap[dayIndex][slot];
+
+          if (counts.busy > 0) {
+            // If anyone is busy, mark as busy
+            availabilityMap[dayIndex][slot] = 'busy';
+          } else if (counts.preferred === memberCount) {
+            // If all members prefer this time
+            availabilityMap[dayIndex][slot] = 'preferred-all';
+          } else if (counts.preferred > 0) {
+            // If some members prefer this time
+            availabilityMap[dayIndex][slot] = 'preferred-some';
+          } else {
+            // Free time slot
+            availabilityMap[dayIndex][slot] = 'free';
+          }
+        }
+      }
+
+      return availabilityMap;
     }
 
-    function handleSlotMouseDown(e) {
-      const slot = e.target.closest('.calendar-slot');
-      if (!slot) return;
+    function renderAggregatedAvailability() {
+      clearSlotClasses();
 
-      e.preventDefault();
-      calendarState.isDragging = true;
-      calendarState.selectionStartSlot = slot;
-      clearSelection();
+      // Get all time slots in the calendar
+      const timeSlots = document.querySelectorAll('.time-slot');
 
-      slot.classList.add('selected');
-      calendarState.selectedSlots.add(slot);
-    }
+      timeSlots.forEach(slot => {
+        const dayIndex = parseInt(slot.dataset.day);
+        const time = slot.dataset.time;
+        const slotIndex = timeToSlotIndex(time);
 
-    function handleSlotMouseOver(e) {
-      if (!calendarState.isDragging) return;
+        // Get the availability status for this slot
+        const status = calendarState.aggregatedAvailability[dayIndex]?.[slotIndex] || 'free';
 
-      const slot = e.target.closest('.calendar-slot');
-      if (!slot || calendarState.selectedSlots.has(slot)) return;
-
-      clearSelection();
-
-      // Select all slots between start and current
-      const startSlot = calendarState.selectionStartSlot;
-      const startDay = parseInt(startSlot.dataset.day);
-      const startHour = parseInt(startSlot.dataset.hour);
-      const endDay = parseInt(slot.dataset.day);
-      const endHour = parseInt(slot.dataset.hour);
-
-      const minDay = Math.min(startDay, endDay);
-      const maxDay = Math.max(startDay, endDay);
-      const minHour = Math.min(startHour, endHour);
-      const maxHour = Math.max(startHour, endHour);
-
-      document.querySelectorAll('.calendar-slot').forEach(s => {
-        const day = parseInt(s.dataset.day);
-        const hour = parseInt(s.dataset.hour);
-
-        if (day >= minDay && day <= maxDay && hour >= minHour && hour <= maxHour) {
-          s.classList.add('selected');
-          calendarState.selectedSlots.add(s);
+        // Add the appropriate CSS class
+        if (status !== 'free') {
+          slot.classList.add(`slot-${status}`);
         }
       });
     }
 
-    function handleSlotMouseUp() {
+    function renderLectures() {
+      const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
+      const endOfWeek = getEndOfWeek(calendarState.mainViewDate);
+      endOfWeek.setHours(23, 59, 59, 999);
+    
+      calendarState.lectures.forEach(lecture => {
+        if (lecture.isRecurring) {
+          const weekdayMap = { MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6, SU: 0 };
+          const rruleWeekdays = lecture.recurrenceRule?.byweekday || [];
+    
+          for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+            if (rruleWeekdays.some(wd => weekdayMap[wd] === dayIndex)) {
+              const lectureDate = new Date(startOfWeek);
+              lectureDate.setDate(startOfWeek.getDate() + dayIndex);
+              const dateString = lectureDate.toISOString().split('T')[0];
+    
+              // Check if this specific recurring instance has a deletion exception
+              const isException = calendarState.memberEvents.some(ex =>
+                ex.exceptionDate === dateString && ex.title === `DELETED: ${lecture._id}`
+              );
+    
+              if (!isException) {
+                const dtstart = new Date(lecture.recurrenceRule.dtstart);
+                const until = lecture.recurrenceRule.until ? new Date(lecture.recurrenceRule.until) : null;
+    
+                if (lectureDate >= dtstart && (!until || lectureDate <= until)) {
+                  createEventBlock({
+                    _id: lecture._id,
+                    title: lecture.title,
+                    start: new Date(lecture.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                    end: new Date(lecture.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                    type: 'lecture',
+                  }, dayIndex);
+                }
+              }
+            }
+          }
+        } else {
+          const lectureDate = new Date(lecture.startTime);
+    
+          if (lectureDate >= startOfWeek && lectureDate <= endOfWeek) {
+            const dayIndex = (lectureDate.getDay() + 6) % 7;
+            createEventBlock({
+              _id: lecture._id,
+              title: lecture.title,
+              start: lectureDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+              end: new Date(lecture.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+              type: 'lecture',
+            }, dayIndex);
+          }
+        }
+      });
+    }
+
+    function createEventBlock(event, dayIndex) {
+      const dayColumn = document.querySelector(`.day-column[data-day="${dayIndex}"]`);
+      if (!dayColumn) return;
+
+      const start = timeToMinutes(event.start);
+      const end = timeToMinutes(event.end);
+      const top = ((start - 8 * 60) / 30) * 40;
+      const height = ((end - start) / 30) * 40;
+
+      const eventBlock = document.createElement('div');
+      eventBlock.className = `event-block event-${event.type}`;
+      eventBlock.style.top = `${top}px`;
+      eventBlock.style.height = `${height - 2}px`;
+
+      if (event.title) {
+        eventBlock.innerHTML = `
+          <div class="event-title">${escapeHTML(event.title)}</div>
+          <div class="event-time">${formatTime(event.start, false)} - ${formatTime(event.end, false)}</div>
+        `;
+      }
+
+      if (event.type === 'lecture') {
+        eventBlock.dataset.lectureId = event._id;
+        eventBlock.addEventListener('click', e => {
+          e.stopPropagation();
+          handleLectureClick(event);
+        });
+      }
+
+      dayColumn.appendChild(eventBlock);
+    }
+
+    function startDragSelection(e) {
+      if (e.target.classList.contains('time-slot')) {
+        calendarState.isDragging = true;
+        calendarState.selectionStartSlot = e.target;
+        clearSelection();
+        updateSelection(e.target);
+      }
+    }
+
+    function duringDragSelection(e) {
+      if (calendarState.isDragging &&
+        e.target.classList.contains('time-slot') &&
+        e.target.dataset.day === calendarState.selectionStartSlot.dataset.day) {
+        updateSelection(e.target);
+      }
+    }
+
+    function endDragSelection() {
       if (calendarState.isDragging) {
         calendarState.isDragging = false;
         updateSidebarWithSelection();
       }
     }
 
-    function clearSelection() {
-      calendarState.selectedSlots.forEach(slot => slot.classList.remove('selected'));
+    function updateSelection(endSlot) {
+      document.querySelectorAll('.selection-active').forEach(s => s.classList.remove('selection-active'));
       calendarState.selectedSlots.clear();
-      calendarState.activeLecture = null;
 
-      const panelTitle = document.getElementById('calendar-panel-title');
-      if (panelTitle) panelTitle.textContent = 'კალენდარი';
+      const allSlots = Array.from(
+        document.querySelectorAll(`.time-slot[data-day="${calendarState.selectionStartSlot.dataset.day}"]`)
+      );
+
+      const startIndex = allSlots.indexOf(calendarState.selectionStartSlot);
+      const endIndex = allSlots.indexOf(endSlot);
+
+      if (startIndex === -1 || endIndex === -1) return;
+
+      const [min, max] = [Math.min(startIndex, endIndex), Math.max(startIndex, endIndex)];
+      for (let i = min; i <= max; i++) {
+        allSlots[i].classList.add('selection-active');
+        calendarState.selectedSlots.add(allSlots[i]);
+      }
 
       updateSidebarWithSelection();
     }
 
-    function updateSidebarWithSelection() {
-      if (!elements.sidebarTimeRange) return;
+    function clearSelection() {
+      document.querySelectorAll('.selection-active').forEach(s => s.classList.remove('selection-active'));
+      calendarState.selectedSlots.clear();
+      calendarState.activeLecture = null;
 
-      if (calendarState.selectedSlots.size > 0) {
-        const slots = Array.from(calendarState.selectedSlots);
-        const firstSlot = slots[0];
-        const lastSlot = slots[slots.length - 1];
+      if (elements.lectureTitleInput) elements.lectureTitleInput.value = '';
+      // Reset recurring checkbox
+      if (elements.recurringCheckbox) elements.recurringCheckbox.checked = false;
+      updateSidebarWithSelection();
 
-        const startHour = parseInt(firstSlot.dataset.hour);
-        const endHour = parseInt(lastSlot.dataset.hour) + 1; // +1 to make it inclusive
-
-        elements.sidebarTimeRange.textContent = `${startHour}:00 - ${endHour}:00`;
-
-        if (calendarState.activeLecture) {
-          elements.saveLectureBtn.textContent = 'განახლება';
-          elements.deleteLectureBtn.classList.remove('hidden');
-        } else {
-          elements.saveLectureBtn.textContent = 'შენახვა';
-          elements.deleteLectureBtn.classList.add('hidden');
-        }
-      } else if (calendarState.activeLecture) {
-        // Format times properly
-        const startTime = calendarState.activeLecture.startTime ? new Date(calendarState.activeLecture.startTime) : null;
-        const endTime = calendarState.activeLecture.endTime ? new Date(calendarState.activeLecture.endTime) : null;
-
-        if (startTime && endTime && !isNaN(startTime.getTime()) && !isNaN(endTime.getTime())) {
-          elements.sidebarTimeRange.textContent = `${formatTime(startTime)} - ${formatTime(endTime)}`;
-        } else {
-          elements.sidebarTimeRange.textContent = 'Invalid time range';
-        }
-
-        elements.saveLectureBtn.textContent = 'განახლება';
-        elements.deleteLectureBtn.classList.remove('hidden');
-      } else {
-        elements.sidebarTimeRange.textContent = '--:-- - --:--';
-        elements.saveLectureBtn.textContent = 'შენახვა';
-        elements.deleteLectureBtn.classList.add('hidden');
-      }
+      const panelTitle = document.getElementById('calendar-panel-title');
+      if (panelTitle) panelTitle.textContent = 'ლექციის დაგეგმვა';
     }
 
-    async function handleGroupSelection() {
-      const groupId = elements.groupSelect?.value;
-      if (!groupId) {
-        clearCalendar();
+    function updateSidebarWithSelection() {
+      const hasSelection = calendarState.selectedSlots.size > 0;
+
+      if (elements.saveLectureBtn) elements.saveLectureBtn.disabled = !hasSelection;
+      if (elements.deleteLectureBtn) elements.deleteLectureBtn.disabled = !calendarState.activeLecture;
+
+      if (!hasSelection && !calendarState.activeLecture) {
+        if (elements.sidebarTimeRange) elements.sidebarTimeRange.textContent = 'აირჩიეთ დრო კალენდარზე';
+        // Hide recurring checkbox for new events
+        if (elements.recurringCheckbox) elements.recurringCheckbox.parentElement.classList.add('hidden');
         return;
       }
 
-      try {
-        // Fetch lectures and member availability
-        const [lecturesRes, availabilityRes] = await Promise.all([
-          apiFetch(`/lectures/group/${groupId}`),
-          apiFetch(`/groups/${groupId}/availability`)
-        ]);
-
-        // Handle API responses
-        const lectures = Array.isArray(lecturesRes?.data) ? lecturesRes.data : lecturesRes || [];
-        const availability = availabilityRes?.data || availabilityRes || {};
-
-        // Update state
-        calendarState.lectures = lectures;
-        calendarState.aggregatedAvailability = availability;
-
-        // Render everything
-        renderLectures();
-        renderAvailabilityHeatmap();
-      } catch (error) {
-        console.error('Error loading group data:', error);
-        showToast(`შეცდომა: ${error.message}`, 'error');
+      if (calendarState.activeLecture) {
+        // Show recurring checkbox for editing an existing lecture
+        if (elements.recurringCheckbox) {
+          elements.recurringCheckbox.checked = calendarState.activeLecture.isRecurring;
+          elements.recurringCheckbox.parentElement.classList.remove('hidden');
+        }
+      } else {
+        // Show recurring checkbox for new events
+        if (elements.recurringCheckbox) {
+          elements.recurringCheckbox.checked = false;
+          elements.recurringCheckbox.parentElement.classList.remove('hidden');
+        }
       }
-    }
 
-    function renderLectures() {
-      // Clear existing lectures
-      document.querySelectorAll('.lecture-block').forEach(block => block.remove());
+      // Don't override edit view
+      if (calendarState.activeLecture && !hasSelection) return;
 
-      const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
+      const times = Array.from(calendarState.selectedSlots)
+        .map(s => s.dataset.time)
+        .sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
 
-      calendarState.lectures.forEach(lecture => {
-        const startTime = new Date(lecture.startTime);
-        const endTime = new Date(lecture.endTime);
-
-        // Check if this lecture occurs during the displayed week
-        if (isDateInWeek(startTime, startOfWeek) || isDateInWeek(endTime, startOfWeek)) {
-          createLectureBlock(lecture, startOfWeek);
-        }
-      });
-    }
-
-    function createLectureBlock(lecture, startOfWeek) {
-      const startTime = new Date(lecture.startTime);
-      const endTime = new Date(lecture.endTime);
-
-      const dayOfWeek = startTime.getDay() === 0 ? 6 : startTime.getDay() - 1; // Adjust for Monday start
-      const startHour = startTime.getHours() + (startTime.getMinutes() / 60);
-      const endHour = endTime.getHours() + (endTime.getMinutes() / 60);
-
-      // Calculate position and size
-      const dayColumn = document.querySelector(`.day-column[data-day="${dayOfWeek}"]`);
-      if (!dayColumn) return;
-
-      const block = document.createElement('div');
-      block.className = 'lecture-block';
-      block.style.top = `${((startHour - 8) / 14) * 100}%`;
-      block.style.height = `${((endHour - startHour) / 14) * 100}%`;
-      block.innerHTML = `
-        <div class="lecture-title">${escapeHTML(lecture.title)}</div>
-        <div class="lecture-time">${formatTime(startTime)}-${formatTime(endTime)}</div>
-      `;
-
-      // Add click handler
-      block.addEventListener('click', (e) => {
-        e.stopPropagation();
-        handleLectureClick(lecture);
-      });
-
-      dayColumn.appendChild(block);
-    }
-
-    function renderAvailabilityHeatmap() {
-      // Clear existing heatmap
-      document.querySelectorAll('.calendar-slot').forEach(slot => {
-        slot.classList.remove('high-availability', 'medium-availability', 'low-availability');
-      });
-
-      const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
-
-      // Apply availability data to slots
-      Object.entries(calendarState.aggregatedAvailability).forEach(([dateStr, availabilityData]) => {
-        const date = new Date(dateStr);
-        const dayOfWeek = date.getDay() === 0 ? 6 : date.getDay() - 1; // Adjust for Monday start
-
-        // Only show for current week
-        if (isDateInWeek(date, startOfWeek)) {
-          Object.entries(availabilityData).forEach(([hour, availability]) => {
-            const slot = document.querySelector(`.calendar-slot[data-day="${dayOfWeek}"][data-hour="${hour}"]`);
-            if (slot) {
-              if (availability >= 0.7) slot.classList.add('high-availability');
-              else if (availability >= 0.4) slot.classList.add('medium-availability');
-              else if (availability > 0) slot.classList.add('low-availability');
-            }
-          });
-        }
-      });
-    }
-
-    function clearCalendar() {
-      document.querySelectorAll('.lecture-block').forEach(block => block.remove());
-      document.querySelectorAll('.calendar-slot').forEach(slot => {
-        slot.classList.remove('high-availability', 'medium-availability', 'low-availability');
-      });
+      if (elements.sidebarTimeRange && times.length > 0) {
+        elements.sidebarTimeRange.textContent =
+          `${formatTime(times[0])} - ${formatTime(minutesToTime(timeToMinutes(times[times.length - 1]) + 30))}`;
+      }
     }
 
     function handleLectureClick(lecture) {
@@ -1320,81 +1403,63 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function saveLecture() {
-      const groupId = elements.groupSelect.value;
-      if (!groupId) {
-        showToast('გთხოვთ აირჩიოთ ჯგუფი', 'error');
+      const slots = Array.from(calendarState.selectedSlots);
+
+      // Guard against saving without a selection or title
+      if (slots.length === 0 || !elements.lectureTitleInput.value.trim()) {
+        showToast("გთხოვთ აირჩიოთ დროის სლოტი კალენდარზე და მიუთითოთ სათაური.", "error");
         return;
       }
 
-      if (!elements.lectureTitleInput.value.trim()) {
-        showToast('გთხოვთ მიუთითოთ ლექციის სახელი', 'error');
-        return;
+      // Find the start date and time from the first selected slot
+      const startSlot = slots[0];
+      const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
+      const lectureDate = new Date(startOfWeek);
+      lectureDate.setDate(startOfWeek.getDate() + parseInt(startSlot.dataset.day));
+
+      const [startH, startM] = startSlot.dataset.time.split(':');
+      const startTime = new Date(lectureDate.setHours(parseInt(startH), parseInt(startM)));
+
+      // Calculate end time based on the number of 30-minute slots selected
+      const endTime = new Date(startTime.getTime() + slots.length * 30 * 60000);
+
+      const isRecurring = elements.recurringCheckbox.checked;
+
+      const payload = {
+        title: elements.lectureTitleInput.value.trim(),
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        groupId: elements.groupSelect.value,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        isRecurring
+      };
+
+      if (isRecurring) {
+        const dayOfWeek = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'][parseInt(startSlot.dataset.day)];
+        payload.recurrenceRule = {
+          freq: 'WEEKLY',
+          dtstart: startTime.toISOString(),
+          byweekday: [dayOfWeek]
+        };
       }
 
-      if (calendarState.selectedSlots.size === 0 && !calendarState.activeLecture) {
-        showToast('გთხოვთ აირჩიოთ დროის სლოტები', 'error');
-        return;
-      }
+      // Determine if we are creating a new lecture or updating an existing one
+      const isUpdating = !!calendarState.activeLecture;
+      const endpoint = isUpdating ? `/lectures/${calendarState.activeLecture._id}` : '/lectures';
+      const method = isUpdating ? 'PUT' : 'POST';
 
       try {
         elements.saveLectureBtn.classList.add('loading');
+        await apiFetch(endpoint, { method, body: JSON.stringify(payload) });
 
-        const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
-        const isRecurring = elements.recurringCheckbox?.checked || false;
-
-        let startTime, endTime;
-
-        if (calendarState.selectedSlots.size > 0) {
-          // New lecture or rescheduling existing one
-          const slots = Array.from(calendarState.selectedSlots);
-          const firstSlot = slots[0];
-          const lastSlot = slots[slots.length - 1];
-
-          const dayIndex = parseInt(firstSlot.dataset.day);
-          const startHour = parseInt(firstSlot.dataset.hour);
-          const endHour = parseInt(lastSlot.dataset.hour) + 1; // +1 to make inclusive
-
-          startTime = new Date(startOfWeek);
-          startTime.setDate(startOfWeek.getDate() + dayIndex);
-          startTime.setHours(startHour, 0, 0, 0);
-
-          endTime = new Date(startTime);
-          endTime.setHours(endHour, 0, 0, 0);
-        } else if (calendarState.activeLecture) {
-          // Editing existing lecture without changing time
-          startTime = new Date(calendarState.activeLecture.startTime);
-          endTime = new Date(calendarState.activeLecture.endTime);
-        }
-
-        const lectureData = {
-          title: elements.lectureTitleInput.value.trim(),
-          startTime: startTime.toISOString(),
-          endTime: endTime.toISOString(),
-          groupId: groupId,
-          isRecurring: isRecurring
-        };
-
-        let response;
-        if (calendarState.activeLecture) {
-          // Update existing lecture
-          response = await apiFetch(`/lectures/${calendarState.activeLecture._id}`, {
-            method: 'PUT',
-            body: JSON.stringify(lectureData)
-          });
-        } else {
-          // Create new lecture
-          response = await apiFetch('/lectures', {
-            method: 'POST',
-            body: JSON.stringify(lectureData)
-          });
-        }
-
-        // Refresh lectures
+        // After successfully saving, refresh the entire calendar view for the group
         await handleGroupSelection();
+
+        // Reset the selection and sidebar form
         clearSelection();
-        showToast(calendarState.activeLecture ? 'ლექცია განახლებულია' : 'ლექცია დაემატა', 'success');
+        showToast(isUpdating ? 'ლექცია განახლებულია' : 'ლექცია დაემატა', 'success');
       } catch (error) {
-        console.error('Save lecture error:', error);
+        console.error(`Error saving lecture:`, error);
         showToast(`შეცდომა: ${error.message}`, 'error');
       } finally {
         elements.saveLectureBtn.classList.remove('loading');
@@ -1411,8 +1476,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (isRecurring && !deleteAllRecurring) {
         confirmationMessage = 'დარწმუნებული ხართ, რომ გსურთ მხოლოდ ამ ლექციის წაშლა?';
-      }
-
+      }  
+      
       if (!confirm(confirmationMessage)) return;
 
       try {
@@ -1454,75 +1519,195 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    async function suggestLectures() {
-      const groupId = elements.groupSelect.value;
-      if (!groupId) {
-        showToast('გთხოვთ აირჩიოთ ჯგუფი', 'error');
+    function generateTimeSlots() {
+      if (!elements.timeColumn || !elements.dayColumns) return;
+
+      elements.timeColumn.innerHTML = '';
+      elements.dayColumns.forEach(col => col.innerHTML = '');
+
+      for (let hour = 8; hour <= 22; hour++) {
+        const timeLabel = document.createElement('div');
+        timeLabel.className = 'time-label';
+        timeLabel.textContent = formatTime(`${hour}:00`);
+        timeLabel.style.gridRow = `${(hour - 8) * 2 + 1} / span 2`;
+        elements.timeColumn.appendChild(timeLabel);
+      }
+
+      let slotIndex = 0;
+      for (let hour = 8; hour <= 22; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+          const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+
+          elements.dayColumns.forEach((col, dayIndex) => {
+            const slot = document.createElement('div');
+            slot.className = 'time-slot';
+            slot.dataset.time = time;
+            slot.dataset.day = dayIndex;
+            slot.dataset.slotIndex = slotIndex;
+            col.appendChild(slot);
+          });
+
+          slotIndex++;
+        }
+      }
+    }
+
+    function updateCurrentTimeIndicator() {
+      if (!elements.currentTimeIndicator) return;
+
+      const now = new Date();
+      const dayOfWeek = (now.getDay() + 6) % 7;
+      const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
+      const endOfWeek = getEndOfWeek(calendarState.mainViewDate);
+
+      if (now < startOfWeek || now > endOfWeek) {
+        elements.currentTimeIndicator.style.display = 'none';
         return;
       }
 
-      try {
-        elements.suggestLecturesBtn.classList.add('loading');
-
-        const response = await apiFetch(`/lectures/suggest/${groupId}`, {
-          method: 'POST',
-          body: JSON.stringify({
-            weekStart: getStartOfWeek(calendarState.mainViewDate).toISOString()
-          })
-        });
-
-        if (response && response.success) {
-          showToast('რეკომენდაციები მომზადებულია', 'success');
-          // Refresh to see any automatically created lectures
-          await handleGroupSelection();
-        } else {
-          showToast('რეკომენდაციების მომზადება ვერ მოხერხდა', 'error');
-        }
-      } catch (error) {
-        console.error('Suggest lectures error:', error);
-        showToast(`შეცდომა: ${error.message}`, 'error');
-      } finally {
-        elements.suggestLecturesBtn.classList.remove('loading');
+      const timeInMinutes = now.getHours() * 60 + now.getMinutes();
+      if (timeInMinutes < 8 * 60 || timeInMinutes > 22 * 60) {
+        elements.currentTimeIndicator.style.display = 'none';
+        return;
       }
+
+      const top = ((timeInMinutes - 8 * 60) / 30) * 40;
+      const dayColumn = document.querySelector(`.day-column[data-day="${dayOfWeek}"]`);
+      if (!dayColumn) return;
+
+      elements.currentTimeIndicator.style.top = `${top}px`;
+      elements.currentTimeIndicator.style.left = `${dayColumn.offsetLeft}px`;
+      elements.currentTimeIndicator.style.display = 'block';
+    }
+
+    function suggestLectures() {
+      clearSuggestions();
+      const suggestions = [];
+      const SLOT_DURATION = 4; // 2 hours = 4 * 30min
+
+      for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+        const dayAvail = calendarState.aggregatedAvailability[dayIndex] || {};
+        const numSlots = Object.keys(dayAvail).length;
+
+        for (let startIdx = 0; startIdx <= numSlots - SLOT_DURATION; startIdx++) {
+          const block = Array.from(
+            { length: SLOT_DURATION },
+            (_, i) => dayAvail[startIdx + i]
+          );
+
+          if (!block.includes('busy')) {
+            let score = block.filter(s => s === 'preferred-all').length * 3 +
+              block.filter(s => s === 'preferred-some').length * 2 +
+              block.filter(s => s === 'free').length * 1;
+            suggestions.push({ dayIndex, startIdx, score });
+          }
+        }
+      }
+
+      if (suggestions.length === 0) {
+        showToast('2-საათიანი თავისუფალი სლოტები რეკომენდაციისთვის არ მოიძებნა.', 'info');
+        return;
+      }
+
+      // Sort by score (highest first), pick top 3
+      suggestions.sort((a, b) => b.score - a.score);
+      const topSuggestions = suggestions.slice(0, 3);
+
+      topSuggestions.forEach(sug => {
+        const dayColumn = document.querySelector(`.day-column[data-day="${sug.dayIndex}"]`);
+        if (!dayColumn) return;
+
+        const slots = Array.from(dayColumn.querySelectorAll('.time-slot'));
+        for (let i = 0; i < SLOT_DURATION; i++) {
+          if (slots[sug.startIdx + i]) {
+            slots[sug.startIdx + i].classList.add('slot-suggested');
+          }
+        }
+      });
+
+      showToast('ნაპოვნია რეკომენდირებული დროის სლოტები', 'success');
     }
 
     // =================================================================
-    // 10. HELPER FUNCTIONS
+    // 10. UTILITY FUNCTIONS
     // =================================================================
-    function escapeHTML(str) {
-      if (!str) return '';
-      return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
-
-    function formatTime(date) {
-      if (!date || isNaN(date.getTime())) return '--:--';
-      return date.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' });
-    }
-
     function getStartOfWeek(date) {
       const d = new Date(date);
+      d.setHours(0, 0, 0, 0);
       const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
       return new Date(d.setDate(diff));
+    }
+
+    function getEndOfWeek(date) {
+      const start = getStartOfWeek(date);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      return end;
     }
 
     function getStartOfWeekFromYearAndWeek(year, week) {
       const date = new Date(year, 0, 1 + (week - 1) * 7);
-      const dayOfWeek = date.getDay();
-      const startOfWeek = new Date(date);
-      startOfWeek.setDate(date.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-      return startOfWeek;
+      const day = date.getDay();
+      const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+      return new Date(date.setDate(diff));
     }
 
-    function isDateInWeek(date, startOfWeek) {
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(endOfWeek.getDate() + 6);
-      return date >= startOfWeek && date <= endOfWeek;
+    function timeToMinutes(timeStr) {
+      if (!timeStr) return 0;
+      const [h, m] = timeStr.split(':').map(Number);
+      return h * 60 + m;
+    }
+
+    function timeToSlotIndex(timeStr) {
+      if (!timeStr) return 0;
+      const [h, m] = timeStr.split(':').map(Number);
+      return (h - 8) * 2 + (m === 30 ? 1 : 0);
+    }
+
+    function minutesToTime(minutes) {
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    }
+
+    function formatTime(timeStr, includePeriod = true) {
+      if (!timeStr) return '';
+
+      let h, m;
+      if (typeof timeStr === 'string') {
+        [h, m] = timeStr.split(':').map(Number);
+      } else {
+        h = timeStr.getHours();
+        m = timeStr.getMinutes();
+      }
+
+      if (!includePeriod) return `${h}:${String(m).padStart(2, '0')}`;
+
+      const period = h >= 12 ? 'PM' : 'AM';
+      const hour12 = h % 12 || 12;
+      return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
+    }
+
+    function ensureTimeFormat(timeStr) {
+      if (!timeStr) return '00:00';
+
+      if (typeof timeStr === 'string') {
+        const [hours, minutes] = timeStr.split(':');
+        return `${String(hours).padStart(2, '0')}:${String(minutes || '00').padStart(2, '0')}`;
+      }
+
+      return '00:00';
+    }
+
+    function escapeHTML(str) {
+      if (!str) return '';
+      return str.toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
 
     function formatDateForApi(date) {
@@ -1541,70 +1726,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showErrorPage(title, message) {
       document.body.innerHTML = `
-        <div class="error-page">
-          <div class="error-content">
-            <h1>${title}</h1>
-            <p>${message}</p>
-            <button id="retry-button" class="btn btn--primary">სცადეთ თავიდან</button>
-          </div>
+        <div class="error-container">
+          <h1>${escapeHTML(title)}</h1>
+          <p>${escapeHTML(message)}</p>
+          <a href="/login/login.html" class="btn btn--primary">ავტორიზაციის გვერდზე დაბრუნება</a>
         </div>
       `;
+    }
 
-      document.getElementById('retry-button').addEventListener('click', () => {
-        window.location.reload();
+    function clearAllCalendarEvents() {
+      document.querySelectorAll('.event-block').forEach(el => el.remove());
+    }
+
+    function clearSlotClasses() {
+      document.querySelectorAll('.time-slot').forEach(slot => {
+        slot.classList.remove(
+          'slot-busy',
+          'slot-preferred-all',
+          'slot-preferred-some',
+          'slot-suggested'
+        );
       });
     }
 
-    function renderWeeklyDetails(weekData) {
-      const container = document.getElementById('student-points-content');
-      if (!container) return;
-
-      const weekStart = getStartOfWeekFromYearAndWeek(weekData._id.year, weekData._id.week);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 6);
-
-      container.innerHTML = `
-        <div class="detail-header">
-          <button class="btn btn--secondary" id="back-to-points-btn">
-            <i class="fa-solid fa-arrow-left"></i> უკან
-          </button>
-          <h2>კვირა ${weekData._id.week}, ${weekData._id.year} (${weekStart.toLocaleDateString('ka-GE')} - ${weekEnd.toLocaleDateString('ka-GE')})</h2>
-        </div>
-        <div class="weekly-details">
-          <div class="total-points-card">
-            <i class="fas fa-trophy"></i>
-            <div>
-              <h3>სულ დაგროვებული ქულები</h3>
-              <p>${weekData.totalPointsEarned} / ${weekData.totalPointsPossible}</p>
-            </div>
-          </div>
-          <h3>დავალებების ქულები</h3>
-          <div class="assignments-list">
-            ${weekData.assignments && weekData.assignments.length > 0 ? 
-              weekData.assignments.map(assignment => `
-                <div class="assignment-item">
-                  <div class="assignment-info">
-                    <h4>${escapeHTML(assignment.title)}</h4>
-                    <p>${assignment.description ? escapeHTML(assignment.description) : 'No description'}</p>
-                  </div>
-                  <div class="assignment-points ${assignment.pointsEarned === assignment.pointsPossible ? 'full-points' : ''}">
-                    ${assignment.pointsEarned} / ${assignment.pointsPossible}
-                  </div>
-                </div>
-              `).join('') : 
-              '<p class="empty-list-message">დავალებები არ მოიძებნა ამ კვირაში.</p>'
-            }
-          </div>
-        </div>
-      `;
-
-      document.getElementById('back-to-points-btn').addEventListener('click', () => {
-        renderStudentPointsDetails(state.students.find(s => s._id === state.selectedStudent?._id));
-      });
+    function clearSuggestions() {
+      document.querySelectorAll('.slot-suggested').forEach(slot =>
+        slot.classList.remove('slot-suggested')
+      );
     }
 
     // =================================================================
-    // 11. INITIALIZE THE APPLICATION
+    // 11. START THE APPLICATION
     // =================================================================
     initializeApp();
-});
+  });
