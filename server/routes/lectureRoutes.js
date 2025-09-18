@@ -1,4 +1,3 @@
-// Updated lectureRoutes.js - Fix delete method to use deleteOne() instead of remove()
 const express = require('express');
 const router = express.Router();
 const { protect, restrictTo } = require('../middleware/authMiddleware.js');
@@ -121,3 +120,5 @@ router.delete('/:id', protect, restrictTo('Teacher', 'Admin'), asyncHandler(asyn
 
     res.json({ success: true, message: 'Lecture removed' });
 }));
+
+module.exports = router;
