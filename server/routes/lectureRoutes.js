@@ -110,8 +110,8 @@ router.delete('/:id', protect, restrictTo('Teacher', 'Admin'), asyncHandler(asyn
             userId: req.user._id,
             creatorId: req.user._id,
             type: 'busy', // Using 'busy' as a proxy for a cancelled time slot
-            isRecurring: false,
-            exceptionDate: dateString, 
+            isRecurring: false, // <-- THIS IS THE CRITICAL ADDITION
+            exceptionDate: dateString,
             title: `DELETED: ${id}` // Link the exception to the original lecture ID
         });
     } else {
@@ -121,5 +121,3 @@ router.delete('/:id', protect, restrictTo('Teacher', 'Admin'), asyncHandler(asyn
 
     res.json({ success: true, message: 'Lecture removed' });
 }));
-
-module.exports = router; 
