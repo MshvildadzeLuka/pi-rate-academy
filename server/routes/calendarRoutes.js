@@ -1,4 +1,3 @@
-// Updated calendarRoutes.js to include group lectures in my-schedule endpoint
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
@@ -181,4 +180,5 @@ router.delete('/:id', protect, asyncHandler(async (req, res, next) => {
         res.status(200).json({ success: true, data: {} });
     }
 }));
+
 module.exports = router;
