@@ -1201,29 +1201,37 @@ document.addEventListener('DOMContentLoaded', () => {
         if (lecture.isRecurring) {
           const weekdayMap = { MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6, SU: 0 };
           const rruleWeekdays = lecture.recurrenceRule?.byweekday || [];
-          
+
           for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-              if (rruleWeekdays.some(wd => weekdayMap[wd] === dayIndex)) {
-                  const lectureDate = new Date(startOfWeek);
-                  lectureDate.setDate(startOfWeek.getDate() + dayIndex);
+            if (rruleWeekdays.some(wd => weekdayMap[wd] === dayIndex)) {
+              const lectureDate = new Date(startOfWeek);
+              lectureDate.setDate(startOfWeek.getDate() + dayIndex);
+              const dateString = lectureDate.toISOString().split('T')[0];
 
-                  const dtstart = new Date(lecture.recurrenceRule.dtstart);
-                  const until = lecture.recurrenceRule.until ? new Date(lecture.recurrenceRule.until) : null;
+              // Check if this specific recurring instance has a deletion exception
+              const isException = calendarState.memberEvents.some(ex =>
+                ex.exceptionDate === dateString && ex.title === `DELETED: ${lecture._id}`
+              );
 
-                  if (lectureDate >= dtstart && (!until || lectureDate <= until)) {
-                      createEventBlock({
-                          _id: lecture._id,
-                          title: lecture.title,
-                          start: new Date(lecture.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                          end: new Date(lecture.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                          type: 'lecture',
-                      }, dayIndex);
-                  }
+              if (!isException) {
+                const dtstart = new Date(lecture.recurrenceRule.dtstart);
+                const until = lecture.recurrenceRule.until ? new Date(lecture.recurrenceRule.until) : null;
+
+                if (lectureDate >= dtstart && (!until || lectureDate <= until)) {
+                  createEventBlock({
+                    _id: lecture._id,
+                    title: lecture.title,
+                    start: new Date(lecture.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                    end: new Date(lecture.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                    type: 'lecture',
+                  }, dayIndex);
+                }
               }
+            }
           }
         } else {
           const lectureDate = new Date(lecture.startTime);
-          
+
           if (lectureDate >= startOfWeek && lectureDate <= endOfWeek) {
             const dayIndex = (lectureDate.getDay() + 6) % 7;
             createEventBlock({
@@ -1452,16 +1460,12 @@ document.addEventListener('DOMContentLoaded', () => {
     async function deleteLecture() {
       if (!calendarState.activeLecture) return;
 
-      const lectureDate = new Date(calendarState.activeLecture.startTime);
+      const isRecurring = calendarState.activeLecture.isRecurring;
+      const deleteAllRecurring = elements.recurringCheckbox.checked;
       let confirmationMessage = 'დარწმუნებული ხართ, რომ გსურთ ამ ლექციის წაშლა? ეს ქმედება შეუქცევადია.';
-      let deleteAllRecurring = true;
 
-      if (calendarState.activeLecture.isRecurring) {
-        const choice = confirm('ეს არის განმეორებადი ლექციის ნაწილი. გსურთ წაშალოთ მხოლოდ ეს ლექცია თუ მთელი სერია? OK - მთელი სერიის წაშლა, Cancel - მხოლოდ ამ ლექციის წაშლა');
-        if (!choice) {
-          deleteAllRecurring = false;
-          confirmationMessage = 'დარწმუნებული ხართ, რომ გსურთ მხოლოდ ამ ლექციის წაშლა?';
-        }
+      if (isRecurring && !deleteAllRecurring) {
+        confirmationMessage = 'დარწმუნებული ხართ, რომ გსურთ მხოლოდ ამ ლექციის წაშლა?';
       }
 
       if (!confirm(confirmationMessage)) return;
@@ -1472,8 +1476,8 @@ document.addEventListener('DOMContentLoaded', () => {
           method: 'DELETE',
           body: JSON.stringify({
             deleteAllRecurring,
-            dateString: lectureDate.toISOString().split('T')[0]
-          })
+            dateString: new Date(calendarState.activeLecture.startTime).toISOString().split('T')[0],
+          }),
         });
         await handleGroupSelection();
         clearSelection();
