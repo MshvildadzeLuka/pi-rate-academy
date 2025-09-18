@@ -30,10 +30,10 @@ router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
         ...event,
         startTimeLocal: event.isRecurring ?
             ensureTimeFormat(event.recurringStartTime) :
-            new Date(event.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }),
+            (event.startTime ? new Date(event.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }) : null),
         endTimeLocal: event.isRecurring ?
             ensureTimeFormat(event.recurringEndTime) :
-            new Date(event.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
+            (event.endTime ? new Date(event.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }) : null)
     }));
 
     // Get lectures for user's groups with date range if provided
@@ -72,12 +72,12 @@ router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
         groupName: lecture.assignedGroup.name,
         isRecurring: lecture.isRecurring,
         recurrenceRule: lecture.recurrenceRule,
-        startTimeLocal: new Date(lecture.startTime).toLocaleTimeString('en-GB', {
+        startTimeLocal: lecture.startTime ? new Date(lecture.startTime).toLocaleTimeString('en-GB', {
             hour: '2-digit', minute: '2-digit', hour12: false
-        }),
-        endTimeLocal: new Date(lecture.endTime).toLocaleTimeString('en-GB', {
+        }) : null,
+        endTimeLocal: lecture.endTime ? new Date(lecture.endTime).toLocaleTimeString('en-GB', {
             hour: '2-digit', minute: '2-digit', hour12: false
-        })
+        }) : null,
     }));
 
     const allEvents = [...formattedPersonal, ...formattedLectures];
