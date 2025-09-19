@@ -97,7 +97,7 @@ body {
     overflow-x: hidden;
 }
 
-/* ===== MOBILE FIRST STYLES ===== */
+/* ===== MOBILE-FIRST STYLES (for screens < 768px) ===== */
 .mobile-header {
     display: flex;
     align-items: center;
