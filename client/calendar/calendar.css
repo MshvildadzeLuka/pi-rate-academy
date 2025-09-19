@@ -18,12 +18,6 @@
   box-sizing: border-box;
 }
 
-html, body {
-  /* Fix: Prevents the main page from scrolling on desktop */
-  height: 100%;
-  overflow: hidden;
-}
-
 body { 
   background-color: var(--background-primary); 
   font-family: 'Poppins', sans-serif; 
@@ -812,4 +806,6 @@ select:focus {
     flex-direction: column;
     gap: 8px;
   }
+}
+
 }
