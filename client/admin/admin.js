@@ -1263,7 +1263,9 @@ document.addEventListener('DOMContentLoaded', () => {
         eventBlock.dataset.lectureId = event._id;
         eventBlock.addEventListener('click', e => {
           e.stopPropagation();
-          handleLectureClick(event);
+          const lectureFromState = calendarState.lectures.find(l => l._id === event._id);
+          // Pass the dayIndex to the click handler
+          handleLectureClick(lectureFromState, dayIndex); 
         });
       }
 
@@ -1376,16 +1378,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (elements.lectureTitleInput) elements.lectureTitleInput.value = lecture.title;
       if (elements.sidebarTimeRange) {
-        // Format times properly
-        const startTime = lecture.startTime ? new Date(lecture.startTime) : null;
-        const endTime = lecture.endTime ? new Date(lecture.endTime) : null;
-        
-        if (startTime && endTime && !isNaN(startTime.getTime()) && !isNaN(endTime.getTime())) {
-            elements.sidebarTimeRange.textContent = 
-                `${formatTime(startTime)} - ${formatTime(endTime)}`;
-        } else {
-            elements.sidebarTimeRange.textContent = 'Invalid time range';
-        }
+        elements.sidebarTimeRange.textContent = `${formatTime(lecture.start)} - ${formatTime(lecture.end)}`;
       }
 
       const panelTitle = document.getElementById('calendar-panel-title');
@@ -1475,8 +1468,9 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         elements.deleteLectureBtn.classList.add('loading');
         
-        // Get the correct date for this instance
         let dateString;
+        const lectureDate = new Date(calendarState.activeLecture.startTime);
+
         if (isRecurring && !deleteAllRecurring) {
           // For a specific instance of a recurring event, calculate the date
           const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
@@ -1486,9 +1480,9 @@ document.addEventListener('DOMContentLoaded', () => {
           dateString = instanceDate.toISOString().split('T')[0];
         } else {
           // For single events or all recurring events, use the original start time
-          dateString = new Date(calendarState.activeLecture.startTime).toISOString().split('T')[0];
+          dateString = lectureDate.toISOString().split('T')[0];
         }
-
+        
         await apiFetch(`/lectures/${calendarState.activeLecture._id}`, {
           method: 'DELETE',
           headers: {
@@ -1510,7 +1504,6 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.deleteLectureBtn.classList.remove('loading');
       }
     }
-
     function generateTimeSlots() {
       if (!elements.timeColumn || !elements.dayColumns) return;
 
