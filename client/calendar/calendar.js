@@ -31,7 +31,12 @@ document.addEventListener('DOMContentLoaded', () => {
     recurringLabelText: document.getElementById('recurring-label-text'),
     gridWrapper: document.querySelector('.calendar-grid-wrapper'),
     currentTimeIndicator: document.getElementById('current-time-indicator'),
-    eventForm: document.getElementById('event-form')
+    eventForm: document.getElementById('event-form'),
+    mobileNav: document.getElementById('mobile-nav'),
+    mobileViewToggle: document.getElementById('mobile-view-toggle'),
+    mobileViewText: document.getElementById('mobile-view-text'),
+    dayHeaders: document.querySelectorAll('.day-column-header'),
+    allDayColumns: document.querySelectorAll('.day-column'),
   };
 
   // Show notification toast
@@ -246,6 +251,20 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMiniCalendar();
     renderEventsForWeek();
     updateSidebarUI('add');
+    setupMobileLayout();
+  }
+
+  function setupMobileLayout() {
+    // Hide all day columns except the first one initially on mobile
+    elements.allDayColumns.forEach((col, index) => {
+      col.classList.toggle('active', index === 0);
+    });
+    // Hide all day headers except the first one initially on mobile
+    elements.dayHeaders.forEach((header, index) => {
+      header.classList.toggle('active', index === 0);
+    });
+    // Toggle mobile navigation text
+    elements.mobileViewText.textContent = elements.dayHeaders[0].querySelector('.day-name').textContent;
   }
 
   function renderWeekDisplay() {
@@ -262,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    document.querySelectorAll('.day-column-header').forEach((header, index) => {
+    elements.dayHeaders.forEach((header, index) => {
       const headerDate = new Date(startOfWeek);
       headerDate.setDate(startOfWeek.getDate() + index);
 
@@ -490,6 +509,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.addEventListener('mouseup', endSelection);
     document.addEventListener('touchend', endSelection);
+    document.addEventListener('touchmove', handleTouchMove, { passive: true });
+
+    // Mobile view toggle for day columns
+    elements.dayHeaders.forEach((header, index) => {
+      header.addEventListener('click', () => {
+        elements.dayHeaders.forEach(h => h.classList.remove('active'));
+        elements.allDayColumns.forEach(c => c.classList.remove('active'));
+        header.classList.add('active');
+        elements.allDayColumns[index].classList.add('active');
+        elements.mobileViewText.textContent = header.querySelector('.day-name').textContent;
+      });
+    });
 
     // Prevent form submission
     elements.eventForm.addEventListener('submit', (e) => {
@@ -503,9 +534,42 @@ document.addEventListener('DOMContentLoaded', () => {
   let touchStartY = 0;
 
   function handleTouchStart(e) {
+    if (e.touches.length > 1) return;
     touchStartX = e.touches[0].clientX;
     touchStartY = e.touches[0].clientY;
     startSelection(e);
+  }
+
+  function handleTouchMove(e) {
+    if (e.touches.length > 1) return;
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const diffX = Math.abs(touchStartX - currentX);
+    const diffY = Math.abs(touchStartY - currentY);
+  
+    // Check if it's a drag gesture rather than a selection attempt
+    if (diffY > diffX * 2) { 
+      endSelection();
+      return;
+    }
+  
+    if (diffX > 50) { // Horizontal swipe detected
+      if (currentX < touchStartX) {
+        elements.nextWeekBtn.click();
+      } else {
+        elements.prevWeekBtn.click();
+      }
+      touchStartX = currentX; // Reset to prevent multiple rapid swipes
+      return;
+    }
+  
+    // Continue selection if it's a vertical drag
+    if (state.isDragging) {
+      const targetSlot = document.elementFromPoint(currentX, currentY)?.closest('.time-slot');
+      if (targetSlot) {
+        continueSelection({ target: targetSlot });
+      }
+    }
   }
 
   function startSelection(e) {
