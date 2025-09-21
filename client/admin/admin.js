@@ -1412,6 +1412,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const payload = {
         title: elements.lectureTitleInput.value.trim(),
+        // Correctly pass the ISO strings with local timezone
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         groupId: elements.groupSelect.value,
@@ -1427,6 +1428,29 @@ document.addEventListener('DOMContentLoaded', () => {
           byweekday: [dayOfWeek]
         };
       }
+
+      // Determine if we are creating a new lecture or updating an existing one
+      const isUpdating = !!calendarState.activeLecture;
+      const endpoint = isUpdating ? `/lectures/${calendarState.activeLecture._id}` : '/lectures';
+      const method = isUpdating ? 'PUT' : 'POST';
+
+      try {
+        elements.saveLectureBtn.classList.add('loading');
+        await apiFetch(endpoint, { method, body: JSON.stringify(payload) });
+
+        // After successfully saving, refresh the entire calendar view for the group
+        await handleGroupSelection();
+
+        // Reset the selection and sidebar form
+        clearSelection();
+        showToast(isUpdating ? 'ლექცია განახლებულია' : 'ლექცია დაემატა', 'success');
+      } catch (error) {
+        console.error(`Error saving lecture:`, error);
+        showToast(`შეცდომა: ${error.message}`, 'error');
+      } finally {
+        elements.saveLectureBtn.classList.remove('loading');
+      }
+    }
 
       // Determine if we are creating a new lecture or updating an existing one
       const isUpdating = !!calendarState.activeLecture;
