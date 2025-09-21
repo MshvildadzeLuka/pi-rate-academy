@@ -94,29 +94,39 @@
                     </button>
                 </div>
             </div>
-            
-            <div id="mobile-day-nav" class="mobile-day-nav hidden">
-                <button class="mobile-day-nav-btn active" data-day="0">ორშ</button>
-                <button class="mobile-day-nav-btn" data-day="1">სამ</button>
-                <button class="mobile-day-nav-btn" data-day="2">ოთხ</button>
-                <button class="mobile-day-nav-btn" data-day="3">ხუთ</button>
-                <button class="mobile-day-nav-btn" data-day="4">პარ</button>
-                <button class="mobile-day-nav-btn" data-day="5">შაბ</button>
-                <button class="mobile-day-nav-btn" data-day="6">კვი</button>
-            </div>
-
+    
             <div class="calendar-grid-wrapper">
                 <div class="calendar-grid">
                     <div id="current-time-indicator" class="current-time-indicator"></div>
-                    
                     <div class="grid-header time-column-header"></div>
-                    <div class="grid-header day-column-header active" data-day-header="0"><span class="day-name">ორშ</span><span class="day-number"></span></div>
-                    <div class="grid-header day-column-header" data-day-header="1"><span class="day-name">სამ</span><span class="day-number"></span></div>
-                    <div class="grid-header day-column-header" data-day-header="2"><span class="day-name">ოთხ</span><span class="day-number"></span></div>
-                    <div class="grid-header day-column-header" data-day-header="3"><span class="day-name">ხუთ</span><span class="day-number"></span></div>
-                    <div class="grid-header day-column-header" data-day-header="4"><span class="day-name">პარ</span><span class="day-number"></span></div>
-                    <div class="grid-header day-column-header" data-day-header="5"><span class="day-name">შაბ</span><span class="day-number"></span></div>
-                    <div class="grid-header day-column-header" data-day-header="6"><span class="day-name">კვი</span><span class="day-number"></span></div>
+                    <div class="grid-header day-column-header active" data-day-header="0">
+                        <span class="day-name">ორშ</span>
+                        <span class="day-number"></span>
+                    </div>
+                    <div class="grid-header day-column-header" data-day-header="1">
+                        <span class="day-name">სამ</span>
+                        <span class="day-number"></span>
+                    </div>
+                    <div class="grid-header day-column-header" data-day-header="2">
+                        <span class="day-name">ოთხ</span>
+                        <span class="day-number"></span>
+                    </div>
+                    <div class="grid-header day-column-header" data-day-header="3">
+                        <span class="day-name">ხუთ</span>
+                        <span class="day-number"></span>
+                    </div>
+                    <div class="grid-header day-column-header" data-day-header="4">
+                        <span class="day-name">პარ</span>
+                        <span class="day-number"></span>
+                    </div>
+                    <div class="grid-header day-column-header" data-day-header="5">
+                        <span class="day-name">შაბ</span>
+                        <span class="day-number"></span>
+                    </div>
+                    <div class="grid-header day-column-header" data-day-header="6">
+                        <span class="day-name">კვი</span>
+                        <span class="day-number"></span>
+                    </div>
                     
                     <div class="time-column" id="time-column"></div>
                     <div class="day-column active" data-day="0"></div>
@@ -128,11 +138,21 @@
                     <div class="day-column" data-day="6"></div>
                 </div>
             </div>
-            
-            <button id="add-event-fab" class="fab hidden" aria-label="ახალი მოვლენის დამატება">
-                <i class="fas fa-plus"></i>
-            </button>
         </main>
+    </div>
+
+    <button id="add-event-fab" class="fab hidden" aria-label="ახალი მოვლენის დამატება">
+        <i class="fas fa-plus"></i>
+    </button>
+    
+    <div id="mobile-nav" class="mobile-nav hidden">
+        <button id="mobile-view-toggle" class="mobile-nav-btn active">
+            <i class="fas fa-calendar-alt"></i>
+            <span id="mobile-view-text">ორშ</span>
+        </button>
+        <button id="mobile-add-event" class="mobile-nav-btn">
+            <i class="fas fa-plus"></i>
+        </button>
     </div>
 
     <div id="event-modal-backdrop" class="modal-overlay hidden">
