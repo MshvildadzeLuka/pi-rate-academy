@@ -46,16 +46,16 @@ router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
     let groupLectures = [];
     if (userGroupIds.length > 0) {
         try {
-            let lectureQuery = { assignedGroup: { $in: userGroupIds } };
-            if (start && end) {
-                lectureQuery.$or = [
+            // FIX: This query has been corrected to work for both single and recurring events.
+            let lectureQuery = {
+                assignedGroup: { $in: userGroupIds },
+                // This condition correctly handles events that either end after the start of the week
+                // or are recurring with no end date.
+                $or: [
                     { isRecurring: true },
-                    {
-                        startTime: { $gte: new Date(start) },
-                        endTime: { $lte: new Date(end) }
-                    }
-                ];
-            }
+                    { endTime: { $gte: new Date(start) } }
+                ]
+            };
             const lectures = await Lecture.find(lectureQuery)
                 .populate('assignedGroup', 'name')
                 .lean();
