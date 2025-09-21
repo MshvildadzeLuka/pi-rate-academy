@@ -20,6 +20,7 @@
     <div id="header-placeholder"></div>
 
     <div class="page-wrapper">
+        <!-- Calendar Sidebar for Desktop -->
         <aside class="calendar-sidebar">
             <div id="mini-calendar">
                 <div class="mini-calendar-header">
@@ -59,6 +60,10 @@
                                 <span>პრიორიტეტული</span>
                             </label>
                         </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="event-title-input">მოვლენის სათაური</label>
+                        <input type="text" id="event-title-input" placeholder="მაგ., საოფისე საათები">
                     </div>
                     <div class="input-group">
                         <label class="custom-checkbox">
@@ -139,7 +144,7 @@
                     </div>
                     
                     <div class="time-column" id="time-column"></div>
-                    <div class="day-column" data-day="0"></div>
+                    <div class="day-column active" data-day="0"></div>
                     <div class="day-column" data-day="1"></div>
                     <div class="day-column" data-day="2"></div>
                     <div class="day-column" data-day="3"></div>
@@ -151,10 +156,12 @@
         </main>
     </div>
 
+    <!-- Mobile Floating Action Button -->
     <button id="add-event-fab" class="fab hidden" aria-label="ახალი მოვლენის დამატება">
         <i class="fas fa-plus"></i>
     </button>
     
+    <!-- Mobile event creation Modal -->
     <div id="event-modal-backdrop" class="modal-overlay hidden">
         <div id="mobile-event-modal" class="modal">
             <div class="modal-header">
@@ -165,7 +172,7 @@
             </div>
             <div class="modal-body">
                 <form id="mobile-event-form">
-                    <p id="mobile-time-range">აირჩიე დრო კალენდარზე</p>
+                    <p id="mobile-time-range" class="mobile-time-range-text">აირჩიე დრო კალენდარზე</p>
                     <div class="input-group">
                         <label for="mobile-event-type-select">მოვლენის ტიპი</label>
                         <select id="mobile-event-type-select" name="eventType">
@@ -174,10 +181,14 @@
                         </select>
                     </div>
                     <div class="input-group">
+                        <label for="mobile-event-title-input">მოვლენის სათაური</label>
+                        <input type="text" id="mobile-event-title-input" placeholder="მაგ., საოფისე საათები">
+                    </div>
+                    <div class="input-group">
                         <label class="custom-checkbox">
-                            <input type="checkbox" id="mobile-recurring-checkbox" name="isRecurring">
+                            <input type="checkbox" id="mobile-recurring-checkbox">
                             <span class="checkbox-box"></span>
-                            <span>გამოყენება ყველა კვირაში</span>
+                            <span id="mobile-recurring-label-text">გამოყენება ყველა კვირაში</span>
                         </label>
                     </div>
                     <div class="form-actions">
