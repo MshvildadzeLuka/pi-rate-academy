@@ -1,8 +1,6 @@
-
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = '/api';
     const GEORGIAN_WEEKDAYS_SHORT = ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'];
-
     let state = {
         mainViewDate: new Date(),
         miniCalDate: new Date(),
@@ -15,7 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
         isRecurring: false,
         currentMobileDay: 0
     };
-
     const elements = {
         timeColumn: document.getElementById('time-column'),
         dayColumns: document.querySelectorAll('.day-column'),
@@ -53,7 +50,6 @@ document.addEventListener('DOMContentLoaded', () => {
         mobileEventTitleInput: document.getElementById('mobile-event-title-input'),
         mobileRecurringCheckbox: document.getElementById('mobile-recurring-checkbox')
     };
-
     function showNotification(message, type = 'info') {
         const toast = document.createElement('div');
         toast.className = `notification-toast ${type}`;
@@ -69,15 +65,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 300);
         }, 3000);
     }
-
     async function apiFetch(endpoint, options = {}) {
         const token = localStorage.getItem('piRateToken');
-        const headers = { 'Content-Type': 'application/json', ...options.headers };
+        const headers = {
+            'Content-Type': 'application/json',
+            ...options.headers
+        };
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
         }
         try {
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                ...options,
+                headers
+            });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.message || `API error: ${response.status}`);
@@ -89,7 +90,6 @@ document.addEventListener('DOMContentLoaded', () => {
             throw error;
         }
     }
-
     async function initializeCalendar() {
         try {
             await fetchUserGroups();
@@ -104,7 +104,6 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotification('Calendar initialization failed', 'error');
         }
     }
-
     async function fetchUserGroups() {
         try {
             const groupsData = await apiFetch('/groups/my-groups');
@@ -114,13 +113,14 @@ document.addEventListener('DOMContentLoaded', () => {
             state.userGroups = [];
         }
     }
-
     async function fetchEvents() {
         const startOfWeek = getStartOfWeek(state.mainViewDate);
         const endOfWeek = getEndOfWeek(startOfWeek);
         try {
             document.body.classList.add('loading');
-            const eventsResponse = await apiFetch(`/calendar-events/my-schedule?start=${startOfWeek.toISOString()}&end=${endOfWeek.toISOString()}`);
+            const eventsResponse = await apiFetch(
+                `/calendar-events/my-schedule?start=${startOfWeek.toISOString()}&end=${endOfWeek.toISOString()}`
+            );
             state.allEvents = eventsResponse?.data || [];
         } catch (error) {
             console.error('Failed to load events:', error);
@@ -129,12 +129,9 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.remove('loading');
         }
     }
-
     async function saveEvent(isMobile = false) {
         let selectedSlots = state.selectedSlots;
-        let type = document.querySelector('input[name="event-type"]:checked').value;
-        let title = elements.eventTitleInput.value || `${type} time`;
-        let isRecurring = elements.recurringCheckbox.checked;
+        let type, title, isRecurring;
         if (isMobile) {
             type = elements.mobileEventTypeSelect.value;
             title = elements.mobileEventTitleInput.value || `${type} time`;
@@ -143,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const startTime = elements.manualStartTime.value;
                 const endTime = elements.manualEndTime.value;
                 if (!startTime || !endTime) {
-                    showNotification('გთხოვთ აირჩიოთ დროის დიაპაზონი', 'error');
+                    showNotification('Please select a time range', 'error');
                     return;
                 }
                 const dayIndex = state.currentMobileDay;
@@ -159,9 +156,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 selectedSlots = state.selectedSlots;
             }
+        } else {
+            type = document.querySelector('input[name="event-type"]:checked').value;
+            title = elements.eventTitleInput.value || `${type} time`;
+            isRecurring = elements.recurringCheckbox.checked;
         }
         if (selectedSlots.size === 0) {
-            showNotification('გთხოვთ აირჩიოთ დროის დიაპაზონი', 'error');
+            showNotification('Please select a time range', 'error');
             return;
         }
         const slots = Array.from(selectedSlots).sort((a, b) => timeToMinutes(a.dataset.time) - timeToMinutes(b.dataset.time));
@@ -203,15 +204,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isMobile) {
                 closeEventModal();
             }
-            showNotification('მოვლენა წარმატებით შეინახა!', 'success');
+            showNotification('Event saved successfully!', 'success');
         } catch (error) {
             console.error('Failed to save event:', error);
-            showNotification('მოვლენის შენახვა ვერ მოხერხდა: ' + error.message, 'error');
+            showNotification('Failed to save event: ' + error.message, 'error');
         }
     }
-
     async function deleteEvent(eventId) {
-        if (!confirm('დარწმუნებული ხართ რომ გსურთ ამ მოვლენის წაშლა?')) return;
+        if (!confirm('Are you sure you want to delete this event?')) return;
         const event = state.allEvents.find(e => e._id === eventId);
         if (!event) return;
         const isRecurring = elements.recurringCheckbox.checked;
@@ -226,13 +226,12 @@ document.addEventListener('DOMContentLoaded', () => {
             state.allEvents = state.allEvents.filter(e => e._id !== eventId);
             clearSelection();
             renderEventsForWeek();
-            showNotification('მოვლენა წარმატებით წაიშალა!', 'success');
+            showNotification('Event deleted successfully!', 'success');
         } catch (error) {
             console.error('Failed to delete event:', error);
-            showNotification('მოვლენის წაშლა ვერ მოხერხდა: ' + error.message, 'error');
+            showNotification('Failed to delete event: ' + error.message, 'error');
         }
     }
-
     function generateTimeSlots() {
         elements.timeColumn.innerHTML = '';
         elements.dayColumns.forEach((column, dayIndex) => {
@@ -257,7 +256,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
     function renderAll() {
         renderWeekDisplay();
         renderDayHeaders();
@@ -267,7 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setupMobileLayout();
         checkMobileView();
     }
-
     function setupMobileLayout() {
         state.currentMobileDay = 0;
         checkMobileView();
@@ -277,7 +274,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
-
     function checkMobileView() {
         const isMobile = window.innerWidth <= 992;
         if (isMobile) {
@@ -295,7 +291,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     }
-
     function setActiveMobileDay(dayIndex) {
         state.currentMobileDay = dayIndex;
         elements.mobileDayNavBtns.forEach((btn, index) => {
@@ -320,14 +315,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
     function renderWeekDisplay() {
         const start = getStartOfWeek(state.mainViewDate);
         const end = new Date(start);
         end.setDate(end.getDate() + 6);
         elements.weekDisplay.textContent = `${start.toLocaleDateString('ka-GE', { month: 'long', day: 'numeric' })} - ${end.toLocaleDateString('ka-GE', { month: 'long', day: 'numeric', year: 'numeric' })}`;
     }
-
     function renderDayHeaders() {
         const startOfWeek = getStartOfWeek(state.mainViewDate);
         const today = new Date();
@@ -345,7 +338,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
     function renderMiniCalendar() {
         const month = state.miniCalDate.getMonth();
         const year = state.miniCalDate.getFullYear();
@@ -381,7 +373,6 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.miniCalDaysGrid.appendChild(day);
         }
     }
-
     function renderEventsForWeek() {
         const startOfWeek = getStartOfWeek(state.mainViewDate);
         const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -414,12 +405,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     }
-
     function renderEventBlock(eventData, dayColumn) {
         const startMinutes = timeToMinutes(eventData.startTime);
         const endMinutes = timeToMinutes(eventData.endTime);
         const durationMinutes = endMinutes - startMinutes;
-        const slotHeight = 45;
+        const slotHeight = elements.dayColumns[0].querySelector('.time-slot').clientHeight;
         const top = ((startMinutes - 8 * 60) / 30) * slotHeight;
         const height = (durationMinutes / 30) * slotHeight - 2;
         const eventBlock = document.createElement('div');
@@ -440,7 +430,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         dayColumn.appendChild(eventBlock);
     }
-
     function addEventListeners() {
         elements.prevWeekBtn.addEventListener('click', async () => {
             state.mainViewDate.setDate(state.mainViewDate.getDate() - 7);
@@ -500,14 +489,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         window.addEventListener('resize', checkMobileView);
     }
-
     function toggleManualTimeInput() {
         elements.manualTimeInputs.classList.toggle('hidden');
         if (!elements.manualTimeInputs.classList.contains('hidden')) {
             clearSelection(false);
         }
     }
-
     function updateSelectionFromManualTime() {
         const startTime = elements.manualStartTime.value;
         const endTime = elements.manualEndTime.value;
@@ -532,7 +519,6 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.sidebarTimeRange.textContent = `${formatTime(startTime)} - ${formatTime(endTime)}`;
         elements.saveEventBtn.disabled = false;
     }
-
     function openEventModal() {
         elements.eventModalBackdrop.classList.remove('hidden');
         if (state.selectedSlots.size > 0) {
@@ -546,21 +532,17 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.mobileTimeRange.textContent = 'Select time on calendar';
         }
     }
-
     function closeEventModal() {
         elements.eventModalBackdrop.classList.add('hidden');
     }
-
     let touchStartX = 0;
     let touchStartY = 0;
-
     function handleTouchStart(e) {
         if (e.touches.length > 1) return;
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
         startSelection(e);
     }
-
     function handleTouchMove(e) {
         if (e.touches.length > 1) return;
         const currentX = e.touches[0].clientX;
@@ -583,11 +565,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.isDragging) {
             const targetSlot = document.elementFromPoint(currentX, currentY)?.closest('.time-slot');
             if (targetSlot) {
-                continueSelection({ target: targetSlot });
+                continueSelection({
+                    target: targetSlot
+                });
             }
         }
     }
-
     function startSelection(e) {
         if (e.target.classList.contains('event-block')) {
             const eventId = e.target.dataset.eventId;
@@ -607,7 +590,6 @@ document.addEventListener('DOMContentLoaded', () => {
         state.selectionStartSlot = targetSlot;
         updateSelection(targetSlot);
     }
-
     function continueSelection(e) {
         if (!state.isDragging) return;
         const targetSlot = e.type.includes('touch') ?
@@ -616,13 +598,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!targetSlot || targetSlot.dataset.day !== state.selectionStartSlot.dataset.day) return;
         updateSelection(targetSlot);
     }
-
     function endSelection() {
         if (!state.isDragging) return;
         state.isDragging = false;
         updateSidebarWithSelection();
     }
-
     function handleEventClick(eventData) {
         clearSelection(false);
         state.activeEvent = eventData;
@@ -635,7 +615,6 @@ document.addEventListener('DOMContentLoaded', () => {
             eventElement.classList.add('active-event');
         }
     }
-
     function updateSidebarUI(mode = 'add', eventData = null) {
         if (mode === 'add') {
             elements.saveEventBtn.disabled = state.selectedSlots.size === 0;
@@ -649,10 +628,16 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (mode === 'edit') {
             const start = eventData.isRecurring ?
                 eventData.recurringStartTime :
-                new Date(eventData.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                new Date(eventData.startTime).toLocaleTimeString('en-GB', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
             const end = eventData.isRecurring ?
                 eventData.recurringEndTime :
-                new Date(eventData.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                new Date(eventData.endTime).toLocaleTimeString('en-GB', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
             elements.sidebarTimeRange.textContent = `${formatTime(start)} - ${formatTime(end)}`;
             elements.deleteEventBtn.disabled = false;
             elements.saveEventBtn.disabled = true;
@@ -662,7 +647,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelector(`input[name="event-type"][value="${eventData.type}"]`).checked = true;
         }
     }
-
     function updateSelection(endSlot) {
         if (!state.selectionStartSlot || endSlot.dataset.day !== state.selectionStartSlot.dataset.day) return;
         document.querySelectorAll('.selection-active').forEach(s => s.classList.remove('selection-active'));
@@ -678,7 +662,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         updateSidebarWithSelection();
     }
-
     function updateSidebarWithSelection() {
         const hasSelection = state.selectedSlots.size > 0;
         if (elements.saveEventBtn) elements.saveEventBtn.disabled = !hasSelection;
@@ -695,7 +678,6 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.sidebarTimeRange.textContent = `${formatTime(times[0])} - ${formatTime(minutesToTime(timeToMinutes(times[times.length - 1]) + 30))}`;
         }
     }
-
     function clearSelection(resetSidebar = true) {
         state.selectedSlots.forEach(s => s.classList.remove('selection-active'));
         state.selectedSlots.clear();
@@ -703,26 +685,22 @@ document.addEventListener('DOMContentLoaded', () => {
         state.activeEvent = null;
         if (resetSidebar) updateSidebarUI('add');
     }
-
     const getEndTime = (startTimeStr) => {
         const [h, m] = startTimeStr.split(':').map(Number);
         const d = new Date();
         d.setHours(h, m + 30);
         return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     };
-
     const timeToMinutes = (timeStr) => {
         if (!timeStr || !timeStr.includes(':')) return 0;
         const [h, m] = timeStr.split(':').map(Number);
         return h * 60 + m;
     };
-
     const minutesToTime = (minutes) => {
         const h = Math.floor(minutes / 60);
         const m = minutes % 60;
         return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
     };
-
     const formatTime = (timeStr, includePeriod = true) => {
         if (!timeStr) return '';
         let h, m;
@@ -744,7 +722,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const hour12 = h % 12 || 12;
         return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
     };
-
     const ensureTimeFormat = (timeStr) => {
         if (!timeStr) return '00:00';
         if (typeof timeStr === 'string') {
@@ -753,7 +730,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return '00:00';
     };
-
     const getStartOfWeek = (date) => {
         const d = new Date(date);
         d.setHours(0, 0, 0, 0);
@@ -761,14 +737,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const diff = d.getDate() - day + (day === 0 ? -6 : 1);
         return new Date(d.setDate(diff));
     };
-
     const getEndOfWeek = (date) => {
         const start = getStartOfWeek(date);
         const end = new Date(start);
         end.setDate(start.getDate() + 6);
         return end;
     };
-
     function updateCurrentTimeIndicator() {
         const now = new Date();
         const dayOfWeek = (now.getDay() + 6) % 7;
