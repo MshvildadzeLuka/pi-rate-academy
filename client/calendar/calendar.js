@@ -1,3 +1,4 @@
+
 document.addEventListener('DOMContentLoaded', () => {
   const API_BASE_URL = '/api';
 
@@ -10,7 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedSlots: new Set(),
     activeEvent: null,
     userGroups: [],
-    isRecurring: false
+    isRecurring: false,
+    isMobile: window.innerWidth <= 767,
+    activeDayIndex: (new Date().getDay() + 6) % 7 // Monday is 0
   };
 
   const elements = {
@@ -32,6 +35,11 @@ document.addEventListener('DOMContentLoaded', () => {
     gridWrapper: document.querySelector('.calendar-grid-wrapper'),
     currentTimeIndicator: document.getElementById('current-time-indicator'),
     eventForm: document.getElementById('event-form'),
+    mobileDayNav: document.getElementById('mobile-day-nav'),
+    mobileDayNavButtons: document.querySelectorAll('.mobile-day-nav-btn'),
+    addEventFab: document.getElementById('add-event-fab'),
+    eventModalBackdrop: document.getElementById('event-modal-backdrop'),
+    mobileEventForm: document.getElementById('mobile-event-form')
   };
 
   function showNotification(message, type = 'info') {
@@ -90,6 +98,8 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAll();
       addEventListeners();
 
+      elements.addEventFab.classList.toggle('hidden', !state.isMobile);
+
       updateCurrentTimeIndicator();
       setInterval(updateCurrentTimeIndicator, 60000);
     } catch (error) {
@@ -129,18 +139,45 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function saveEvent() {
-    if (state.selectedSlots.size === 0) return;
+    const isMobile = elements.eventModalBackdrop.classList.contains('active');
+    const form = isMobile ? elements.mobileEventForm : elements.eventForm;
+    
+    let type, isRecurring, startH, startM, endH, endM, dayIndex;
 
-    const type = document.querySelector('input[name="event-type"]:checked').value;
-    const isRecurring = elements.recurringCheckbox.checked;
+    if (isMobile) {
+      const formData = new FormData(form);
+      type = formData.get('eventType');
+      isRecurring = formData.get('isRecurring') === 'on';
+      const startTimeParts = formData.get('startTime').split(':').map(Number);
+      const endTimeParts = formData.get('endTime').split(':').map(Number);
+      startH = startTimeParts[0];
+      startM = startTimeParts[1];
+      endH = endTimeParts[0];
+      endM = endTimeParts[1];
+      dayIndex = state.activeDayIndex;
+    } else {
+      if (state.selectedSlots.size === 0) {
+        showNotification('აირჩიე დრო კალენდარზე', 'error');
+        return;
+      }
+      type = form.querySelector('input[name="event-type"]:checked').value;
+      isRecurring = elements.recurringCheckbox.checked;
 
-    const slots = Array.from(state.selectedSlots).sort((a, b) => timeToMinutes(a.dataset.time) - timeToMinutes(b.dataset.time));
-    const startSlot = slots[0];
-    const endSlot = slots[slots.length - 1];
+      const slots = Array.from(state.selectedSlots).sort((a, b) => timeToMinutes(a.dataset.time) - timeToMinutes(b.dataset.time));
+      const startSlot = slots[0];
+      const endSlot = slots[slots.length - 1];
 
-    const dayIndex = parseInt(startSlot.dataset.day);
+      dayIndex = parseInt(startSlot.dataset.day);
+      const startTimeParts = startSlot.dataset.time.split(':').map(Number);
+      const endTimeParts = getEndTime(endSlot.dataset.time).split(':').map(Number);
+      startH = startTimeParts[0];
+      startM = startTimeParts[1];
+      endH = endTimeParts[0];
+      endM = endTimeParts[1];
+    }
+
     const dayOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'][dayIndex];
-
+    
     const payload = {
       type,
       isRecurring,
@@ -149,18 +186,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (isRecurring) {
       payload.dayOfWeek = dayOfWeek;
-      payload.recurringStartTime = startSlot.dataset.time;
-      payload.recurringEndTime = getEndTime(endSlot.dataset.time);
+      payload.recurringStartTime = `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}`;
+      payload.recurringEndTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
     } else {
       const startOfWeek = getStartOfWeek(state.mainViewDate);
       const eventDate = new Date(startOfWeek);
       eventDate.setDate(eventDate.getDate() + dayIndex);
       const startTime = new Date(eventDate);
-      const [startH, startM] = startSlot.dataset.time.split(':').map(Number);
       startTime.setHours(startH, startM, 0, 0);
 
       const endTime = new Date(eventDate);
-      const [endH, endM] = getEndTime(endSlot.dataset.time).split(':').map(Number);
       endTime.setHours(endH, endM, 0, 0);
 
       payload.startTime = startTime.toISOString();
@@ -177,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
       clearSelection();
       renderEventsForWeek();
       showNotification('Event saved successfully!', 'success');
+      if (isMobile) elements.eventModalBackdrop.classList.remove('active');
     } catch (error) {
       console.error('Failed to save event:', error);
       showNotification('Failed to save event: ' + error.message, 'error');
@@ -245,22 +281,17 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function setupMobileLayout() {
-    // Determine current day of the week
-    const today = new Date();
-    const dayIndex = (today.getDay() + 6) % 7;
-  
-    // Update mobile navigation text to the current day
-    if (elements.dayHeaders[dayIndex]) {
-        elements.mobileViewText.textContent = elements.dayHeaders[dayIndex].querySelector('.day-name').textContent;
+    if (state.isMobile) {
+        elements.dayColumns.forEach((col, index) => {
+            col.classList.toggle('active', index === state.activeDayIndex);
+        });
+        elements.dayHeaders.forEach((header, index) => {
+            header.classList.toggle('active', index === state.activeDayIndex);
+        });
+    } else {
+        elements.dayColumns.forEach(col => col.classList.remove('active'));
+        elements.dayHeaders.forEach(header => header.classList.remove('active'));
     }
-  
-    // Set the initial active day on mobile to today
-    elements.allDayColumns.forEach((col, index) => {
-      col.classList.toggle('active', index === dayIndex);
-    });
-    elements.dayHeaders.forEach((header, index) => {
-      header.classList.toggle('active', index === dayIndex);
-    });
   }
 
   function renderWeekDisplay() {
@@ -277,7 +308,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    elements.dayHeaders.forEach((header, index) => {
+    elements.dayColumns.forEach((col, index) => {
+      const header = document.querySelector(`.day-column-header[data-day-header="${index}"]`);
+      if (!header) return;
+
       const headerDate = new Date(startOfWeek);
       headerDate.setDate(startOfWeek.getDate() + index);
 
@@ -482,20 +516,6 @@ document.addEventListener('DOMContentLoaded', () => {
           'Apply only to this week';
       }
     });
-    
-    // Fix: This event listener was not present in the previous code.
-    // It's essential for the user to be able to click an event and have it update the sidebar.
-    elements.dayColumns.forEach(col => {
-      col.addEventListener('click', e => {
-        if (e.target.classList.contains('event-block')) {
-          const eventId = e.target.dataset.eventId;
-          const eventData = state.allEvents.find(event => event._id === eventId);
-          if (eventData) {
-            handleEventClick(eventData);
-          }
-        }
-      });
-    });
 
     document.querySelectorAll('.time-slot').forEach(slot => {
       slot.addEventListener('mousedown', startSelection);
@@ -511,9 +531,28 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       saveEvent();
     });
+
+    // Mobile day navigation
+    elements.mobileDayNavButtons.forEach((btn, index) => {
+        btn.addEventListener('click', () => {
+            state.activeDayIndex = index;
+            setupMobileLayout();
+        });
+    });
+    
+    // FAB and Mobile Modal
+    elements.addEventFab.addEventListener('click', () => {
+        elements.eventModalBackdrop.classList.add('active');
+    });
+    elements.eventModalBackdrop.querySelector('.close-modal-btn').addEventListener('click', () => {
+        elements.eventModalBackdrop.classList.remove('active');
+    });
+    elements.mobileEventForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        saveEvent();
+    });
   }
 
-  // Touch handling for mobile
   let touchStartX = 0;
   let touchStartY = 0;
 
