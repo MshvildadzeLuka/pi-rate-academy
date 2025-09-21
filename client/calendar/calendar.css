@@ -1,3 +1,4 @@
+
 :root {
   /* Reverted to original global dark theme colors */
   --background-primary: #121212;
@@ -949,7 +950,6 @@ select:focus {
   .calendar-grid {
     grid-template-columns: 50px 1fr;
     min-width: auto;
-    font-size: 0.8rem;
   }
 
   .grid-header {
