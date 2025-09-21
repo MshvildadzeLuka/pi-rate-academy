@@ -1239,38 +1239,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function createEventBlock(event, dayIndex) {
-      const dayColumn = document.querySelector(`.day-column[data-day="${dayIndex}"]`);
-      if (!dayColumn) return;
+            const dayColumn = document.querySelector(`.day-column[data-day="${dayIndex}"]`);
+            if (!dayColumn) {
+                return;
+            }
 
-      const start = timeToMinutes(event.start);
-      const end = timeToMinutes(event.end);
-      const top = ((start - 8 * 60) / 30) * 40;
-      const height = ((end - start) / 30) * 40;
+            const start = timeToMinutes(event.start);
+            const end = timeToMinutes(event.end);
+            
+            // Correctly calculate top position and height based on a 40px slot height
+            const top = ((start - 8 * 60) / 30) * 40;
+            const height = ((end - start) / 30) * 40;
 
-      const eventBlock = document.createElement('div');
-      eventBlock.className = `event-block event-${event.type}`;
-      eventBlock.style.top = `${top}px`;
-      eventBlock.style.height = `${height - 2}px`;
+            const eventBlock = document.createElement('div');
+            eventBlock.className = `event-block event-${event.type}`;
+            eventBlock.style.top = `${top}px`;
+            eventBlock.style.height = `${height - 2}px`;
 
-      if (event.title) {
-        eventBlock.innerHTML = `
-          <div class="event-title">${escapeHTML(event.title)}</div>
-          <div class="event-time">${formatTime(event.start, false)} - ${formatTime(event.end, false)}</div>
-        `;
-      }
+            if (event.title) {
+                eventBlock.innerHTML = `
+                  <div class="event-title">${escapeHTML(event.title)}</div>
+                  <div class="event-time">${formatTime(event.start, false)} - ${formatTime(event.end, false)}</div>
+                `;
+            }
 
-      if (event.type === 'lecture') {
-        eventBlock.dataset.lectureId = event._id;
-        eventBlock.addEventListener('click', e => {
-          e.stopPropagation();
-          const lectureFromState = calendarState.lectures.find(l => l._id === event._id);
-          // Pass the dayIndex to the click handler
-          handleLectureClick(lectureFromState, dayIndex); 
-        });
-      }
+            if (event.type === 'lecture') {
+                eventBlock.dataset.lectureId = event._id;
+                eventBlock.addEventListener('click', e => {
+                    e.stopPropagation();
+                    const lectureFromState = calendarState.lectures.find(l => l._id === event._id);
+                    // Pass the dayIndex to the click handler
+                    handleLectureClick(lectureFromState, dayIndex);
+                });
+            }
 
-      dayColumn.appendChild(eventBlock);
-    }
+            dayColumn.appendChild(eventBlock);
+          }
 
     function startDragSelection(e) {
       if (e.target.classList.contains('time-slot')) {
