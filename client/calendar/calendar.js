@@ -1,4 +1,3 @@
-
 document.addEventListener('DOMContentLoaded', () => {
   const API_BASE_URL = '/api';
 
@@ -536,6 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     elements.sidebarTimeRange.addEventListener('click', toggleManualInputs);
     addManualInputListeners();
+    handleManualInputListeners();
 
     elements.eventForm.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -543,16 +543,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   
+  function addManualInputListeners() {
+      const manualInputs = elements.eventForm.querySelectorAll('#manual-day-select, #manual-start-time, #manual-end-time');
+      manualInputs.forEach(input => input.addEventListener('change', handleManualTimeChange));
+  }
+  
   function toggleManualInputs() {
       state.isManualInputMode = !state.isManualInputMode;
       if (state.isManualInputMode) {
           elements.manualTimeInputs.classList.remove('hidden');
-          elements.sidebarTimeRange.style.display = 'none';
+          elements.sidebarTimeRange.classList.add('hidden');
           clearSelection();
       } else {
           elements.manualTimeInputs.classList.add('hidden');
-          elements.sidebarTimeRange.style.display = 'flex';
-          handleManualTimeChange(); // Update the display from manual inputs
+          elements.sidebarTimeRange.classList.remove('hidden');
+          handleManualTimeChange();
       }
   }
   
@@ -748,7 +753,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (resetSidebar) {
       state.isManualInputMode = false;
       elements.manualTimeInputs.classList.add('hidden');
-      elements.sidebarTimeRange.style.display = 'flex';
+      elements.sidebarTimeRange.classList.remove('hidden');
       updateSidebarUI('add');
     }
   }
