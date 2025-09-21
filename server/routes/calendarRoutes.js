@@ -16,12 +16,9 @@ const User = require('../models/userModel.js');
 router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
     const userId = req.user._id;
     const { start, end } = req.query;
-
     const user = await User.findById(userId).populate('groups');
     const userGroupIds = user.groups ? user.groups.map(group => group._id) : [];
-
     const personalEvents = await CalendarEvent.find({ userId }).lean();
-
     const formattedPersonal = personalEvents.map(event => ({
         ...event,
         startTimeLocal: event.isRecurring ?
@@ -31,7 +28,6 @@ router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
             ensureTimeFormat(event.recurringEndTime) :
             (event.endTime ? new Date(event.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }) : null)
     }));
-
     let groupLectures = [];
     for (const groupId of userGroupIds) {
         try {
@@ -45,17 +41,14 @@ router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
                     }
                 ];
             }
-
             const lectures = await Lecture.find(lectureQuery)
                 .populate('assignedGroup', 'name')
                 .lean();
-
             groupLectures = [...groupLectures, ...lectures];
         } catch (error) {
             console.error(`Failed to fetch lectures for group ${groupId}:`, error);
         }
     }
-
     const formattedLectures = groupLectures.map(lecture => ({
         _id: lecture._id,
         title: lecture.title,
@@ -73,7 +66,6 @@ router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
             hour: '2-digit', minute: '2-digit', hour12: false
         }) : null,
     }));
-
     const allEvents = [...formattedPersonal, ...formattedLectures];
     res.status(200).json({ success: true, data: allEvents });
 }));
