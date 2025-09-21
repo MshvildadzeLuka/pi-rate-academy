@@ -1,3 +1,4 @@
+
 :root {
   /* Reverted to original global dark theme colors */
   --background-primary: #121212;
@@ -899,8 +900,8 @@ select:focus {
   }
 
   .day-column {
-    grid-template-rows: repeat(var(--calendar-row-count), 35px);
-    min-height: calc(var(--calendar-row-count) * 35px);
+    grid-template-rows: repeat(28, 35px);
+    min-height: 980px;
   }
 
   .time-slot {
@@ -1008,4 +1009,6 @@ select:focus {
   .modal {
     max-height: 85vh;
   }
+}
+
 }
