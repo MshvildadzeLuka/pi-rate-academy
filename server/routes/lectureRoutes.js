@@ -1,3 +1,4 @@
+
 const express = require('express');
 const router = express.Router();
 const { protect, restrictTo } = require('../middleware/authMiddleware.js');
@@ -51,7 +52,6 @@ router.get('/group/:groupId', protect, asyncHandler(async (req, res, next) => {
 
     let query = { assignedGroup: groupId };
 
-    // Add date filtering if provided
     if (start && end) {
         query.$or = [
             {
@@ -103,20 +103,16 @@ router.delete('/:id', protect, restrictTo('Teacher', 'Admin'), asyncHandler(asyn
     const lecture = await Lecture.findById(id);
     if (!lecture) return next(new ErrorResponse('Lecture not found', 404));
 
-    // FIX: Correctly handle deleting an instance of a recurring event.
-    // If it's a recurring event and the user wants to delete only this instance,
-    // we create an exception event. Otherwise, we delete the entire lecture.
     if (lecture.isRecurring && !deleteAllRecurring) {
         await CalendarEvent.create({
             userId: req.user._id,
             creatorId: req.user._id,
-            type: 'busy', // Using 'busy' as a proxy for a cancelled time slot
+            type: 'busy',
             isRecurring: false,
             exceptionDate: dateString,
-            title: `DELETED: ${id}` // Link the exception to the original lecture ID
+            title: `DELETED: ${id}`
         });
     } else {
-        // Delete the entire recurring series or a single non-recurring event
         await lecture.deleteOne();
     }
 
