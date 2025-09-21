@@ -1,3 +1,4 @@
+
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
 const { isURL } = require('validator');
@@ -32,19 +33,28 @@ const lectureMaterialSchema = new Schema({
 }, { _id: false });
 
 const lectureSchema = new Schema({
-  title: { type: String, required: true, trim: true, maxlength: 120 },
-  description: { type: String, trim: true, maxlength: 500 },
-  startTime: { 
-    type: Date, 
-    required: true 
+  title: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 120
   },
-  endTime: { 
-    type: Date, 
-    required: true 
+  description: {
+    type: String,
+    trim: true,
+    maxlength: 500
   },
-  timezone: { 
-    type: String, 
-    required: true, 
+  startTime: {
+    type: Date,
+    required: true
+  },
+  endTime: {
+    type: Date,
+    required: true
+  },
+  timezone: {
+    type: String,
+    required: true,
     default: 'UTC'
   },
   isRecurring: { type: Boolean, default: false },
@@ -142,12 +152,14 @@ lectureSchema.pre('save', async function(next) {
   next();
 });
 
-// Post-remove cleanup
+// FIX: Removed this hook because it's no longer necessary and was causing an error
+/*
 lectureSchema.post('remove', async function(doc) {
   const destroys = doc.materials.map(m => cloudinary.uploader.destroy(m.public_id));
   if (doc.recording) destroys.push(cloudinary.uploader.destroy(doc.recording.public_id));
   await Promise.all(destroys);
 });
+*/
 
 // Indexes
 lectureSchema.index({ assignedGroup: 1, startTime: 1 });
@@ -156,4 +168,4 @@ lectureSchema.index({ startTime: 1, endTime: 1 });
 
 const Lecture = mongoose.model('Lecture', lectureSchema);
 
-module.exports = Lecture; 
+module.exports = Lecture;
