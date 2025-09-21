@@ -103,6 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function initializeCalendar() {
     try {
+      // FIX: Wait for events to be fetched before rendering
       await fetchUserGroups();
       await fetchEvents();
       generateTimeSlots();
@@ -135,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       // Show loading state
       document.body.classList.add('loading');
-
+      // FIX: The backend now handles fetching both personal events and lectures in one call
       const eventsResponse = await apiFetch(
         `/calendar-events/my-schedule?start=${startOfWeek.toISOString()}&end=${endOfWeek.toISOString()}`
       );
@@ -158,33 +159,33 @@ document.addEventListener('DOMContentLoaded', () => {
       type = elements.mobileEventTypeSelect.value;
       title = elements.mobileEventTitleInput.value || `${type} time`;
       isRecurring = elements.mobileRecurringCheckbox.checked;
-      
+
       // For mobile, we need to create selectedSlots from manual inputs
       if (!state.selectedSlots.size) {
         const startTime = elements.manualStartTime.value;
         const endTime = elements.manualEndTime.value;
-        
+
         if (!startTime || !endTime) {
           showNotification('Please select a time range', 'error');
           return;
         }
-        
+
         // Convert time inputs to selected slots
         const dayIndex = state.currentMobileDay;
         const startMinutes = timeToMinutes(startTime);
         const endMinutes = timeToMinutes(endTime);
-        
+
         // Find all slots in the selected time range
         const allSlots = Array.from(document.querySelectorAll(`.time-slot[data-day="${dayIndex}"]`));
         allSlots.forEach(slot => {
           const slotTime = slot.dataset.time;
           const slotMinutes = timeToMinutes(slotTime);
-          
+
           if (slotMinutes >= startMinutes && slotMinutes < endMinutes) {
             state.selectedSlots.add(slot);
           }
         });
-        
+
         selectedSlots = state.selectedSlots;
       }
     } else {
@@ -242,12 +243,12 @@ document.addEventListener('DOMContentLoaded', () => {
       state.allEvents.push(response.data);
       clearSelection();
       renderEventsForWeek();
-      
+
       // Close modal if on mobile
       if (isMobile) {
         closeEventModal();
       }
-      
+
       showNotification('Event saved successfully!', 'success');
     } catch (error) {
       console.error('Failed to save event:', error);
@@ -284,8 +285,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function generateTimeSlots() {
     elements.timeColumn.innerHTML = '';
+    elements.dayColumns.forEach((column, dayIndex) => {
+        column.innerHTML = '';
+        column.dataset.day = dayIndex;
+    });
 
-    // Create time labels from 8 AM to 9 PM
     for (let hour = 8; hour < 22; hour++) {
       const timeLabel = document.createElement('div');
       timeLabel.className = 'time-label';
@@ -294,15 +298,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     elements.dayColumns.forEach((column, dayIndex) => {
-      column.innerHTML = '';
-      column.dataset.day = dayIndex;
-      
-      // Create 28 slots for the 14 hours (8 AM to 9:59 PM)
       for (let slot = 0; slot < 28; slot++) {
-        const timeSlot = document.createElement('div');
-        timeSlot.className = 'time-slot';
         const hour = 8 + Math.floor(slot / 2);
         const minute = (slot % 2) * 30;
+        const timeSlot = document.createElement('div');
+        timeSlot.className = 'time-slot';
         timeSlot.dataset.time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
         timeSlot.dataset.day = dayIndex.toString();
         column.appendChild(timeSlot);
@@ -323,10 +323,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function setupMobileLayout() {
     // Set initial mobile day
     state.currentMobileDay = 0;
-    
+
     // Show/hide mobile day navigation based on screen size
     checkMobileView();
-    
+
     // Set up mobile day navigation
     elements.mobileDayNavBtns.forEach((btn, index) => {
       btn.addEventListener('click', () => {
@@ -337,17 +337,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function checkMobileView() {
     const isMobile = window.innerWidth <= 992;
-    
+
     if (isMobile) {
       elements.mobileDayNav.classList.remove('hidden');
       elements.addEventFab.classList.remove('hidden');
-      
+
       // Show only the active day column
       setActiveMobileDay(state.currentMobileDay);
     } else {
       elements.mobileDayNav.classList.add('hidden');
       elements.addEventFab.classList.add('hidden');
-      
+
       // Show all day columns
       elements.dayHeaders.forEach(header => {
         header.classList.add('active');
@@ -360,7 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function setActiveMobileDay(dayIndex) {
     state.currentMobileDay = dayIndex;
-    
+
     // Update mobile navigation buttons
     elements.mobileDayNavBtns.forEach((btn, index) => {
       if (index === dayIndex) {
@@ -369,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.classList.remove('active');
       }
     });
-    
+
     // Show only the selected day column
     elements.dayHeaders.forEach((header, index) => {
       if (index === dayIndex) {
@@ -378,7 +378,7 @@ document.addEventListener('DOMContentLoaded', () => {
         header.classList.remove('active');
       }
     });
-    
+
     elements.dayColumns.forEach((column, index) => {
       if (index === dayIndex) {
         column.classList.add('active');
@@ -633,14 +633,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Manual time input toggle
     elements.sidebarTimeRange.addEventListener('click', toggleManualTimeInput);
-    
+
     // Manual time input change
     elements.manualStartTime.addEventListener('change', updateSelectionFromManualTime);
     elements.manualEndTime.addEventListener('change', updateSelectionFromManualTime);
-    
+
     // Mobile event FAB
     elements.addEventFab.addEventListener('click', openEventModal);
-    
+
     // Modal event handling
     elements.closeModalBtn.addEventListener('click', closeEventModal);
     elements.eventModalBackdrop.addEventListener('click', (e) => {
@@ -648,7 +648,7 @@ document.addEventListener('DOMContentLoaded', () => {
         closeEventModal();
       }
     });
-    
+
     // Mobile form submission
     elements.mobileEventForm.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -661,7 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function toggleManualTimeInput() {
     elements.manualTimeInputs.classList.toggle('hidden');
-    
+
     if (!elements.manualTimeInputs.classList.contains('hidden')) {
       // If manual inputs are shown, clear any existing selection
       clearSelection(false);
@@ -671,35 +671,35 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateSelectionFromManualTime() {
     const startTime = elements.manualStartTime.value;
     const endTime = elements.manualEndTime.value;
-    
+
     if (!startTime || !endTime) return;
-    
+
     const startMinutes = timeToMinutes(startTime);
     const endMinutes = timeToMinutes(endTime);
-    
+
     if (startMinutes >= endMinutes) {
       showNotification('End time must be after start time', 'error');
       return;
     }
-    
+
     // Clear previous selection
     clearSelection(false);
-    
+
     // For mobile, use the currently selected day
     const dayIndex = state.currentMobileDay;
-    
+
     // Find all slots in the selected time range
     const allSlots = Array.from(document.querySelectorAll(`.time-slot[data-day="${dayIndex}"]`));
     allSlots.forEach(slot => {
       const slotTime = slot.dataset.time;
       const slotMinutes = timeToMinutes(slotTime);
-      
+
       if (slotMinutes >= startMinutes && slotMinutes < endMinutes) {
         slot.classList.add('selection-active');
         state.selectedSlots.add(slot);
       }
     });
-    
+
     // Update sidebar display
     elements.sidebarTimeRange.textContent = `${formatTime(startTime)} - ${formatTime(endTime)}`;
     elements.saveEventBtn.disabled = false;
@@ -707,16 +707,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function openEventModal() {
     elements.eventModalBackdrop.classList.remove('hidden');
-    
+
     // Set default values in modal
     if (state.selectedSlots.size > 0) {
       const slots = Array.from(state.selectedSlots).sort((a, b) => timeToMinutes(a.dataset.time) - timeToMinutes(b.dataset.time));
       const startSlot = slots[0];
       const endSlot = slots[slots.length - 1];
-      
+
       const startTime = startSlot.dataset.time;
       const endTime = getEndTime(endSlot.dataset.time);
-      
+
       elements.mobileTimeRange.textContent = `${formatTime(startTime)} - ${formatTime(endTime)}`;
     } else {
       elements.mobileTimeRange.textContent = 'Select time on calendar';
@@ -744,13 +744,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentY = e.touches[0].clientY;
     const diffX = Math.abs(touchStartX - currentX);
     const diffY = Math.abs(touchStartY - currentY);
-  
+
     // Check if it's a drag gesture rather than a selection attempt
-    if (diffY > diffX * 2) { 
+    if (diffY > diffX * 2) {
       endSelection();
       return;
     }
-  
+
     if (diffX > 50) { // Horizontal swipe detected
       if (currentX < touchStartX) {
         elements.nextWeekBtn.click();
@@ -760,7 +760,7 @@ document.addEventListener('DOMContentLoaded', () => {
       touchStartX = currentX; // Reset to prevent multiple rapid swipes
       return;
     }
-  
+
     // Continue selection if it's a vertical drag
     if (state.isDragging) {
       const targetSlot = document.elementFromPoint(currentX, currentY)?.closest('.time-slot');
