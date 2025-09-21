@@ -17,14 +17,11 @@ router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
     const userId = req.user._id;
     const { start, end } = req.query;
 
-    // Get user's groups
     const user = await User.findById(userId).populate('groups');
     const userGroupIds = user.groups ? user.groups.map(group => group._id) : [];
 
-    // Get personal events - fetch all since recurring and few
     const personalEvents = await CalendarEvent.find({ userId }).lean();
 
-    // Format personal events with local time strings
     const formattedPersonal = personalEvents.map(event => ({
         ...event,
         startTimeLocal: event.isRecurring ?
@@ -35,7 +32,6 @@ router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
             (event.endTime ? new Date(event.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }) : null)
     }));
 
-    // Get lectures for user's groups with date range if provided
     let groupLectures = [];
     for (const groupId of userGroupIds) {
         try {
@@ -60,7 +56,6 @@ router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
         }
     }
 
-    // Format lectures to match calendar event structure
     const formattedLectures = groupLectures.map(lecture => ({
         _id: lecture._id,
         title: lecture.title,
@@ -100,7 +95,6 @@ router.get('/group/:groupId', protect, asyncHandler(async (req, res, next) => {
     const memberIds = group.users.map(user => user._id);
     const memberEvents = await CalendarEvent.find({ userId: { $in: memberIds } }).lean();
 
-    // Format times robustly (fix bug: handle missing ':' or invalid formats)
     const formattedEvents = memberEvents.map(event => {
         const formattedEvent = { ...event };
         if (formattedEvent.recurringStartTime) {
@@ -115,11 +109,10 @@ router.get('/group/:groupId', protect, asyncHandler(async (req, res, next) => {
     res.status(200).json({ success: true, data: formattedEvents });
 }));
 
-// Helper to fix time formats
 function ensureTimeFormat(timeStr) {
     if (!timeStr || typeof timeStr !== 'string') return '00:00';
     if (!timeStr.includes(':')) {
-        timeStr = timeStr.padStart(4, '0'); // e.g., '900' -> '0900'
+        timeStr = timeStr.padStart(4, '0');
         timeStr = `${timeStr.slice(0,2)}:${timeStr.slice(2)}`;
     }
     const [hours, minutes] = timeStr.split(':');
@@ -171,11 +164,10 @@ router.delete('/:id', protect, asyncHandler(async (req, res, next) => {
             type: event.type,
             isRecurring: false,
             exceptionDate: dateString,
-            // We no longer try to set a 'title' field that doesn't exist on the schema.
+            title: `DELETED: ${id}`
         });
         res.status(200).json({ success: true, message: 'Instance removed' });
     } else {
-        // For single events, or if deleting all recurring instances
         await event.deleteOne();
         res.status(200).json({ success: true, data: {} });
     }
