@@ -36,7 +36,7 @@ body {
   gap: 0;
 }
 
-/* --- Sidebar --- */
+/* --- Sidebar (Desktop) --- */
 .calendar-sidebar {
   width: 380px;
   flex-shrink: 0;
@@ -338,7 +338,6 @@ select:focus {
   border: 1px solid var(--background-tertiary);
   background-color: var(--background-secondary);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  /* Fix: Removed min-width to prevent horizontal scrollbar on desktop */
 }
 
 .calendar-grid {
@@ -346,7 +345,6 @@ select:focus {
   grid-template-columns: 100px repeat(7, 1fr);
   background-color: var(--background-primary);
   position: relative;
-  /* Fix: Removed min-width to allow the table to fit the container */
 }
 
 .grid-header {
@@ -605,7 +603,7 @@ select:focus {
   background-color: var(--danger-accent);
 }
 
-/* Fix: Only apply mobile-specific styles when on a small screen */
+/* --- Mobile Responsive Styles --- */
 @media (max-width: 1200px) {
   .page-wrapper {
     flex-direction: column;
@@ -670,11 +668,31 @@ select:focus {
 }
 
 @media (max-width: 768px) {
-  /* Fix: Allow scrolling on the entire page for mobile */
   html, body {
     height: auto;
     overflow-y: auto;
     overflow-x: hidden;
+  }
+  
+  .page-wrapper {
+      flex-direction: column;
+  }
+
+  /* Show sidebar on top, full width, and not scrollable */
+  .calendar-sidebar {
+    display: flex;
+    max-height: none;
+    height: auto;
+    overflow-y: visible;
+  }
+  
+  .main-calendar-view {
+    padding: 20px 0;
+  }
+
+  /* Hide mini calendar on mobile */
+  #mini-calendar {
+      display: none;
   }
   
   .calendar-header {
@@ -691,6 +709,13 @@ select:focus {
   #current-week-display {
     font-size: 1.4rem;
     min-width: auto;
+  }
+  
+  .calendar-grid-wrapper {
+      /* Re-enable horizontal scrolling for the calendar table */
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0 15px;
   }
   
   .calendar-grid {
@@ -734,8 +759,7 @@ select:focus {
     left: 60px;
   }
   
-  #mini-calendar,
-  #add-event-panel {
+  #event-form-panel {
     padding: 20px;
   }
   
@@ -752,6 +776,7 @@ select:focus {
   
   .calendar-grid-wrapper {
     border-radius: 8px;
+    padding: 0;
   }
   
   .calendar-grid {
@@ -784,11 +809,11 @@ select:focus {
     font-size: 0.9rem;
   }
   
-  #add-event-panel {
+  #event-form-panel {
     padding: 15px;
   }
   
-  #add-event-panel h2 {
+  #event-form-panel h2 {
     font-size: 1.4rem;
   }
   
