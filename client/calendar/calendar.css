@@ -163,6 +163,16 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+}
+#sidebar-time-range:hover {
+    background-color: #383838;
+}
+.manual-time-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 25px;
 }
 .input-group { 
   margin-bottom: 25px; 
@@ -602,7 +612,70 @@ select:focus {
   background-color: var(--danger-accent);
 }
 
-/* --- MOBILE RESPONSIVE STYLES --- */
+/* Mobile Responsive Styles */
+@media (max-width: 1200px) {
+  .page-wrapper {
+    flex-direction: column;
+    height: auto;
+  }
+  
+  .calendar-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--background-tertiary);
+    max-height: 50vh;
+  }
+  
+  .main-calendar-view {
+    padding: 20px;
+  }
+  
+  .calendar-grid {
+    grid-template-columns: 80px repeat(7, 1fr);
+    min-width: 800px;
+  }
+  
+  .grid-header {
+    padding: 12px 8px;
+    font-size: 0.9rem;
+  }
+  
+  .day-column-header .day-number {
+    font-size: 1.3rem;
+    width: 36px;
+    height: 36px;
+  }
+  
+  .time-label {
+    font-size: 0.8rem;
+    height: 70px;
+  }
+  
+  .day-column {
+    grid-template-rows: repeat(28, 40px);
+    min-height: 1120px;
+  }
+  
+  .time-slot {
+    height: 40px;
+  }
+  
+  .event-block {
+    font-size: 0.8rem;
+    padding: 6px 8px;
+  }
+
+  .current-time-indicator {
+    width: calc(100% - 80px);
+    left: 80px;
+  }
+  
+  #current-week-display {
+    font-size: 1.4rem;
+    min-width: auto;
+  }
+}
+
 @media (max-width: 768px) {
   html, body {
     height: auto;
@@ -615,11 +688,18 @@ select:focus {
   }
   
   .calendar-sidebar {
-    display: none;
+    display: flex;
+    max-height: none;
+    height: auto;
+    overflow-y: visible;
   }
   
   .main-calendar-view {
     padding: 20px 0;
+  }
+
+  #mini-calendar {
+      display: none;
   }
   
   .calendar-header {
@@ -640,155 +720,122 @@ select:focus {
   }
   
   .calendar-grid-wrapper {
-      overflow-x: hidden;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
       padding: 0 15px;
   }
   
-  /* Hide the full calendar grid on mobile */
   .calendar-grid {
-      display: block; /* Change from grid to block */
-  }
-
-  /* We display only one day column on mobile */
-  .day-column-header, .day-column {
-      display: none;
-      /* All day columns are hidden by default, JS will add the 'active' class to one */
-  }
-
-  .day-column-header.active, .day-column.active {
-      display: block;
-      width: 100%;
-      border-left: none;
+    grid-template-columns: 60px repeat(7, minmax(100px, 1fr));
+    min-width: 700px;
+    font-size: 0.8rem;
   }
   
-  .time-column {
-      display: none; /* Hide time column on mobile */
+  .grid-header {
+    padding: 10px 4px;
   }
   
-  /* Mobile Day Navigation */
-  .mobile-day-nav {
-    display: flex;
-    justify-content: space-around;
-    padding: 10px 0;
-    margin-bottom: 20px;
-    background-color: var(--background-secondary);
-    border-bottom: 1px solid var(--background-tertiary);
+  .day-column-header .day-number {
+    font-size: 1.1rem;
+    width: 32px;
+    height: 32px;
   }
   
-  .mobile-day-nav-btn {
-    flex-grow: 1;
-    text-align: center;
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    font-weight: 500;
-    cursor: pointer;
-    padding: 8px 12px;
-    border-radius: 8px;
-    transition: all 0.2s ease;
-  }
-  
-  .mobile-day-nav-btn.active {
-    background-color: var(--background-tertiary);
-    color: var(--text-primary);
-  }
-
-  /* Floating Action Button (FAB) */
-  .fab {
-    display: flex;
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 60px;
+  .time-label {
+    font-size: 0.75rem;
     height: 60px;
-    border-radius: 50%;
-    background-color: var(--primary-accent);
-    color: white;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    z-index: 100;
+    padding-right: 6px;
   }
   
-  .fab:active {
-    transform: scale(0.95);
-  }
-
-  /* Event creation modal */
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(8px);
-    justify-content: center;
-    align-items: center;
-    z-index: 2000;
+  .day-column {
+    grid-template-rows: repeat(28, 35px);
+    min-height: 980px;
   }
   
-  .modal-overlay.active {
-    display: flex;
+  .time-slot {
+    height: 35px;
   }
   
-  .modal {
-    background-color: var(--background-secondary);
-    border-radius: var(--border-radius);
-    width: 90%;
-    max-width: 500px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  .event-block {
+    font-size: 0.75rem;
+    padding: 4px 6px;
   }
   
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px;
-    border-bottom: 1px solid var(--background-tertiary);
+  .current-time-indicator {
+    width: calc(100% - 60px);
+    left: 60px;
   }
   
-  .modal-header h2 {
-    margin: 0;
-    font-size: 1.2rem;
-  }
-  
-  .close-modal-btn {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    color: var(--text-secondary);
-    cursor: pointer;
-  }
-  
-  .modal-body {
+  #event-form-panel {
     padding: 20px;
+  }
+  
+  .btn {
+    padding: 12px;
+    font-size: 0.9rem;
   }
 }
 
-@media (min-width: 769px) {
-    .calendar-sidebar {
-        display: flex;
-    }
-    .main-calendar-view {
-        flex-grow: 1;
-    }
-    .fab, .mobile-day-nav {
-        display: none;
-    }
-    .calendar-grid-wrapper {
-        overflow-x: hidden;
-    }
-    .calendar-grid {
-        display: grid;
-        grid-template-columns: 100px repeat(7, 1fr);
-        min-width: auto;
-    }
-    .grid-header, .day-column {
-        display: flex;
-    }
+@media (max-width: 480px) {
+  .main-calendar-view {
+    padding: 15px;
+  }
+  
+  .calendar-grid-wrapper {
+    border-radius: 8px;
+    padding: 0;
+  }
+  
+  .calendar-grid {
+    grid-template-columns: 50px repeat(7, minmax(90px, 1fr));
+    min-width: 650px;
+    font-size: 0.8rem;
+  }
+  
+  .grid-header {
+    padding: 10px 4px;
+  }
+  
+  .day-column-header .day-name {
+    font-size: 0.8rem;
+  }
+  
+  .day-column-header .day-number {
+    font-size: 1.1rem;
+    width: 32px;
+    height: 32px;
+  }
+  
+  .time-label {
+    font-size: 0.7rem;
+    height: 50px;
+  }
+  
+  .today-btn {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+  }
+  
+  #event-form-panel {
+    padding: 15px;
+  }
+  
+  #event-form-panel h2 {
+    font-size: 1.4rem;
+  }
+  
+  .btn {
+    padding: 10px;
+    font-size: 0.85rem;
+  }
+
+  .current-time-indicator {
+    width: calc(100% - 50px);
+    left: 50px;
+  }
+  
+  .radio-group-tabs {
+    flex-direction: column;
+    gap: 8px;
+  }
 }
