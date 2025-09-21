@@ -12,8 +12,11 @@
   --warning-color: #ffc107;
   --border-radius: 12px;
   --transition-speed: 0.3s;
+  --calendar-slot-height: 45px;
+  --calendar-row-count: 28; /* 14 hours * 2 slots/hour */
 }
 
+/* --- Global Styles --- */
 * {
   box-sizing: border-box;
 }
@@ -26,6 +29,7 @@ body {
   line-height: 1.6;
 }
 
+/* Page Layout */
 .page-wrapper {
   display: flex;
   height: calc(100vh - var(--header-height));
@@ -33,7 +37,7 @@ body {
   gap: 0;
 }
 
-/* --- Sidebar --- */
+/* Sidebar */
 .calendar-sidebar {
   width: 380px;
   flex-shrink: 0;
@@ -45,6 +49,7 @@ body {
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
 }
 
+/* Main Calendar View */
 .main-calendar-view {
   flex-grow: 1;
   display: flex;
@@ -405,6 +410,7 @@ select:focus {
   grid-template-columns: 100px repeat(7, 1fr);
   background-color: var(--background-primary);
   position: relative;
+  min-width: 900px;
 }
 
 .grid-header {
@@ -465,8 +471,8 @@ select:focus {
 .day-column {
   position: relative;
   display: grid;
-  grid-template-rows: repeat(28, 45px); /* FIX: Standardize slot height */
-  min-height: 1260px;
+  grid-template-rows: repeat(var(--calendar-row-count), var(--calendar-slot-height));
+  min-height: calc(var(--calendar-row-count) * var(--calendar-slot-height));
   border-left: 1px solid var(--background-tertiary);
 }
 
@@ -475,7 +481,7 @@ select:focus {
   padding-right: 10px;
   color: var(--text-secondary);
   font-size: 0.85rem;
-  height: 90px;
+  height: calc(var(--calendar-slot-height) * 2);
   border-top: 1px solid var(--background-tertiary);
   display: flex;
   align-items: flex-start;
@@ -489,7 +495,7 @@ select:focus {
 }
 
 .time-slot {
-  height: 45px; /* FIX: Standardize slot height */
+  height: var(--calendar-slot-height);
   border-top: 1px solid var(--background-tertiary);
   cursor: pointer;
   user-select: none;
@@ -797,8 +803,8 @@ select:focus {
   }
 
   .day-column {
-    grid-template-rows: repeat(28, 40px);
-    min-height: 1120px;
+    grid-template-rows: repeat(var(--calendar-row-count), 40px);
+    min-height: calc(var(--calendar-row-count) * 40px);
   }
 
   .time-slot {
@@ -893,8 +899,8 @@ select:focus {
   }
 
   .day-column {
-    grid-template-rows: repeat(28, 35px);
-    min-height: 980px;
+    grid-template-rows: repeat(var(--calendar-row-count), 35px);
+    min-height: calc(var(--calendar-row-count) * 35px);
   }
 
   .time-slot {
