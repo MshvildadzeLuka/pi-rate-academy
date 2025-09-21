@@ -535,7 +535,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     elements.sidebarTimeRange.addEventListener('click', toggleManualInputs);
     addManualInputListeners();
-    handleManualInputListeners();
 
     elements.eventForm.addEventListener('submit', (e) => {
       e.preventDefault();
