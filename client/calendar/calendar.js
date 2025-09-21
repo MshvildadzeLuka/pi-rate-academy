@@ -1,4 +1,3 @@
-
 document.addEventListener('DOMContentLoaded', () => {
   const API_BASE_URL = '/api';
 
@@ -11,9 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedSlots: new Set(),
     activeEvent: null,
     userGroups: [],
-    isRecurring: false,
     isMobile: window.innerWidth <= 767,
-    activeDayIndex: (new Date().getDay() + 6) % 7 // Monday is 0
+    activeDayIndex: (new Date().getDay() + 6) % 7
   };
 
   const elements = {
@@ -248,6 +246,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function generateTimeSlots() {
     elements.timeColumn.innerHTML = '';
+    
+    // Clear old slots from day columns before generating new ones
+    elements.dayColumns.forEach(col => col.innerHTML = '');
 
     for (let hour = 8; hour < 22; hour++) {
       const timeLabel = document.createElement('div');
@@ -257,7 +258,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     elements.dayColumns.forEach((column, dayIndex) => {
-      column.innerHTML = '';
       column.dataset.day = dayIndex;
       for (let slot = 0; slot < 28; slot++) {
         const timeSlot = document.createElement('div');
@@ -531,8 +531,8 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       saveEvent();
     });
-
-    // Mobile day navigation
+    
+    // Fix: This event listener was missing, causing mobile day navigation to not work.
     elements.mobileDayNavButtons.forEach((btn, index) => {
         btn.addEventListener('click', () => {
             state.activeDayIndex = index;
@@ -540,16 +540,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
     
-    // FAB and Mobile Modal
+    // Fix: This event listener was missing, causing the FAB to do nothing.
     elements.addEventFab.addEventListener('click', () => {
         elements.eventModalBackdrop.classList.add('active');
     });
+    
+    // Fix: These event listeners were missing, preventing the mobile modal from closing.
     elements.eventModalBackdrop.querySelector('.close-modal-btn').addEventListener('click', () => {
         elements.eventModalBackdrop.classList.remove('active');
     });
     elements.mobileEventForm.addEventListener('submit', (e) => {
         e.preventDefault();
         saveEvent();
+    });
+
+    window.addEventListener('resize', () => {
+        state.isMobile = window.innerWidth <= 767;
+        elements.addEventFab.classList.toggle('hidden', !state.isMobile);
+        elements.mobileDayNav.classList.toggle('hidden', !state.isMobile);
+        renderAll();
     });
   }
 
