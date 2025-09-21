@@ -768,3 +768,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     initializeCalendar();
 });
+
+}
