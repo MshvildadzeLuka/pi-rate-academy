@@ -3,13 +3,13 @@ const { Schema } = mongoose;
 
 const calendarEventSchema = new Schema(
   {
-    userId: {
+    userId: { // The user who owns this personal event
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
       index: true,
     },
-    groupId: { // Optional for context
+    groupId: { // Optional for context, links to a course group
       type: Schema.Types.ObjectId,
       ref: 'Group',
       index: true,
@@ -19,7 +19,7 @@ const calendarEventSchema = new Schema(
       enum: ['busy', 'preferred'], // Removed 'lecture'
       required: true,
     },
-    title: { // <-- ADD THIS NEW FIELD
+    title: { // <-- ADDED THIS NEW FIELD
       type: String,
       trim: true,
     },
