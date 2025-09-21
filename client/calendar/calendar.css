@@ -93,7 +93,7 @@ body {
   background-color: var(--background-tertiary);
   color: var(--primary-accent); 
 }
-#mini-cal-prev-month i, #mini-cal-next-month i { font-size: 1.5rem; }
+#mini-cal-prev-month svg, #mini-cal-next-month svg { width: 24px; height: 24px; }
 .mini-calendar-weekdays, .mini-calendar-days {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -137,14 +137,14 @@ body {
 }
 
 /* --- Sidebar Event Panel --- */
-#event-form-panel { 
+#add-event-panel { 
   padding: 25px; 
   background-color: var(--background-secondary);
   flex-grow: 1;
   display: flex;
   flex-direction: column;
 }
-#event-form-panel h2 {
+#add-event-panel h2 {
   font-size: 1.6rem;
   color: var(--text-primary);
   margin: 0 0 25px 0;
@@ -311,7 +311,7 @@ select:focus {
   background-color: var(--background-tertiary);
   color: var(--primary-accent); 
 }
-#prev-week-btn i, #next-week-btn i { font-size: 1.5rem; }
+#prev-week-btn svg, #next-week-btn svg { width: 28px; height: 28px; }
 .today-btn {
   padding: 10px 20px;
   background-color: var(--background-secondary);
@@ -330,8 +330,6 @@ select:focus {
   color: var(--primary-accent);
 }
 
-/* This is the key change to fix the desktop scrolling issue.
-   We make the grid flexible and remove fixed widths. */
 .calendar-grid-wrapper {
   overflow-y: auto;
   flex-grow: 1;
@@ -346,7 +344,6 @@ select:focus {
   grid-template-columns: 100px repeat(7, 1fr);
   background-color: var(--background-primary);
   position: relative;
-  /* Removed min-width to allow the table to fit the container */
 }
 
 .grid-header {
@@ -605,206 +602,24 @@ select:focus {
   background-color: var(--danger-accent);
 }
 
-/* --- MOBILE SPECIFIC STYLES --- */
-@media (max-width: 1200px) {
-  .page-wrapper {
-    flex-direction: column;
-    height: auto;
-  }
-  
+/* Fix: Only apply mobile-specific styles when on a small screen */
+@media (max-width: 767px) {
   .calendar-sidebar {
-    width: 100%;
-    border-right: none;
-    border-bottom: 1px solid var(--background-tertiary);
-    max-height: 50vh;
+    display: none;
   }
   
   .main-calendar-view {
     padding: 20px;
   }
   
-  /* Show mobile day navigation bar */
-  .mobile-day-nav {
-    display: flex;
-    justify-content: space-between;
-    margin: -10px -20px 20px -20px;
-    padding: 10px 20px;
-    background-color: var(--background-secondary);
-    border-bottom: 1px solid var(--background-tertiary);
-  }
-  
-  .mobile-day-nav-btn {
-    flex-grow: 1;
-    text-align: center;
-    padding: 10px 0;
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    font-weight: 500;
-    transition: color 0.2s ease;
-  }
-
-  .mobile-day-nav-btn.active {
-    color: var(--primary-accent);
-    font-weight: 600;
-  }
-
   .calendar-grid {
-    grid-template-columns: 80px 1fr;
-  }
-
-  /* Hide headers for the other 6 days on mobile */
-  .day-column-header:not(.active), .day-column:not(.active) {
-    display: none;
-  }
-
-  .day-column-header.active {
-    grid-column: 2 / 3;
+    /* Set a minimum width for the grid to prevent squashing */
+    min-width: 700px; 
   }
   
-  .grid-header {
-    padding: 12px 8px;
-    font-size: 0.9rem;
-  }
-  
-  .day-column-header .day-number {
-    font-size: 1.3rem;
-    width: 36px;
-    height: 36px;
-  }
-  
-  .time-label {
-    font-size: 0.8rem;
-    height: 70px;
-  }
-  
-  .day-column {
-    grid-template-rows: repeat(28, 40px);
-    min-height: 1120px;
-  }
-  
-  .time-slot {
-    height: 40px;
-  }
-  
-  .event-block {
-    font-size: 0.8rem;
-    padding: 6px 8px;
-  }
-  
-  .current-time-indicator {
-    width: calc(100% - 80px);
-    left: 80px;
-  }
-  
-  #current-week-display {
-    font-size: 1.5rem;
-    min-width: 250px;
-  }
-  
-  /* Mobile-first: Hide the desktop sidebar by default */
-  .calendar-sidebar,
-  #event-form-panel {
-      display: none;
-  }
-
-  /* Modal styling for mobile event form */
-  .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(8px);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 2000;
-      animation: fadeIn 0.3s forwards;
-      padding: 15px;
-  }
-
-  .modal {
-      background-color: var(--background-secondary);
-      border-radius: var(--border-radius);
-      width: 100%;
-      max-width: 500px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-      animation: modalScaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  }
-
-  .modal-header {
-      padding: 15px;
-      border-bottom: 1px solid var(--background-tertiary);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-  }
-
-  .modal-header h2 {
-      margin: 0;
-      font-size: 1.2rem;
-  }
-
-  .modal-body {
-      padding: 20px;
-  }
-  
-  /* Floating Action Button (FAB) */
-  .fab {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background-color: var(--primary-accent);
-    color: white;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-  }
-  
-  .fab:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(0, 123, 255, 0.6);
-  }
-
-  #event-form-panel {
-      display: flex;
-  }
-}
-
-@media (min-width: 768px) {
-  /* On desktop, show the sidebar */
-  .calendar-sidebar {
-      display: flex;
-  }
-  
-  /* On desktop, hide the mobile day navigation and FAB */
-  .mobile-day-nav, .fab {
-    display: none;
-  }
-  
-  /* Restore week view on desktop */
-  .calendar-grid {
-    grid-template-columns: 100px repeat(7, 1fr);
-  }
-
-  .day-column-header, .day-column {
-    display: flex !important; /* Override mobile display:none */
-  }
-}
-
-@media (max-width: 768px) {
-  /* Fix: Allow scrolling on the entire page for mobile */
-  html, body {
-    height: auto;
-    overflow-y: auto;
-    overflow-x: hidden;
+  /* Fix: Prevent horizontal scrolling on desktop by removing min-width */
+  .calendar-grid-wrapper {
+    overflow-x: auto;
   }
   
   .calendar-header {
@@ -822,69 +637,23 @@ select:focus {
     font-size: 1.5rem;
     min-width: auto;
   }
-  
-  .calendar-grid-wrapper {
-    /* Enable horizontal scroll on mobile for the calendar table only */
-    overflow-x: auto;
-    overflow-y: auto;
-  }
-
-  /* Make sure calendar headers are correctly aligned */
-  .calendar-grid {
-    min-width: 700px;
-  }
-  
-  .grid-header {
-    padding: 10px 4px;
-  }
-  
-  .day-column-header .day-number {
-    font-size: 1.1rem;
-    width: 32px;
-    height: 32px;
-  }
-  
-  .time-label {
-    font-size: 0.85rem;
-    height: 60px;
-    padding-right: 6px;
-  }
-  
-  .day-column {
-    grid-template-rows: repeat(28, 35px);
-    min-height: 980px;
-  }
-  
-  .time-slot {
-    height: 35px;
-  }
-  
-  .event-block {
-    font-size: 0.75rem;
-    padding: 4px 6px;
-  }
-  
-  .current-time-indicator {
-    width: calc(100% - 60px);
-    left: 60px;
-  }
-  
-  #mini-calendar,
-  #event-form-panel {
-    padding: 20px;
-  }
-  
-  .btn {
-    padding: 12px;
-    font-size: 0.9rem;
-  }
+}
+@media (min-width: 768px) {
+    /* Hide the sidebar only on mobile */
+    .calendar-sidebar {
+        display: flex;
+    }
+    .main-calendar-view {
+        /* Allow main view to grow on desktop */
+        flex-grow: 1;
+    }
 }
 
 @media (max-width: 480px) {
   .main-calendar-view {
     padding: 15px;
   }
-
+  
   .calendar-grid-wrapper {
     border-radius: 8px;
   }
