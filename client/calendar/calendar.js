@@ -103,14 +103,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function initializeCalendar() {
     try {
-      // FIX: Wait for events to be fetched before rendering
       await fetchUserGroups();
       await fetchEvents();
       generateTimeSlots();
       renderAll();
       addEventListeners();
 
-      // Update time indicator every minute
       updateCurrentTimeIndicator();
       setInterval(updateCurrentTimeIndicator, 60000);
     } catch (error) {
@@ -134,7 +132,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const endOfWeek = getEndOfWeek(startOfWeek);
 
     try {
-      // Show loading state
       document.body.classList.add('loading');
       // FIX: The backend now handles fetching both personal events and lectures in one call
       const eventsResponse = await apiFetch(
@@ -244,7 +241,6 @@ document.addEventListener('DOMContentLoaded', () => {
       clearSelection();
       renderEventsForWeek();
 
-      // Close modal if on mobile
       if (isMobile) {
         closeEventModal();
       }
@@ -321,13 +317,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function setupMobileLayout() {
-    // Set initial mobile day
     state.currentMobileDay = 0;
-
-    // Show/hide mobile day navigation based on screen size
+    
     checkMobileView();
-
-    // Set up mobile day navigation
+    
     elements.mobileDayNavBtns.forEach((btn, index) => {
       btn.addEventListener('click', () => {
         setActiveMobileDay(index);
@@ -337,18 +330,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function checkMobileView() {
     const isMobile = window.innerWidth <= 992;
-
+    
     if (isMobile) {
       elements.mobileDayNav.classList.remove('hidden');
       elements.addEventFab.classList.remove('hidden');
-
-      // Show only the active day column
+      
       setActiveMobileDay(state.currentMobileDay);
     } else {
       elements.mobileDayNav.classList.add('hidden');
       elements.addEventFab.classList.add('hidden');
-
-      // Show all day columns
+      
       elements.dayHeaders.forEach(header => {
         header.classList.add('active');
       });
@@ -360,8 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function setActiveMobileDay(dayIndex) {
     state.currentMobileDay = dayIndex;
-
-    // Update mobile navigation buttons
+    
     elements.mobileDayNavBtns.forEach((btn, index) => {
       if (index === dayIndex) {
         btn.classList.add('active');
@@ -369,8 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.classList.remove('active');
       }
     });
-
-    // Show only the selected day column
+    
     elements.dayHeaders.forEach((header, index) => {
       if (index === dayIndex) {
         header.classList.add('active');
@@ -378,7 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
         header.classList.remove('active');
       }
     });
-
+    
     elements.dayColumns.forEach((column, index) => {
       if (index === dayIndex) {
         column.classList.add('active');
@@ -470,49 +459,24 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderEventsForWeek() {
     const startOfWeek = getStartOfWeek(state.mainViewDate);
     const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    const exceptions = state.allEvents.filter(e => e.exceptionDate);
 
-    // Remove existing event blocks
     document.querySelectorAll('.event-block').forEach(el => el.remove());
 
-    // Render events for each day
     for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
       const currentDayDate = new Date(startOfWeek);
-      currentDayDate.setDate(currentDayDate.getDate() + dayIndex);
-      const dayStr = currentDayDate.toISOString().split('T')[0];
+      currentDayDate.setDate(startOfWeek.getDate() + dayIndex);
       const dayColumn = elements.dayColumns[dayIndex];
 
       state.allEvents.forEach(event => {
-        // Ignore deleted instances of recurring events
-        if (event.title && event.title.startsWith('DELETED:')) return;
-
         let render = false;
-        let isException = false;
         let startTimeStr = event.startTimeLocal;
         let endTimeStr = event.endTimeLocal;
 
         if (event.isRecurring) {
-          if (event.dayOfWeek) { // From CalendarEvent model
-            if (event.dayOfWeek === dayNames[dayIndex]) {
-              isException = exceptions.some(exc =>
-                exc.exceptionDate === dayStr && exc.title === `DELETED: ${event._id}`
-              );
-              if (!isException) {
-                render = true;
-                startTimeStr = ensureTimeFormat(event.recurringStartTime || startTimeStr);
-                endTimeStr = ensureTimeFormat(event.recurringEndTime || endTimeStr);
-              }
-            }
-          } else if (event.type === 'lecture' && event.recurrenceRule) { // From Lecture model
-            const rruleWeekdays = event.recurrenceRule.byweekday || [];
-            const weekdayMap = { MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6, SU: 0 };
-            if (rruleWeekdays.some(wd => weekdayMap[wd] === dayIndex)) {
-              const dtstart = new Date(event.recurrenceRule.dtstart);
-              const until = event.recurrenceRule.until ? new Date(event.recurrenceRule.until) : null;
-              if (currentDayDate >= dtstart && (!until || currentDayDate <= until)) {
-                render = true;
-              }
-            }
+          if (event.dayOfWeek === dayNames[dayIndex]) {
+            render = true;
+            startTimeStr = ensureTimeFormat(event.recurringStartTime || startTimeStr);
+            endTimeStr = ensureTimeFormat(event.recurringEndTime || endTimeStr);
           }
         } else {
           const eventStartDate = new Date(event.startTime);
@@ -528,15 +492,13 @@ document.addEventListener('DOMContentLoaded', () => {
             ...event,
             startTime: startTimeStr,
             endTime: endTimeStr
-          }, dayColumn, isException);
+          }, dayColumn);
         }
       });
     }
   }
 
-  function renderEventBlock(eventData, dayColumn, isException = false) {
-    if (isException) return;
-
+  function renderEventBlock(eventData, dayColumn) {
     const startMinutes = timeToMinutes(eventData.startTime);
     const endMinutes = timeToMinutes(eventData.endTime);
     const durationMinutes = endMinutes - startMinutes;
@@ -546,9 +508,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const eventBlock = document.createElement('div');
     eventBlock.className = `event-block event-${eventData.type}`;
-    if (eventData.type === 'lecture') {
-      eventBlock.classList.add('read-only');
-    }
     eventBlock.style.top = `${top}px`;
     eventBlock.style.height = `${height}px`;
     eventBlock.dataset.eventId = eventData._id;
@@ -571,7 +530,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function addEventListeners() {
-    // Week navigation
     elements.prevWeekBtn.addEventListener('click', async () => {
       state.mainViewDate.setDate(state.mainViewDate.getDate() - 7);
       await fetchEvents();
@@ -590,7 +548,6 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAll();
     });
 
-    // Mini calendar navigation
     elements.miniCalPrevBtn.addEventListener('click', () => {
       state.miniCalDate.setMonth(state.miniCalDate.getMonth() - 1);
       renderMiniCalendar();
@@ -601,13 +558,11 @@ document.addEventListener('DOMContentLoaded', () => {
       renderMiniCalendar();
     });
 
-    // Event form handling
     elements.saveEventBtn.addEventListener('click', () => saveEvent(false));
     elements.deleteEventBtn.addEventListener('click', () => {
       if (state.activeEvent) deleteEvent(state.activeEvent._id);
     });
 
-    // Recurring checkbox change
     elements.recurringCheckbox.addEventListener('change', () => {
       if (state.activeEvent) {
         elements.recurringLabelText.textContent = elements.recurringCheckbox.checked ?
@@ -620,7 +575,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Time slot selection
     document.querySelectorAll('.time-slot').forEach(slot => {
       slot.addEventListener('mousedown', startSelection);
       slot.addEventListener('mouseenter', continueSelection);
@@ -631,39 +585,32 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('touchend', endSelection);
     document.addEventListener('touchmove', handleTouchMove, { passive: true });
 
-    // Manual time input toggle
     elements.sidebarTimeRange.addEventListener('click', toggleManualTimeInput);
-
-    // Manual time input change
+    
     elements.manualStartTime.addEventListener('change', updateSelectionFromManualTime);
     elements.manualEndTime.addEventListener('change', updateSelectionFromManualTime);
-
-    // Mobile event FAB
+    
     elements.addEventFab.addEventListener('click', openEventModal);
-
-    // Modal event handling
+    
     elements.closeModalBtn.addEventListener('click', closeEventModal);
     elements.eventModalBackdrop.addEventListener('click', (e) => {
       if (e.target === elements.eventModalBackdrop) {
         closeEventModal();
       }
     });
-
-    // Mobile form submission
+    
     elements.mobileEventForm.addEventListener('submit', (e) => {
       e.preventDefault();
       saveEvent(true);
     });
 
-    // Window resize for responsive behavior
     window.addEventListener('resize', checkMobileView);
   }
 
   function toggleManualTimeInput() {
     elements.manualTimeInputs.classList.toggle('hidden');
-
+    
     if (!elements.manualTimeInputs.classList.contains('hidden')) {
-      // If manual inputs are shown, clear any existing selection
       clearSelection(false);
     }
   }
@@ -671,52 +618,47 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateSelectionFromManualTime() {
     const startTime = elements.manualStartTime.value;
     const endTime = elements.manualEndTime.value;
-
+    
     if (!startTime || !endTime) return;
-
+    
     const startMinutes = timeToMinutes(startTime);
     const endMinutes = timeToMinutes(endTime);
-
+    
     if (startMinutes >= endMinutes) {
       showNotification('End time must be after start time', 'error');
       return;
     }
-
-    // Clear previous selection
+    
     clearSelection(false);
-
-    // For mobile, use the currently selected day
+    
     const dayIndex = state.currentMobileDay;
-
-    // Find all slots in the selected time range
+    
     const allSlots = Array.from(document.querySelectorAll(`.time-slot[data-day="${dayIndex}"]`));
     allSlots.forEach(slot => {
       const slotTime = slot.dataset.time;
       const slotMinutes = timeToMinutes(slotTime);
-
+      
       if (slotMinutes >= startMinutes && slotMinutes < endMinutes) {
         slot.classList.add('selection-active');
         state.selectedSlots.add(slot);
       }
     });
-
-    // Update sidebar display
+    
     elements.sidebarTimeRange.textContent = `${formatTime(startTime)} - ${formatTime(endTime)}`;
     elements.saveEventBtn.disabled = false;
   }
 
   function openEventModal() {
     elements.eventModalBackdrop.classList.remove('hidden');
-
-    // Set default values in modal
+    
     if (state.selectedSlots.size > 0) {
       const slots = Array.from(state.selectedSlots).sort((a, b) => timeToMinutes(a.dataset.time) - timeToMinutes(b.dataset.time));
       const startSlot = slots[0];
       const endSlot = slots[slots.length - 1];
-
+      
       const startTime = startSlot.dataset.time;
       const endTime = getEndTime(endSlot.dataset.time);
-
+      
       elements.mobileTimeRange.textContent = `${formatTime(startTime)} - ${formatTime(endTime)}`;
     } else {
       elements.mobileTimeRange.textContent = 'Select time on calendar';
@@ -744,24 +686,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentY = e.touches[0].clientY;
     const diffX = Math.abs(touchStartX - currentX);
     const diffY = Math.abs(touchStartY - currentY);
-
-    // Check if it's a drag gesture rather than a selection attempt
+  
     if (diffY > diffX * 2) {
       endSelection();
       return;
     }
-
-    if (diffX > 50) { // Horizontal swipe detected
+  
+    if (diffX > 50) {
       if (currentX < touchStartX) {
         elements.nextWeekBtn.click();
       } else {
         elements.prevWeekBtn.click();
       }
-      touchStartX = currentX; // Reset to prevent multiple rapid swipes
+      touchStartX = currentX;
       return;
     }
-
-    // Continue selection if it's a vertical drag
+  
     if (state.isDragging) {
       const targetSlot = document.elementFromPoint(currentX, currentY)?.closest('.time-slot');
       if (targetSlot) {
@@ -816,7 +756,6 @@ document.addEventListener('DOMContentLoaded', () => {
     state.activeEvent = eventData;
     updateSidebarUI('edit', eventData);
 
-    // Highlight the active event
     document.querySelectorAll('.event-block').forEach(el => {
       el.classList.remove('active-event');
     });
@@ -864,7 +803,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateSelection(endSlot) {
     if (!state.selectionStartSlot || endSlot.dataset.day !== state.selectionStartSlot.dataset.day) return;
 
-    // Clear previous selection
     document.querySelectorAll('.selection-active').forEach(s => s.classList.remove('selection-active'));
     state.selectedSlots.clear();
 
@@ -895,7 +833,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (state.activeEvent) {
-      // Don't override edit view
       return;
     }
 
@@ -997,7 +934,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const startOfWeek = getStartOfWeek(state.mainViewDate);
     const endOfWeek = getEndOfWeek(startOfWeek);
 
-    // Hide indicator if current time is not in the displayed week
     if (now < startOfWeek || now > endOfWeek) {
       elements.currentTimeIndicator.style.display = 'none';
       return;
@@ -1005,7 +941,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const timeInMinutes = now.getHours() * 60 + now.getMinutes();
 
-    // Hide indicator if outside calendar hours (8am-9:59pm)
     if (timeInMinutes < 8 * 60 || timeInMinutes >= 22 * 60) {
       elements.currentTimeIndicator.style.display = 'none';
       return;
@@ -1021,6 +956,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Initialize the calendar
   initializeCalendar();
 });
