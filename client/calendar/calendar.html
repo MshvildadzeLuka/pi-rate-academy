@@ -24,15 +24,11 @@
             <div id="mini-calendar">
                 <div class="mini-calendar-header">
                     <button id="mini-cal-prev-month" aria-label="წინა თვე">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
-                        </svg>
+                        <i class="fas fa-chevron-left"></i>
                     </button>
                     <h2 id="mini-cal-month-year"></h2>
                     <button id="mini-cal-next-month" aria-label="შემდეგი თვე">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
-                        </svg>
+                        <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
                 <div class="mini-calendar-weekdays">
@@ -73,15 +69,11 @@
                     </div>
                     <div class="form-actions">
                          <button type="button" id="delete-event-btn" class="btn btn-danger" disabled>
-                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                 <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                             </svg>
+                             <i class="fas fa-trash"></i>
                              წაშლა
                          </button>
                          <button type="submit" id="save-event-btn" class="btn btn-primary" disabled>
-                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                 <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
-                             </svg>
+                             <i class="fas fa-save"></i>
                              შენახვა
                          </button>
                     </div>
@@ -94,20 +86,16 @@
                 <button id="today-btn" class="today-btn">დღეს</button>
                 <div class="week-nav">
                     <button id="prev-week-btn" aria-label="წინა კვირა">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
-                        </svg>
+                        <i class="fas fa-chevron-left"></i>
                     </button>
                     <h2 id="current-week-display"></h2>
                     <button id="next-week-btn" aria-label="შემდეგი კვირა">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
-                        </svg>
+                        <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
             </div>
             
-            <div id="mobile-day-nav" class="mobile-day-nav">
+            <div id="mobile-day-nav" class="mobile-day-nav hidden">
                 <button class="mobile-day-nav-btn active" data-day="0">ორშ</button>
                 <button class="mobile-day-nav-btn" data-day="1">სამ</button>
                 <button class="mobile-day-nav-btn" data-day="2">ოთხ</button>
@@ -122,7 +110,7 @@
                     <div id="current-time-indicator" class="current-time-indicator"></div>
                     
                     <div class="grid-header time-column-header"></div>
-                    <div class="grid-header day-column-header" data-day-header="0"><span class="day-name">ორშ</span><span class="day-number"></span></div>
+                    <div class="grid-header day-column-header active" data-day-header="0"><span class="day-name">ორშ</span><span class="day-number"></span></div>
                     <div class="grid-header day-column-header" data-day-header="1"><span class="day-name">სამ</span><span class="day-number"></span></div>
                     <div class="grid-header day-column-header" data-day-header="2"><span class="day-name">ოთხ</span><span class="day-number"></span></div>
                     <div class="grid-header day-column-header" data-day-header="3"><span class="day-name">ხუთ</span><span class="day-number"></span></div>
@@ -131,7 +119,7 @@
                     <div class="grid-header day-column-header" data-day-header="6"><span class="day-name">კვი</span><span class="day-number"></span></div>
                     
                     <div class="time-column" id="time-column"></div>
-                    <div class="day-column" data-day="0"></div>
+                    <div class="day-column active" data-day="0"></div>
                     <div class="day-column" data-day="1"></div>
                     <div class="day-column" data-day="2"></div>
                     <div class="day-column" data-day="3"></div>
@@ -142,9 +130,7 @@
             </div>
             
             <button id="add-event-fab" class="fab hidden" aria-label="ახალი მოვლენის დამატება">
-                <svg viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                </svg>
+                <i class="fas fa-plus"></i>
             </button>
         </main>
     </div>
@@ -154,9 +140,7 @@
             <div class="modal-header">
                 <h2>დაამატე განრიგში</h2>
                 <button class="close-modal-btn" aria-label="დახურვა">
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                    </svg>
+                    <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="modal-body">
@@ -185,9 +169,7 @@
                     </div>
                     <div class="form-actions">
                         <button type="submit" id="mobile-save-btn" class="btn btn-primary">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
-                            </svg>
+                            <i class="fas fa-save"></i>
                             შენახვა
                         </button>
                     </div>
