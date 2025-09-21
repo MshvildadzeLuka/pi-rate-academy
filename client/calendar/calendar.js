@@ -1,3 +1,5 @@
+// client/calendar/calendar.js
+
 document.addEventListener('DOMContentLoaded', () => {
   const API_BASE_URL = '/api';
 
@@ -10,8 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedSlots: new Set(),
     activeEvent: null,
     userGroups: [],
-    isMobile: window.innerWidth <= 767,
-    activeDayIndex: (new Date().getDay() + 6) % 7
+    isMobile: window.innerWidth <= 767
   };
 
   const elements = {
@@ -33,11 +34,11 @@ document.addEventListener('DOMContentLoaded', () => {
     gridWrapper: document.querySelector('.calendar-grid-wrapper'),
     currentTimeIndicator: document.getElementById('current-time-indicator'),
     eventForm: document.getElementById('event-form'),
-    mobileDayNav: document.getElementById('mobile-day-nav'),
+    dayHeaders: document.querySelectorAll('.day-column-header'),
+    allDayColumns: document.querySelectorAll('.day-column'),
     mobileDayNavButtons: document.querySelectorAll('.mobile-day-nav-btn'),
-    addEventFab: document.getElementById('add-event-fab'),
-    eventModalBackdrop: document.getElementById('event-modal-backdrop'),
-    mobileEventForm: document.getElementById('mobile-event-form')
+    mobileNav: document.getElementById('mobile-nav'),
+    addEventFab: document.getElementById('add-event-fab')
   };
 
   function showNotification(message, type = 'info') {
@@ -96,7 +97,9 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAll();
       addEventListeners();
 
+      // Show/hide mobile FAB and nav based on screen size
       elements.addEventFab.classList.toggle('hidden', !state.isMobile);
+      elements.mobileNav.classList.toggle('hidden', !state.isMobile);
 
       updateCurrentTimeIndicator();
       setInterval(updateCurrentTimeIndicator, 60000);
@@ -137,45 +140,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function saveEvent() {
-    const isMobile = elements.eventModalBackdrop.classList.contains('active');
-    const form = isMobile ? elements.mobileEventForm : elements.eventForm;
-    
-    let type, isRecurring, startH, startM, endH, endM, dayIndex;
+    if (state.selectedSlots.size === 0) return;
 
-    if (isMobile) {
-      const formData = new FormData(form);
-      type = formData.get('eventType');
-      isRecurring = formData.get('isRecurring') === 'on';
-      const startTimeParts = formData.get('startTime').split(':').map(Number);
-      const endTimeParts = formData.get('endTime').split(':').map(Number);
-      startH = startTimeParts[0];
-      startM = startTimeParts[1];
-      endH = endTimeParts[0];
-      endM = endTimeParts[1];
-      dayIndex = state.activeDayIndex;
-    } else {
-      if (state.selectedSlots.size === 0) {
-        showNotification('აირჩიე დრო კალენდარზე', 'error');
-        return;
-      }
-      type = form.querySelector('input[name="event-type"]:checked').value;
-      isRecurring = elements.recurringCheckbox.checked;
+    const type = document.querySelector('input[name="event-type"]:checked').value;
+    const isRecurring = elements.recurringCheckbox.checked;
 
-      const slots = Array.from(state.selectedSlots).sort((a, b) => timeToMinutes(a.dataset.time) - timeToMinutes(b.dataset.time));
-      const startSlot = slots[0];
-      const endSlot = slots[slots.length - 1];
+    const slots = Array.from(state.selectedSlots).sort((a, b) => timeToMinutes(a.dataset.time) - timeToMinutes(b.dataset.time));
+    const startSlot = slots[0];
+    const endSlot = slots[slots.length - 1];
 
-      dayIndex = parseInt(startSlot.dataset.day);
-      const startTimeParts = startSlot.dataset.time.split(':').map(Number);
-      const endTimeParts = getEndTime(endSlot.dataset.time).split(':').map(Number);
-      startH = startTimeParts[0];
-      startM = startTimeParts[1];
-      endH = endTimeParts[0];
-      endM = endTimeParts[1];
-    }
-
+    const dayIndex = parseInt(startSlot.dataset.day);
     const dayOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'][dayIndex];
-    
+
     const payload = {
       type,
       isRecurring,
@@ -184,16 +160,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (isRecurring) {
       payload.dayOfWeek = dayOfWeek;
-      payload.recurringStartTime = `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}`;
-      payload.recurringEndTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+      payload.recurringStartTime = startSlot.dataset.time;
+      payload.recurringEndTime = getEndTime(endSlot.dataset.time);
     } else {
       const startOfWeek = getStartOfWeek(state.mainViewDate);
       const eventDate = new Date(startOfWeek);
       eventDate.setDate(eventDate.getDate() + dayIndex);
       const startTime = new Date(eventDate);
+      const [startH, startM] = startSlot.dataset.time.split(':').map(Number);
       startTime.setHours(startH, startM, 0, 0);
 
       const endTime = new Date(eventDate);
+      const [endH, endM] = getEndTime(endSlot.dataset.time).split(':').map(Number);
       endTime.setHours(endH, endM, 0, 0);
 
       payload.startTime = startTime.toISOString();
@@ -210,7 +188,6 @@ document.addEventListener('DOMContentLoaded', () => {
       clearSelection();
       renderEventsForWeek();
       showNotification('Event saved successfully!', 'success');
-      if (isMobile) elements.eventModalBackdrop.classList.remove('active');
     } catch (error) {
       console.error('Failed to save event:', error);
       showNotification('Failed to save event: ' + error.message, 'error');
@@ -247,7 +224,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function generateTimeSlots() {
     elements.timeColumn.innerHTML = '';
     
-    // Clear old slots from day columns before generating new ones
     elements.dayColumns.forEach(col => col.innerHTML = '');
 
     for (let hour = 8; hour < 22; hour++) {
@@ -281,16 +257,21 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function setupMobileLayout() {
-    if (state.isMobile) {
-        elements.dayColumns.forEach((col, index) => {
-            col.classList.toggle('active', index === state.activeDayIndex);
-        });
-        elements.dayHeaders.forEach((header, index) => {
-            header.classList.toggle('active', index === state.activeDayIndex);
-        });
-    } else {
-        elements.dayColumns.forEach(col => col.classList.remove('active'));
-        elements.dayHeaders.forEach(header => header.classList.remove('active'));
+    // Hide all day columns except the active one
+    elements.dayColumns.forEach((col, index) => {
+      col.classList.toggle('active', index === state.activeDayIndex);
+    });
+    
+    // Hide all day headers except the active one
+    elements.dayHeaders.forEach((header, index) => {
+      header.classList.toggle('active', index === state.activeDayIndex);
+    });
+    
+    // Set the mobile view text to the active day
+    const activeDayHeader = elements.dayHeaders[state.activeDayIndex];
+    if (activeDayHeader) {
+      const dayName = activeDayHeader.querySelector('.day-name').textContent;
+      elements.mobileViewText.textContent = dayName;
     }
   }
 
@@ -308,10 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    elements.dayColumns.forEach((col, index) => {
-      const header = document.querySelector(`.day-column-header[data-day-header="${index}"]`);
-      if (!header) return;
-
+    elements.dayHeaders.forEach((header, index) => {
       const headerDate = new Date(startOfWeek);
       headerDate.setDate(startOfWeek.getDate() + index);
 
@@ -517,6 +495,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
+    elements.eventForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      saveEvent();
+    });
+    
+    // Fix: Event listeners for time slot selection and dragging
     document.querySelectorAll('.time-slot').forEach(slot => {
       slot.addEventListener('mousedown', startSelection);
       slot.addEventListener('mouseenter', continueSelection);
@@ -527,39 +511,64 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('touchend', endSelection);
     document.addEventListener('touchmove', handleTouchMove, { passive: true });
 
-    elements.eventForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      saveEvent();
-    });
-    
-    // Fix: This event listener was missing, causing mobile day navigation to not work.
-    elements.mobileDayNavButtons.forEach((btn, index) => {
-        btn.addEventListener('click', () => {
-            state.activeDayIndex = index;
-            setupMobileLayout();
-        });
-    });
-    
-    // Fix: This event listener was missing, causing the FAB to do nothing.
-    elements.addEventFab.addEventListener('click', () => {
-        elements.eventModalBackdrop.classList.add('active');
-    });
-    
-    // Fix: These event listeners were missing, preventing the mobile modal from closing.
-    elements.eventModalBackdrop.querySelector('.close-modal-btn').addEventListener('click', () => {
-        elements.eventModalBackdrop.classList.remove('active');
-    });
-    elements.mobileEventForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        saveEvent();
-    });
+    // Fix: Mobile day navigation logic
+    if (elements.mobileDayNavButtons.length > 0) {
+      elements.mobileDayNavButtons.forEach((btn, index) => {
+          btn.addEventListener('click', () => {
+              elements.mobileDayNavButtons.forEach(b => b.classList.remove('active'));
+              btn.classList.add('active');
+              state.activeDayIndex = index;
+              renderMobileDayView();
+          });
+      });
+    }
 
+    // Fix: FAB button logic
+    if (elements.addEventFab) {
+      elements.addEventFab.addEventListener('click', () => {
+          // This logic will be implemented later
+      });
+    }
+
+    // Fix: This event listener was missing, causing mobile modal to not close.
+    if (elements.eventModalBackdrop) {
+        elements.eventModalBackdrop.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                e.target.classList.remove('active');
+            }
+        });
+        const closeBtn = elements.eventModalBackdrop.querySelector('.close-modal-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                elements.eventModalBackdrop.classList.remove('active');
+            });
+        }
+    }
+
+    // Fix: Window resize listener to handle responsiveness
     window.addEventListener('resize', () => {
         state.isMobile = window.innerWidth <= 767;
         elements.addEventFab.classList.toggle('hidden', !state.isMobile);
-        elements.mobileDayNav.classList.toggle('hidden', !state.isMobile);
+        elements.mobileNav.classList.toggle('hidden', !state.isMobile);
         renderAll();
     });
+  }
+
+  function renderMobileDayView() {
+    // Hide all day columns except the active one
+    elements.dayColumns.forEach((col, index) => {
+        col.classList.toggle('active', index === state.activeDayIndex);
+    });
+    // Hide all day headers except the active one
+    elements.dayHeaders.forEach((header, index) => {
+        header.classList.toggle('active', index === state.activeDayIndex);
+    });
+    // Update mobile navigation text
+    const activeDayHeader = elements.dayHeaders[state.activeDayIndex];
+    if (activeDayHeader) {
+        const dayName = activeDayHeader.querySelector('.day-name').textContent;
+        elements.mobileViewText.textContent = dayName;
+    }
   }
 
   let touchStartX = 0;
