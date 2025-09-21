@@ -1,4 +1,3 @@
-
 // client/calendar/calendar.js
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -14,13 +13,13 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedSlots: new Set(),
     activeEvent: null,
     userGroups: [],
-    isMobile: window.innerWidth <= 767,
-    activeDayIndex: (new Date().getDay() + 6) % 7 // Monday is 0
+    isMobile: window.innerWidth <= 767
   };
 
   // DOM Element Selectors
   const elements = {
     timeColumn: document.getElementById('time-column'),
+    dayColumns: document.querySelectorAll('.day-column'),
     weekDisplay: document.getElementById('current-week-display'),
     prevWeekBtn: document.getElementById('prev-week-btn'),
     nextWeekBtn: document.getElementById('next-week-btn'),
@@ -38,10 +37,13 @@ document.addEventListener('DOMContentLoaded', () => {
     eventTitleInput: document.getElementById('event-title-input'),
     dayHeaders: document.querySelectorAll('.day-column-header'),
     allDayColumns: document.querySelectorAll('.day-column'),
-    mobileDayNavButtons: document.querySelectorAll('.mobile-day-nav-btn'),
+    mobileNav: document.getElementById('mobile-nav'),
     addEventFab: document.getElementById('add-event-fab'),
     eventModalBackdrop: document.getElementById('event-modal-backdrop'),
-    mobileEventForm: document.getElementById('mobile-event-form')
+    mobileEventForm: document.getElementById('mobile-event-form'),
+    manualTimeInputs: document.getElementById('manual-time-inputs'),
+    manualStartTime: document.getElementById('manual-start-time'),
+    manualEndTime: document.getElementById('manual-end-time')
   };
 
   // Utility Functions
@@ -145,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Rendering Functions
   const generateTimeSlots = () => {
     elements.timeColumn.innerHTML = '';
-    elements.allDayColumns.forEach(col => col.innerHTML = '');
+    elements.dayColumns.forEach(col => col.innerHTML = '');
 
     for (let hour = 8; hour < 22; hour++) {
       const timeLabel = document.createElement('div');
@@ -154,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.timeColumn.appendChild(timeLabel);
     }
 
-    elements.allDayColumns.forEach((column, dayIndex) => {
+    elements.dayColumns.forEach((column, dayIndex) => {
       column.dataset.day = dayIndex;
       for (let slot = 0; slot < 28; slot++) {
         const timeSlot = document.createElement('div');
@@ -174,8 +176,28 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMiniCalendar();
     renderEventsForWeek();
     updateSidebarUI('add');
-    if (state.isMobile) setupMobileLayout();
-    else setupDesktopLayout();
+    
+    if (state.isMobile) {
+        setupMobileLayout();
+    } else {
+        setupDesktopLayout();
+    }
+  };
+  
+  const setupDesktopLayout = () => {
+    elements.allDayColumns.forEach(col => col.style.display = 'grid');
+    elements.dayHeaders.forEach(h => h.style.display = 'flex');
+    elements.timeColumn.style.display = 'block';
+    elements.addEventFab.style.display = 'none';
+    elements.mobileDayNavButtons.forEach(btn => btn.style.display = 'none');
+  };
+
+  const setupMobileLayout = () => {
+    elements.allDayColumns.forEach((col, index) => col.style.display = index === state.activeDayIndex ? 'grid' : 'none');
+    elements.dayHeaders.forEach((header, index) => header.style.display = index === state.activeDayIndex ? 'flex' : 'none');
+    elements.timeColumn.style.display = 'none';
+    elements.addEventFab.style.display = 'flex';
+    elements.mobileDayNavButtons.forEach(btn => btn.style.display = 'flex');
   };
 
   const renderWeekDisplay = () => {
@@ -242,7 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const currentDayDate = new Date(startOfWeek);
       currentDayDate.setDate(currentDayDate.getDate() + dayIndex);
       const dayStr = currentDayDate.toISOString().split('T')[0];
-      const dayColumn = elements.allDayColumns[dayIndex];
+      const dayColumn = elements.dayColumns[dayIndex];
 
       state.allEvents.forEach(event => {
         if (event.title && event.title.startsWith('DELETED:')) return;
@@ -321,17 +343,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Event Handlers
   const addEventListeners = () => {
-    elements.prevWeekBtn.addEventListener('click', () => {
+    elements.prevWeekBtn.addEventListener('click', async () => {
       state.mainViewDate.setDate(state.mainViewDate.getDate() - 7);
-      fetchEvents().then(() => renderAll());
+      await fetchEvents();
+      renderAll();
     });
-    elements.nextWeekBtn.addEventListener('click', () => {
+    elements.nextWeekBtn.addEventListener('click', async () => {
       state.mainViewDate.setDate(state.mainViewDate.getDate() + 7);
-      fetchEvents().then(() => renderAll());
+      await fetchEvents();
+      renderAll();
     });
-    elements.todayBtn.addEventListener('click', () => {
+    elements.todayBtn.addEventListener('click', async () => {
       state.mainViewDate = new Date();
-      fetchEvents().then(() => renderAll());
+      await fetchEvents();
+      renderAll();
     });
     elements.miniCalPrevBtn.addEventListener('click', () => {
       state.miniCalDate.setMonth(state.miniCalDate.getMonth() - 1);
@@ -349,57 +374,59 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       saveEvent();
     });
-    elements.addEventFab.addEventListener('click', () => {
-        elements.eventModalBackdrop.classList.remove('hidden');
-    });
     
-    // Time slot selection logic for desktop
+    // Add new event listeners for manual time input
+    elements.sidebarTimeRange.addEventListener('click', () => {
+      elements.manualTimeInputs.classList.toggle('hidden');
+      if (elements.manualTimeInputs.classList.contains('hidden')) {
+        elements.sidebarTimeRange.textContent = 'აირჩიე დრო კალენდარზე';
+      }
+    });
+
+    elements.manualTimeInputs.querySelectorAll('input[type="time"]').forEach(input => {
+      input.addEventListener('change', () => {
+        const startTime = elements.manualTimeInputs.querySelector('#manual-start-time').value;
+        const endTime = elements.manualTimeInputs.querySelector('#manual-end-time').value;
+        if (startTime && endTime) {
+          const startMinutes = timeToMinutes(startTime);
+          const endMinutes = timeToMinutes(endTime);
+          if (endMinutes > startMinutes) {
+            elements.sidebarTimeRange.textContent = `${startTime} - ${endTime}`;
+            elements.saveEventBtn.disabled = false;
+          } else {
+            elements.saveEventBtn.disabled = true;
+            showNotification('დასრულების დრო უნდა იყოს დაწყების დროის შემდეგ.', 'error');
+          }
+        }
+      });
+    });
+
+    // Time slot selection
     document.querySelectorAll('.time-slot').forEach(slot => {
-        slot.addEventListener('mousedown', startSelection);
-        slot.addEventListener('mouseenter', continueSelection);
-        slot.addEventListener('touchstart', handleTouchStart);
+      slot.addEventListener('mousedown', startSelection);
+      slot.addEventListener('mouseenter', continueSelection);
+      slot.addEventListener('touchstart', handleTouchStart);
     });
     document.addEventListener('mouseup', endSelection);
     document.addEventListener('touchend', endSelection);
     document.addEventListener('touchmove', handleTouchMove);
 
-    // Manual input for sidebar
-    elements.sidebarTimeRange.addEventListener('click', () => {
-      const hasTimeInputs = elements.eventForm.querySelector('#manual-start-time');
-      if (hasTimeInputs) {
-        elements.sidebarTimeRange.textContent = 'აირჩიე დრო კალენდარზე';
-        hasTimeInputs.parentElement.remove();
-        elements.eventForm.querySelector('#manual-end-time').parentElement.remove();
-      } else {
-        const startInput = document.createElement('input');
-        startInput.type = 'time';
-        startInput.id = 'manual-start-time';
-        startInput.value = '08:00';
-        const endInput = document.createElement('input');
-        endInput.type = 'time';
-        endInput.id = 'manual-end-time';
-        endInput.value = '09:00';
-        elements.eventForm.prepend(endInput.parentElement);
-        elements.eventForm.prepend(startInput.parentElement);
-      }
-    });
-
-    // Mobile navigation
-    elements.mobileDayNavButtons.forEach((btn, index) => {
-      btn.addEventListener('click', () => {
-        state.activeDayIndex = index;
-        renderAll();
-      });
-    });
-
-    // Mobile modal close button
-    const mobileModal = document.getElementById('mobile-event-modal');
-    if (mobileModal) {
-      mobileModal.querySelector('.close-modal-btn').addEventListener('click', () => {
-        document.getElementById('event-modal-backdrop').classList.add('hidden');
-      });
+    // Mobile specific event listeners
+    if (elements.mobileNav) {
+        elements.mobileNav.addEventListener('click', (e) => {
+            const target = e.target.closest('.mobile-nav-btn');
+            if (target) {
+                elements.mobileNav.querySelectorAll('.mobile-nav-btn').forEach(btn => btn.classList.remove('active'));
+                target.classList.add('active');
+            }
+        });
     }
 
+    if (elements.addEventFab) {
+      elements.addEventFab.addEventListener('click', () => {
+          document.getElementById('event-modal-backdrop').classList.add('active');
+      });
+    }
   };
   
   // Selection Logic
