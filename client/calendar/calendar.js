@@ -1,3 +1,4 @@
+
 // client/calendar/calendar.js
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -36,9 +37,9 @@ document.addEventListener('DOMContentLoaded', () => {
     eventForm: document.getElementById('event-form'),
     dayHeaders: document.querySelectorAll('.day-column-header'),
     allDayColumns: document.querySelectorAll('.day-column'),
-    mobileDayNavButtons: document.querySelectorAll('.mobile-day-nav-btn'),
     mobileNav: document.getElementById('mobile-nav'),
-    addEventFab: document.getElementById('add-event-fab')
+    addEventFab: document.getElementById('add-event-fab'),
+    mobileEventModal: document.getElementById('mobile-event-modal')
   };
 
   function showNotification(message, type = 'info') {
@@ -97,7 +98,6 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAll();
       addEventListeners();
 
-      // Show/hide mobile FAB and nav based on screen size
       elements.addEventFab.classList.toggle('hidden', !state.isMobile);
       elements.mobileNav.classList.toggle('hidden', !state.isMobile);
 
@@ -253,26 +253,24 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMiniCalendar();
     renderEventsForWeek();
     updateSidebarUI('add');
-    setupMobileLayout();
-  }
-
-  function setupMobileLayout() {
-    // Hide all day columns except the active one
-    elements.dayColumns.forEach((col, index) => {
-      col.classList.toggle('active', index === state.activeDayIndex);
-    });
     
-    // Hide all day headers except the active one
-    elements.dayHeaders.forEach((header, index) => {
-      header.classList.toggle('active', index === state.activeDayIndex);
-    });
-    
-    // Set the mobile view text to the active day
-    const activeDayHeader = elements.dayHeaders[state.activeDayIndex];
-    if (activeDayHeader) {
-      const dayName = activeDayHeader.querySelector('.day-name').textContent;
-      elements.mobileViewText.textContent = dayName;
+    // Fix: This function will now handle the view based on screen size
+    if (state.isMobile) {
+        setupMobileLayout();
     }
+  }
+  
+  function setupMobileLayout() {
+      // Show/hide mobile-specific elements
+      elements.dayHeaders.forEach(h => h.style.display = 'none');
+      elements.dayColumns.forEach(c => c.style.display = 'none');
+      elements.timeColumn.style.display = 'none';
+
+      // Show active day
+      const activeDayHeader = document.querySelector(`.day-column-header[data-day-header="${state.activeDayIndex}"]`);
+      const activeDayColumn = document.querySelector(`.day-column[data-day="${state.activeDayIndex}"]`);
+      if (activeDayHeader) activeDayHeader.style.display = 'flex';
+      if (activeDayColumn) activeDayColumn.style.display = 'grid';
   }
 
   function renderWeekDisplay() {
@@ -500,7 +498,6 @@ document.addEventListener('DOMContentLoaded', () => {
       saveEvent();
     });
     
-    // Fix: Event listeners for time slot selection and dragging
     document.querySelectorAll('.time-slot').forEach(slot => {
       slot.addEventListener('mousedown', startSelection);
       slot.addEventListener('mouseenter', continueSelection);
@@ -511,38 +508,21 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('touchend', endSelection);
     document.addEventListener('touchmove', handleTouchMove, { passive: true });
 
-    // Fix: Mobile day navigation logic
-    if (elements.mobileDayNavButtons.length > 0) {
-      elements.mobileDayNavButtons.forEach((btn, index) => {
-          btn.addEventListener('click', () => {
-              elements.mobileDayNavButtons.forEach(b => b.classList.remove('active'));
-              btn.classList.add('active');
-              state.activeDayIndex = index;
-              renderMobileDayView();
-          });
-      });
-    }
-
-    // Fix: FAB button logic
-    if (elements.addEventFab) {
-      elements.addEventFab.addEventListener('click', () => {
-          // This logic will be implemented later
-      });
-    }
-
-    // Fix: This event listener was missing, causing mobile modal to not close.
-    if (elements.eventModalBackdrop) {
-        elements.eventModalBackdrop.addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal-overlay')) {
-                e.target.classList.remove('active');
+    // Mobile specific event listeners
+    if (elements.mobileNav) {
+        elements.mobileNav.addEventListener('click', (e) => {
+            const target = e.target.closest('.mobile-nav-btn');
+            if (target) {
+                elements.mobileNav.querySelectorAll('.mobile-nav-btn').forEach(btn => btn.classList.remove('active'));
+                target.classList.add('active');
             }
         });
-        const closeBtn = elements.eventModalBackdrop.querySelector('.close-modal-btn');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
-                elements.eventModalBackdrop.classList.remove('active');
-            });
-        }
+    }
+
+    if (elements.addEventFab) {
+      elements.addEventFab.addEventListener('click', () => {
+          // Logic for opening mobile event modal will go here
+      });
     }
 
     // Fix: Window resize listener to handle responsiveness
@@ -552,23 +532,6 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.mobileNav.classList.toggle('hidden', !state.isMobile);
         renderAll();
     });
-  }
-
-  function renderMobileDayView() {
-    // Hide all day columns except the active one
-    elements.dayColumns.forEach((col, index) => {
-        col.classList.toggle('active', index === state.activeDayIndex);
-    });
-    // Hide all day headers except the active one
-    elements.dayHeaders.forEach((header, index) => {
-        header.classList.toggle('active', index === state.activeDayIndex);
-    });
-    // Update mobile navigation text
-    const activeDayHeader = elements.dayHeaders[state.activeDayIndex];
-    if (activeDayHeader) {
-        const dayName = activeDayHeader.querySelector('.day-name').textContent;
-        elements.mobileViewText.textContent = dayName;
-    }
   }
 
   let touchStartX = 0;
