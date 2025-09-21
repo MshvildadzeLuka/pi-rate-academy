@@ -1,6 +1,8 @@
+
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = '/api';
     const GEORGIAN_WEEKDAYS_SHORT = ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'];
+
     let state = {
         mainViewDate: new Date(),
         miniCalDate: new Date(),
@@ -13,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
         isRecurring: false,
         currentMobileDay: 0
     };
+
     const elements = {
         timeColumn: document.getElementById('time-column'),
         dayColumns: document.querySelectorAll('.day-column'),
@@ -50,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
         mobileEventTitleInput: document.getElementById('mobile-event-title-input'),
         mobileRecurringCheckbox: document.getElementById('mobile-recurring-checkbox')
     };
+
     function showNotification(message, type = 'info') {
         const toast = document.createElement('div');
         toast.className = `notification-toast ${type}`;
@@ -65,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 300);
         }, 3000);
     }
+
     async function apiFetch(endpoint, options = {}) {
         const token = localStorage.getItem('piRateToken');
         const headers = {
@@ -90,6 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
             throw error;
         }
     }
+
     async function initializeCalendar() {
         try {
             await fetchUserGroups();
@@ -104,6 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotification('Calendar initialization failed', 'error');
         }
     }
+
     async function fetchUserGroups() {
         try {
             const groupsData = await apiFetch('/groups/my-groups');
@@ -113,6 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
             state.userGroups = [];
         }
     }
+
     async function fetchEvents() {
         const startOfWeek = getStartOfWeek(state.mainViewDate);
         const endOfWeek = getEndOfWeek(startOfWeek);
@@ -129,6 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.remove('loading');
         }
     }
+
     async function saveEvent(isMobile = false) {
         let selectedSlots = state.selectedSlots;
         let type, title, isRecurring;
@@ -768,5 +777,3 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     initializeCalendar();
 });
-
-}
