@@ -137,14 +137,14 @@ body {
 }
 
 /* --- Sidebar Event Panel --- */
-#add-event-panel { 
+#event-form-panel { 
   padding: 25px; 
   background-color: var(--background-secondary);
   flex-grow: 1;
   display: flex;
   flex-direction: column;
 }
-#add-event-panel h2 {
+#event-form-panel h2 {
   font-size: 1.6rem;
   color: var(--text-primary);
   margin: 0 0 25px 0;
@@ -613,11 +613,9 @@ select:focus {
   }
   
   .calendar-grid {
-    /* Set a minimum width for the grid to prevent squashing */
     min-width: 700px; 
   }
   
-  /* Fix: Prevent horizontal scrolling on desktop by removing min-width */
   .calendar-grid-wrapper {
     overflow-x: auto;
   }
@@ -639,12 +637,10 @@ select:focus {
   }
 }
 @media (min-width: 768px) {
-    /* Hide the sidebar only on mobile */
     .calendar-sidebar {
         display: flex;
     }
     .main-calendar-view {
-        /* Allow main view to grow on desktop */
         flex-grow: 1;
     }
 }
