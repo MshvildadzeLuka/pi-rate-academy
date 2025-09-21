@@ -1,3 +1,5 @@
+// client/calendar/calendar.js
+
 document.addEventListener('DOMContentLoaded', () => {
   const API_BASE_URL = '/api';
 
@@ -10,7 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedSlots: new Set(),
     activeEvent: null,
     userGroups: [],
-    isRecurring: false
+    isRecurring: false,
+    isMobile: window.innerWidth <= 768,
+    activeDayIndex: (new Date().getDay() + 6) % 7 // Monday is 0
   };
 
   const elements = {
@@ -32,14 +36,13 @@ document.addEventListener('DOMContentLoaded', () => {
     gridWrapper: document.querySelector('.calendar-grid-wrapper'),
     currentTimeIndicator: document.getElementById('current-time-indicator'),
     eventForm: document.getElementById('event-form'),
-    mobileNav: document.getElementById('mobile-nav'),
-    mobileViewToggle: document.getElementById('mobile-view-toggle'),
-    mobileViewText: document.getElementById('mobile-view-text'),
-    dayHeaders: document.querySelectorAll('.day-column-header'),
-    allDayColumns: document.querySelectorAll('.day-column'),
+    mobileDayNav: document.getElementById('mobile-day-nav'),
+    mobileDayNavButtons: document.querySelectorAll('.mobile-day-nav-btn'),
+    addEventFab: document.getElementById('add-event-fab'),
+    eventModalBackdrop: document.getElementById('event-modal-backdrop'),
+    mobileEventForm: document.getElementById('mobile-event-form')
   };
 
-  // Show notification toast
   function showNotification(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `notification-toast ${type}`;
@@ -96,7 +99,9 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAll();
       addEventListeners();
 
-      // Update time indicator every minute
+      // Show/hide FAB based on screen size
+      elements.addEventFab.classList.toggle('hidden', !state.isMobile);
+
       updateCurrentTimeIndicator();
       setInterval(updateCurrentTimeIndicator, 60000);
     } catch (error) {
@@ -120,7 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const endOfWeek = getEndOfWeek(startOfWeek);
 
     try {
-      // Show loading state
       document.body.classList.add('loading');
 
       const eventsResponse = await apiFetch(
@@ -137,18 +141,45 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function saveEvent() {
-    if (state.selectedSlots.size === 0) return;
+    const isMobile = elements.mobileEventForm.classList.contains('active');
+    const form = isMobile ? elements.mobileEventForm : elements.eventForm;
+    
+    let type, isRecurring, startH, startM, endH, endM, dayIndex;
 
-    const type = document.querySelector('input[name="event-type"]:checked').value;
-    const isRecurring = elements.recurringCheckbox.checked;
+    if (isMobile) {
+      const formData = new FormData(form);
+      type = formData.get('eventType');
+      isRecurring = formData.get('isRecurring') === 'on';
+      const startTimeParts = formData.get('startTime').split(':').map(Number);
+      const endTimeParts = formData.get('endTime').split(':').map(Number);
+      startH = startTimeParts[0];
+      startM = startTimeParts[1];
+      endH = endTimeParts[0];
+      endM = endTimeParts[1];
+      dayIndex = state.activeDayIndex;
+    } else {
+      if (state.selectedSlots.size === 0) {
+        showNotification('აირჩიე დრო კალენდარზე', 'error');
+        return;
+      }
+      type = form.querySelector('input[name="event-type"]:checked').value;
+      isRecurring = elements.recurringCheckbox.checked;
 
-    const slots = Array.from(state.selectedSlots).sort((a, b) => timeToMinutes(a.dataset.time) - timeToMinutes(b.dataset.time));
-    const startSlot = slots[0];
-    const endSlot = slots[slots.length - 1];
+      const slots = Array.from(state.selectedSlots).sort((a, b) => timeToMinutes(a.dataset.time) - timeToMinutes(b.dataset.time));
+      const startSlot = slots[0];
+      const endSlot = slots[slots.length - 1];
 
-    const dayIndex = parseInt(startSlot.dataset.day);
+      dayIndex = parseInt(startSlot.dataset.day);
+      const startTimeParts = startSlot.dataset.time.split(':').map(Number);
+      const endTimeParts = getEndTime(endSlot.dataset.time).split(':').map(Number);
+      startH = startTimeParts[0];
+      startM = startTimeParts[1];
+      endH = endTimeParts[0];
+      endM = endTimeParts[1];
+    }
+
     const dayOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'][dayIndex];
-
+    
     const payload = {
       type,
       isRecurring,
@@ -157,18 +188,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (isRecurring) {
       payload.dayOfWeek = dayOfWeek;
-      payload.recurringStartTime = startSlot.dataset.time;
-      payload.recurringEndTime = getEndTime(endSlot.dataset.time);
+      payload.recurringStartTime = `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}`;
+      payload.recurringEndTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
     } else {
       const startOfWeek = getStartOfWeek(state.mainViewDate);
       const eventDate = new Date(startOfWeek);
       eventDate.setDate(eventDate.getDate() + dayIndex);
       const startTime = new Date(eventDate);
-      const [startH, startM] = startSlot.dataset.time.split(':').map(Number);
       startTime.setHours(startH, startM, 0, 0);
 
       const endTime = new Date(eventDate);
-      const [endH, endM] = getEndTime(endSlot.dataset.time).split(':').map(Number);
       endTime.setHours(endH, endM, 0, 0);
 
       payload.startTime = startTime.toISOString();
@@ -185,6 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
       clearSelection();
       renderEventsForWeek();
       showNotification('Event saved successfully!', 'success');
+      if (isMobile) elements.eventModalBackdrop.classList.add('hidden');
     } catch (error) {
       console.error('Failed to save event:', error);
       showNotification('Failed to save event: ' + error.message, 'error');
@@ -220,8 +250,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function generateTimeSlots() {
     elements.timeColumn.innerHTML = '';
+    
+    // Clear old slots from day columns before generating new ones
+    elements.dayColumns.forEach(col => col.innerHTML = '');
 
-    // Corrected loop to go from 8 AM (hour 8) to 9 PM (hour 21)
     for (let hour = 8; hour < 22; hour++) {
       const timeLabel = document.createElement('div');
       timeLabel.className = 'time-label';
@@ -230,9 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     elements.dayColumns.forEach((column, dayIndex) => {
-      column.innerHTML = '';
       column.dataset.day = dayIndex;
-      // Corrected loop to create 28 slots for the 14 hours (8 AM to 9:59 PM)
       for (let slot = 0; slot < 28; slot++) {
         const timeSlot = document.createElement('div');
         timeSlot.className = 'time-slot';
@@ -251,26 +281,28 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMiniCalendar();
     renderEventsForWeek();
     updateSidebarUI('add');
-    setupMobileLayout();
+    
+    // Update mobile layout
+    if (state.isMobile) {
+        elements.dayColumns.forEach((col, index) => {
+            col.classList.toggle('active', index === state.activeDayIndex);
+        });
+        elements.mobileDayNavButtons.forEach((btn, index) => {
+            btn.classList.toggle('active', index === state.activeDayIndex);
+        });
+        updateMobileDayNavText();
+    }
   }
-
-  function setupMobileLayout() {
-    // Hide all day columns except the first one initially on mobile
-    elements.allDayColumns.forEach((col, index) => {
-      col.classList.toggle('active', index === 0);
-    });
-    // Hide all day headers except the first one initially on mobile
-    elements.dayHeaders.forEach((header, index) => {
-      header.classList.toggle('active', index === 0);
-    });
-    // Toggle mobile navigation text
-    elements.mobileViewText.textContent = elements.dayHeaders[0].querySelector('.day-name').textContent;
+  
+  function updateMobileDayNavText() {
+      const activeDay = elements.mobileDayNavButtons[state.activeDayIndex].textContent;
+      // This part of the HTML was removed, so this is no longer needed.
+      // elements.mobileViewText.textContent = activeDay;
   }
 
   function renderWeekDisplay() {
     const start = getStartOfWeek(state.mainViewDate);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 6);
+    const end = getEndOfWeek(start);
 
     elements.weekDisplay.textContent =
       `${start.toLocaleDateString('ka-GE', { month: 'long', day: 'numeric' })} - ${end.toLocaleDateString('ka-GE', { month: 'long', day: 'numeric', year: 'numeric' })}`;
@@ -281,12 +313,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    elements.dayHeaders.forEach((header, index) => {
+    elements.dayColumns.forEach((col, index) => {
+      const header = document.querySelector(`.day-column-header[data-day-header="${index}"]`);
+      if (!header) return;
+
       const headerDate = new Date(startOfWeek);
       headerDate.setDate(startOfWeek.getDate() + index);
 
-      if (header.querySelector('.day-number')) {
-        header.querySelector('.day-number').textContent = headerDate.getDate();
+      const dayNumberEl = header.querySelector('.day-number');
+      if (dayNumberEl) {
+        dayNumberEl.textContent = headerDate.getDate();
       }
 
       if (headerDate.toDateString() === today.toDateString()) {
@@ -310,31 +346,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-    // Add empty days for previous month
     for (let i = 0; i < (firstDay + 6) % 7; i++) {
       const day = document.createElement('div');
       day.className = 'mini-calendar-day other-month';
       elements.miniCalDaysGrid.appendChild(day);
     }
 
-    // Add days for current month
     for (let d = 1; d <= daysInMonth; d++) {
       const day = document.createElement('div');
       day.className = 'mini-calendar-day';
       day.textContent = d;
       const currentDay = new Date(year, month, d);
 
-      // Check if this day is today
       if (currentDay.toDateString() === today.toDateString()) {
         day.classList.add('current-day');
       }
 
-      // Check if this day is in the currently selected week
       if (currentDay >= startOfWeek && currentDay <= new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000)) {
         day.classList.add('in-selected-week');
       }
 
-      // Add click event to select this day's week
       day.addEventListener('click', () => {
         state.mainViewDate = new Date(currentDay);
         fetchEvents().then(() => {
@@ -351,10 +382,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     const exceptions = state.allEvents.filter(e => e.exceptionDate);
 
-    // Remove existing event blocks
     document.querySelectorAll('.event-block').forEach(el => el.remove());
 
-    // Render events for each day
     for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
       const currentDayDate = new Date(startOfWeek);
       currentDayDate.setDate(currentDayDate.getDate() + dayIndex);
@@ -362,7 +391,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const dayColumn = elements.dayColumns[dayIndex];
 
       state.allEvents.forEach(event => {
-        // Ignore deleted instances of recurring events
         if (event.title && event.title.startsWith('DELETED:')) return;
 
         let render = false;
@@ -371,7 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let endTimeStr = event.endTimeLocal;
 
         if (event.isRecurring) {
-          if (event.dayOfWeek) { // From CalendarEvent model
+          if (event.dayOfWeek) {
             if (event.dayOfWeek === dayNames[dayIndex]) {
               isException = exceptions.some(exc =>
                 exc.exceptionDate === dayStr && exc.title === `DELETED: ${event._id}`
@@ -382,7 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 endTimeStr = ensureTimeFormat(event.recurringEndTime || endTimeStr);
               }
             }
-          } else if (event.type === 'lecture' && event.recurrenceRule) { // From Lecture model
+          } else if (event.type === 'lecture' && event.recurrenceRule) {
             const rruleWeekdays = event.recurrenceRule.byweekday || [];
             const weekdayMap = { MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6, SU: 0 };
             if (rruleWeekdays.some(wd => weekdayMap[wd] === dayIndex)) {
@@ -419,7 +447,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const startMinutes = timeToMinutes(eventData.startTime);
     const endMinutes = timeToMinutes(eventData.endTime);
     const durationMinutes = endMinutes - startMinutes;
-    // Fix: The height of each slot is 45px. We need to use this to calculate the vertical position.
     const slotHeight = 45;
     const top = ((startMinutes - 8 * 60) / 30) * slotHeight;
     const height = (durationMinutes / 30) * slotHeight - 2;
@@ -451,7 +478,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function addEventListeners() {
-    // Week navigation
     elements.prevWeekBtn.addEventListener('click', async () => {
       state.mainViewDate.setDate(state.mainViewDate.getDate() - 7);
       await fetchEvents();
@@ -470,7 +496,6 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAll();
     });
 
-    // Mini calendar navigation
     elements.miniCalPrevBtn.addEventListener('click', () => {
       state.miniCalDate.setMonth(state.miniCalDate.getMonth() - 1);
       renderMiniCalendar();
@@ -481,13 +506,11 @@ document.addEventListener('DOMContentLoaded', () => {
       renderMiniCalendar();
     });
 
-    // Event form handling
     elements.saveEventBtn.addEventListener('click', saveEvent);
     elements.deleteEventBtn.addEventListener('click', () => {
       if (state.activeEvent) deleteEvent(state.activeEvent._id);
     });
 
-    // Recurring checkbox change
     elements.recurringCheckbox.addEventListener('change', () => {
       if (state.activeEvent) {
         elements.recurringLabelText.textContent = elements.recurringCheckbox.checked ?
@@ -500,7 +523,34 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Time slot selection
+    // Handle mobile day navigation
+    elements.mobileDayNavButtons.forEach((btn, index) => {
+        btn.addEventListener('click', () => {
+            state.activeDayIndex = index;
+            renderAll();
+        });
+    });
+    
+    // Add event listener to the FAB
+    elements.addEventFab.addEventListener('click', () => {
+      elements.eventModalBackdrop.classList.remove('hidden');
+      elements.mobileEventForm.classList.add('active');
+    });
+    
+    // Close modal with X button
+    elements.eventModalBackdrop.querySelector('.close-modal-btn').addEventListener('click', () => {
+        elements.eventModalBackdrop.classList.add('hidden');
+        elements.mobileEventForm.classList.remove('active');
+    });
+    
+    // Close modal by clicking outside
+    elements.eventModalBackdrop.addEventListener('click', (e) => {
+        if (e.target === elements.eventModalBackdrop) {
+            elements.eventModalBackdrop.classList.add('hidden');
+            elements.mobileEventForm.classList.remove('active');
+        }
+    });
+
     document.querySelectorAll('.time-slot').forEach(slot => {
       slot.addEventListener('mousedown', startSelection);
       slot.addEventListener('mouseenter', continueSelection);
@@ -511,25 +561,24 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('touchend', endSelection);
     document.addEventListener('touchmove', handleTouchMove, { passive: true });
 
-    // Mobile view toggle for day columns
-    elements.dayHeaders.forEach((header, index) => {
-      header.addEventListener('click', () => {
-        elements.dayHeaders.forEach(h => h.classList.remove('active'));
-        elements.allDayColumns.forEach(c => c.classList.remove('active'));
-        header.classList.add('active');
-        elements.allDayColumns[index].classList.add('active');
-        elements.mobileViewText.textContent = header.querySelector('.day-name').textContent;
-      });
-    });
-
-    // Prevent form submission
     elements.eventForm.addEventListener('submit', (e) => {
       e.preventDefault();
       saveEvent();
     });
+    
+    elements.mobileEventForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      saveEvent();
+    });
+
+    // Listen for window resize to toggle mobile view
+    window.addEventListener('resize', () => {
+        state.isMobile = window.innerWidth <= 768;
+        elements.addEventFab.classList.toggle('hidden', !state.isMobile);
+        renderAll();
+    });
   }
 
-  // Touch handling for mobile
   let touchStartX = 0;
   let touchStartY = 0;
 
@@ -547,23 +596,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const diffX = Math.abs(touchStartX - currentX);
     const diffY = Math.abs(touchStartY - currentY);
   
-    // Check if it's a drag gesture rather than a selection attempt
     if (diffY > diffX * 2) { 
       endSelection();
       return;
     }
   
-    if (diffX > 50) { // Horizontal swipe detected
+    if (diffX > 50) {
       if (currentX < touchStartX) {
         elements.nextWeekBtn.click();
       } else {
         elements.prevWeekBtn.click();
       }
-      touchStartX = currentX; // Reset to prevent multiple rapid swipes
+      touchStartX = currentX;
       return;
     }
   
-    // Continue selection if it's a vertical drag
     if (state.isDragging) {
       const targetSlot = document.elementFromPoint(currentX, currentY)?.closest('.time-slot');
       if (targetSlot) {
@@ -618,7 +665,6 @@ document.addEventListener('DOMContentLoaded', () => {
     state.activeEvent = eventData;
     updateSidebarUI('edit', eventData);
 
-    // Highlight the active event
     document.querySelectorAll('.event-block').forEach(el => {
       el.classList.remove('active-event');
     });
@@ -634,10 +680,10 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.saveEventBtn.disabled = state.selectedSlots.size === 0;
       elements.deleteEventBtn.disabled = true;
       elements.recurringCheckbox.checked = false;
-      elements.recurringLabelText.textContent = 'Apply to all weeks';
+      elements.recurringLabelText.textContent = 'გამოყენება ყველა კვირაში';
 
       if (state.selectedSlots.size === 0) {
-        elements.sidebarTimeRange.textContent = 'Select time on calendar';
+        elements.sidebarTimeRange.textContent = 'აირჩიე დრო კალენდარზე';
       }
     } else if (mode === 'edit') {
       const start = eventData.isRecurring ?
@@ -664,7 +710,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateSelection(endSlot) {
     if (!state.selectionStartSlot || endSlot.dataset.day !== state.selectionStartSlot.dataset.day) return;
 
-    // Clear previous selection
     document.querySelectorAll('.selection-active').forEach(s => s.classList.remove('selection-active'));
     state.selectedSlots.clear();
 
@@ -690,27 +735,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (elements.deleteEventBtn) elements.deleteEventBtn.disabled = !state.activeEvent;
 
     if (!hasSelection && !state.activeEvent) {
-      if (elements.sidebarTimeRange) elements.sidebarTimeRange.textContent = 'Select time on calendar';
-      // Hide recurring checkbox for new events
+      if (elements.sidebarTimeRange) elements.sidebarTimeRange.textContent = 'აირჩიე დრო კალენდარზე';
       if (elements.recurringCheckbox) elements.recurringCheckbox.parentElement.classList.add('hidden');
       return;
     }
 
     if (state.activeEvent) {
-      // Show recurring checkbox for editing an existing lecture
       if (elements.recurringCheckbox) {
         elements.recurringCheckbox.checked = state.activeEvent.isRecurring;
         elements.recurringCheckbox.parentElement.classList.remove('hidden');
       }
     } else {
-      // Show recurring checkbox for new events
       if (elements.recurringCheckbox) {
         elements.recurringCheckbox.checked = false;
         elements.recurringCheckbox.parentElement.classList.remove('hidden');
       }
     }
 
-    // Don't override edit view
     if (state.activeEvent && !hasSelection) return;
 
     const times = Array.from(state.selectedSlots)
@@ -733,7 +774,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (resetSidebar) updateSidebarUI('add');
   }
 
-  // Utility functions
   const getEndTime = (startTimeStr) => {
     const [h, m] = startTimeStr.split(':').map(Number);
     const d = new Date();
@@ -801,13 +841,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateCurrentTimeIndicator() {
     const now = new Date();
-    // Fix: JavaScript's getDay() returns 0 for Sunday, 1 for Monday.
-    // We need to adjust this to match our grid where Monday is data-day="0".
     const dayOfWeek = (now.getDay() + 6) % 7;
     const startOfWeek = getStartOfWeek(state.mainViewDate);
     const endOfWeek = getEndOfWeek(state.mainViewDate);
 
-    // Hide indicator if current time is not in the displayed week
     if (now < startOfWeek || now > endOfWeek) {
       elements.currentTimeIndicator.style.display = 'none';
       return;
@@ -815,14 +852,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const timeInMinutes = now.getHours() * 60 + now.getMinutes();
 
-    // Hide indicator if outside calendar hours (8am-9:59pm)
     if (timeInMinutes < 8 * 60 || timeInMinutes >= 22 * 60) {
       elements.currentTimeIndicator.style.display = 'none';
       return;
     }
 
-    // Fix: Calculate the `top` position relative to the calendar grid.
-    // The `45` here corresponds to the `45px` height of each `.time-slot` in CSS.
     const top = ((timeInMinutes - 8 * 60) / 30) * 45;
     const dayColumn = document.querySelector(`.day-column[data-day="${dayOfWeek}"]`);
 
@@ -832,7 +866,6 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.currentTimeIndicator.style.display = 'block';
     }
   }
-
-  // Initialize the calendar
+  
   initializeCalendar();
 });
