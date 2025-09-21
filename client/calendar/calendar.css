@@ -612,7 +612,7 @@ select:focus {
   background-color: var(--danger-accent);
 }
 
-/* --- Mobile Responsive Styles --- */
+/* Mobile Responsive Styles */
 @media (max-width: 1200px) {
   .page-wrapper {
     flex-direction: column;
@@ -677,7 +677,6 @@ select:focus {
 }
 
 @media (max-width: 768px) {
-  /* Fix: Allow scrolling on the entire page for mobile */
   html, body {
     height: auto;
     overflow-y: auto;
@@ -696,7 +695,6 @@ select:focus {
     padding: 20px 0;
   }
 
-  /* Show mobile sidebar at the top */
   .calendar-sidebar.mobile-active {
       display: flex;
       flex-direction: column;
