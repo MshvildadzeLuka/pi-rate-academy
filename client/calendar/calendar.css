@@ -35,7 +35,7 @@ body {
   gap: 0;
 }
 
-/* --- Sidebar (Desktop) --- */
+/* --- Sidebar --- */
 .calendar-sidebar {
   width: 380px;
   flex-shrink: 0;
@@ -612,7 +612,7 @@ select:focus {
   background-color: var(--danger-accent);
 }
 
-/* Mobile Responsive Styles */
+/* --- Mobile Responsive Styles --- */
 @media (max-width: 1200px) {
   .page-wrapper {
     flex-direction: column;
@@ -671,12 +671,13 @@ select:focus {
   }
   
   #current-week-display {
-    font-size: 1.4rem;
-    min-width: auto;
+    font-size: 1.5rem;
+    min-width: 250px;
   }
 }
 
 @media (max-width: 768px) {
+  /* Fix: Allow scrolling on the entire page for mobile */
   html, body {
     height: auto;
     overflow-y: auto;
@@ -688,14 +689,20 @@ select:focus {
   }
   
   .calendar-sidebar {
-    display: flex;
-    max-height: none;
-    height: auto;
-    overflow-y: visible;
+    display: none;
   }
   
   .main-calendar-view {
     padding: 20px 0;
+  }
+
+  /* Show mobile sidebar at the top */
+  .calendar-sidebar.mobile-active {
+      display: flex;
+      flex-direction: column;
+      max-height: none;
+      height: auto;
+      overflow-y: visible;
   }
 
   #mini-calendar {
@@ -783,7 +790,6 @@ select:focus {
   
   .calendar-grid-wrapper {
     border-radius: 8px;
-    padding: 0;
   }
   
   .calendar-grid {
