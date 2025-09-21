@@ -146,6 +146,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Rendering Functions
   const generateTimeSlots = () => {
+    if (!elements.timeColumn || elements.dayColumns.length === 0) return;
+
     elements.timeColumn.innerHTML = '';
     elements.dayColumns.forEach(col => col.innerHTML = '');
 
@@ -185,26 +187,28 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   
   const setupDesktopLayout = () => {
-    elements.allDayColumns.forEach(col => col.style.display = 'grid');
+    elements.dayColumns.forEach(col => col.style.display = 'grid');
     elements.dayHeaders.forEach(h => h.style.display = 'flex');
-    elements.timeColumn.style.display = 'block';
+    elements.timeColumn.style.display = 'grid';
     elements.addEventFab.style.display = 'none';
-    elements.mobileDayNavButtons.forEach(btn => btn.style.display = 'none');
+    if(elements.mobileNav) elements.mobileNav.style.display = 'none';
   };
 
   const setupMobileLayout = () => {
-    elements.allDayColumns.forEach((col, index) => col.style.display = index === state.activeDayIndex ? 'grid' : 'none');
+    elements.dayColumns.forEach((col, index) => col.style.display = index === state.activeDayIndex ? 'grid' : 'none');
     elements.dayHeaders.forEach((header, index) => header.style.display = index === state.activeDayIndex ? 'flex' : 'none');
     elements.timeColumn.style.display = 'none';
     elements.addEventFab.style.display = 'flex';
-    elements.mobileDayNavButtons.forEach(btn => btn.style.display = 'flex');
+    if(elements.mobileNav) elements.mobileNav.style.display = 'flex';
   };
 
   const renderWeekDisplay = () => {
     const start = getStartOfWeek(state.mainViewDate);
     const end = getEndOfWeek(start);
-    elements.weekDisplay.textContent =
-      `${start.toLocaleDateString('ka-GE', { month: 'long', day: 'numeric' })} - ${end.toLocaleDateString('ka-GE', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+    if(elements.weekDisplay) {
+        elements.weekDisplay.textContent =
+          `${start.toLocaleDateString('ka-GE', { month: 'long', day: 'numeric' })} - ${end.toLocaleDateString('ka-GE', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+    }
   };
 
   const renderDayHeaders = () => {
@@ -222,6 +226,8 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const renderMiniCalendar = () => {
+    if (!elements.miniCalHeader || !elements.miniCalDaysGrid) return;
+
     const month = state.miniCalDate.getMonth();
     const year = state.miniCalDate.getFullYear();
     elements.miniCalHeader.textContent = `${new Date(year, month).toLocaleString('ka-GE', { month: 'long' })} ${year}`;
@@ -328,80 +334,80 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Layout Management
   const setupDesktopLayout = () => {
-    elements.allDayColumns.forEach(col => col.classList.add('active'));
-    elements.dayHeaders.forEach(h => h.classList.add('active'));
-    elements.addEventFab.classList.add('hidden');
-    elements.mobileNav.classList.add('hidden');
+    elements.dayColumns.forEach(col => col.style.display = 'grid');
+    elements.dayHeaders.forEach(h => h.style.display = 'flex');
+    elements.timeColumn.style.display = 'grid';
+    if(elements.addEventFab) elements.addEventFab.style.display = 'none';
+    if(elements.mobileNav) elements.mobileNav.style.display = 'none';
   };
 
   const setupMobileLayout = () => {
-    elements.allDayColumns.forEach((col, index) => col.classList.toggle('active', index === state.activeDayIndex));
-    elements.dayHeaders.forEach((header, index) => header.classList.toggle('active', index === state.activeDayIndex));
-    elements.addEventFab.classList.remove('hidden');
-    elements.mobileNav.classList.remove('hidden');
+    elements.dayColumns.forEach((col, index) => col.style.display = index === state.activeDayIndex ? 'grid' : 'none');
+    elements.dayHeaders.forEach((header, index) => header.style.display = index === state.activeDayIndex ? 'flex' : 'none');
+    if(elements.addEventFab) elements.addEventFab.style.display = 'flex';
+    if(elements.mobileNav) elements.mobileNav.style.display = 'flex';
   };
 
   // Event Handlers
   const addEventListeners = () => {
-    elements.prevWeekBtn.addEventListener('click', async () => {
+    if(elements.prevWeekBtn) elements.prevWeekBtn.addEventListener('click', async () => {
       state.mainViewDate.setDate(state.mainViewDate.getDate() - 7);
       await fetchEvents();
       renderAll();
     });
-    elements.nextWeekBtn.addEventListener('click', async () => {
+    if(elements.nextWeekBtn) elements.nextWeekBtn.addEventListener('click', async () => {
       state.mainViewDate.setDate(state.mainViewDate.getDate() + 7);
       await fetchEvents();
       renderAll();
     });
-    elements.todayBtn.addEventListener('click', async () => {
+    if(elements.todayBtn) elements.todayBtn.addEventListener('click', async () => {
       state.mainViewDate = new Date();
       await fetchEvents();
       renderAll();
     });
-    elements.miniCalPrevBtn.addEventListener('click', () => {
+    if(elements.miniCalPrevBtn) elements.miniCalPrevBtn.addEventListener('click', () => {
       state.miniCalDate.setMonth(state.miniCalDate.getMonth() - 1);
       renderMiniCalendar();
     });
-    elements.miniCalNextBtn.addEventListener('click', () => {
+    if(elements.miniCalNextBtn) elements.miniCalNextBtn.addEventListener('click', () => {
       state.miniCalDate.setMonth(state.miniCalDate.getMonth() + 1);
       renderMiniCalendar();
     });
-    elements.saveEventBtn.addEventListener('click', saveEvent);
-    elements.deleteEventBtn.addEventListener('click', () => {
+    if(elements.saveEventBtn) elements.saveEventBtn.addEventListener('click', saveEvent);
+    if(elements.deleteEventBtn) elements.deleteEventBtn.addEventListener('click', () => {
       if (state.activeEvent) deleteEvent(state.activeEvent._id);
     });
-    elements.eventForm.addEventListener('submit', e => {
+    if(elements.eventForm) elements.eventForm.addEventListener('submit', e => {
       e.preventDefault();
       saveEvent();
     });
-    
-    // Add new event listeners for manual time input
-    elements.sidebarTimeRange.addEventListener('click', () => {
-      elements.manualTimeInputs.classList.toggle('hidden');
-      if (elements.manualTimeInputs.classList.contains('hidden')) {
-        elements.sidebarTimeRange.textContent = 'აირჩიე დრო კალენდარზე';
-      }
-    });
 
-    elements.manualTimeInputs.querySelectorAll('input[type="time"]').forEach(input => {
-      input.addEventListener('change', () => {
-        const startTime = elements.manualTimeInputs.querySelector('#manual-start-time').value;
-        const endTime = elements.manualTimeInputs.querySelector('#manual-end-time').value;
-        if (startTime && endTime) {
-          const startMinutes = timeToMinutes(startTime);
-          const endMinutes = timeToMinutes(endTime);
-          if (endMinutes > startMinutes) {
-            elements.sidebarTimeRange.textContent = `${startTime} - ${endTime}`;
-            elements.saveEventBtn.disabled = false;
-          } else {
-            elements.saveEventBtn.disabled = true;
-            showNotification('დასრულების დრო უნდა იყოს დაწყების დროის შემდეგ.', 'error');
-          }
+    if(elements.manualTimeInputs) {
+      elements.sidebarTimeRange.addEventListener('click', () => {
+        elements.manualTimeInputs.classList.toggle('hidden');
+        if (elements.manualTimeInputs.classList.contains('hidden')) {
+          elements.sidebarTimeRange.textContent = 'აირჩიე დრო კალენდარზე';
         }
       });
-    });
+      elements.manualTimeInputs.querySelectorAll('input[type="time"]').forEach(input => {
+        input.addEventListener('change', () => {
+          const startTime = elements.manualStartTime.value;
+          const endTime = elements.manualEndTime.value;
+          if (startTime && endTime) {
+            const startMinutes = timeToMinutes(startTime);
+            const endMinutes = timeToMinutes(endTime);
+            if (endMinutes > startMinutes) {
+              elements.sidebarTimeRange.textContent = `${startTime} - ${endTime}`;
+              elements.saveEventBtn.disabled = false;
+            } else {
+              elements.saveEventBtn.disabled = true;
+              showNotification('დასრულების დრო უნდა იყოს დაწყების დროის შემდეგ.', 'error');
+            }
+          }
+        });
+      });
+    }
 
-    // Time slot selection
     document.querySelectorAll('.time-slot').forEach(slot => {
       slot.addEventListener('mousedown', startSelection);
       slot.addEventListener('mouseenter', continueSelection);
@@ -411,22 +417,18 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('touchend', endSelection);
     document.addEventListener('touchmove', handleTouchMove);
 
-    // Mobile specific event listeners
-    if (elements.mobileNav) {
-        elements.mobileNav.addEventListener('click', (e) => {
-            const target = e.target.closest('.mobile-nav-btn');
-            if (target) {
-                elements.mobileNav.querySelectorAll('.mobile-nav-btn').forEach(btn => btn.classList.remove('active'));
-                target.classList.add('active');
-            }
+    if (elements.mobileDayNavButtons) {
+      elements.mobileDayNavButtons.forEach((btn, index) => {
+        btn.addEventListener('click', () => {
+          state.activeDayIndex = index;
+          renderAll();
         });
-    }
-
-    if (elements.addEventFab) {
-      elements.addEventFab.addEventListener('click', () => {
-          document.getElementById('event-modal-backdrop').classList.add('active');
       });
     }
+
+    if(elements.addEventFab) elements.addEventFab.addEventListener('click', () => {
+      // Logic for mobile event modal
+    });
   };
   
   // Selection Logic
@@ -542,7 +544,43 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.currentTimeIndicator.style.left = `${dayColumn.offsetLeft}px`;
       elements.currentTimeIndicator.style.display = 'block';
     }
-  };
+  }
+
+  // --- Touch Handling Functions ---
+  let touchStartX = 0;
+  let touchStartY = 0;
+  function handleTouchStart(e) {
+      if (e.touches.length > 1) return;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      startSelection(e);
+  }
+  function handleTouchMove(e) {
+      if (e.touches.length > 1) return;
+      const currentX = e.touches[0].clientX;
+      const currentY = e.touches[0].clientY;
+      const diffX = Math.abs(touchStartX - currentX);
+      const diffY = Math.abs(touchStartY - currentY);
+      if (diffY > diffX * 2) { 
+          endSelection();
+          return;
+      }
+      if (diffX > 50) { 
+          if (currentX < touchStartX) {
+              elements.nextWeekBtn.click();
+          } else {
+              elements.prevWeekBtn.click();
+          }
+          touchStartX = currentX; 
+          return;
+      }
+      if (state.isDragging) {
+          const targetSlot = document.elementFromPoint(currentX, currentY)?.closest('.time-slot');
+          if (targetSlot) {
+              continueSelection({ target: targetSlot });
+          }
+      }
+  }
   
   initializeCalendar();
 });
