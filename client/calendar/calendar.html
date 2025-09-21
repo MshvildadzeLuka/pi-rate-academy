@@ -20,7 +20,6 @@
     <div id="header-placeholder"></div>
 
     <div class="page-wrapper">
-        <!-- Calendar Sidebar for Desktop -->
         <aside class="calendar-sidebar">
             <div id="mini-calendar">
                 <div class="mini-calendar-header">
@@ -48,6 +47,16 @@
                 <h2>დაამატე განრიგში</h2>
                 <form id="event-form">
                     <p id="sidebar-time-range">აირჩიე დრო კალენდარზე</p>
+                    <div class="manual-time-inputs hidden" id="manual-time-inputs">
+                        <div class="input-group">
+                            <label for="manual-start-time">დაწყების დრო</label>
+                            <input type="time" id="manual-start-time" name="manual-start-time" value="08:00">
+                        </div>
+                        <div class="input-group">
+                            <label for="manual-end-time">დასრულების დრო</label>
+                            <input type="time" id="manual-end-time" name="manual-end-time" value="09:00">
+                        </div>
+                    </div>
                     <div class="input-group">
                         <label>მოვლენის ტიპი</label>
                         <div class="radio-group-tabs">
@@ -144,7 +153,7 @@
                     </div>
                     
                     <div class="time-column" id="time-column"></div>
-                    <div class="day-column active" data-day="0"></div>
+                    <div class="day-column" data-day="0"></div>
                     <div class="day-column" data-day="1"></div>
                     <div class="day-column" data-day="2"></div>
                     <div class="day-column" data-day="3"></div>
@@ -156,12 +165,10 @@
         </main>
     </div>
 
-    <!-- Mobile Floating Action Button -->
     <button id="add-event-fab" class="fab hidden" aria-label="ახალი მოვლენის დამატება">
         <i class="fas fa-plus"></i>
     </button>
     
-    <!-- Mobile event creation Modal -->
     <div id="event-modal-backdrop" class="modal-overlay hidden">
         <div id="mobile-event-modal" class="modal">
             <div class="modal-header">
@@ -188,7 +195,7 @@
                         <label class="custom-checkbox">
                             <input type="checkbox" id="mobile-recurring-checkbox">
                             <span class="checkbox-box"></span>
-                            <span id="mobile-recurring-label-text">გამოყენება ყველა კვირაში</span>
+                            <span>გამოყენება ყველა კვირაში</span>
                         </label>
                     </div>
                     <div class="form-actions">
