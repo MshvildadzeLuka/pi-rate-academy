@@ -95,11 +95,21 @@
                 </div>
             </div>
     
+            <div id="mobile-day-nav" class="mobile-day-nav hidden">
+                <button class="mobile-day-nav-btn active" data-day="0">ორშ</button>
+                <button class="mobile-day-nav-btn" data-day="1">სამ</button>
+                <button class="mobile-day-nav-btn" data-day="2">ოთხ</button>
+                <button class="mobile-day-nav-btn" data-day="3">ხუთ</button>
+                <button class="mobile-day-nav-btn" data-day="4">პარ</button>
+                <button class="mobile-day-nav-btn" data-day="5">შაბ</button>
+                <button class="mobile-day-nav-btn" data-day="6">კვი</button>
+            </div>
+            
             <div class="calendar-grid-wrapper">
                 <div class="calendar-grid">
                     <div id="current-time-indicator" class="current-time-indicator"></div>
                     <div class="grid-header time-column-header"></div>
-                    <div class="grid-header day-column-header active" data-day-header="0">
+                    <div class="grid-header day-column-header" data-day-header="0">
                         <span class="day-name">ორშ</span>
                         <span class="day-number"></span>
                     </div>
@@ -129,7 +139,7 @@
                     </div>
                     
                     <div class="time-column" id="time-column"></div>
-                    <div class="day-column active" data-day="0"></div>
+                    <div class="day-column" data-day="0"></div>
                     <div class="day-column" data-day="1"></div>
                     <div class="day-column" data-day="2"></div>
                     <div class="day-column" data-day="3"></div>
@@ -145,16 +155,6 @@
         <i class="fas fa-plus"></i>
     </button>
     
-    <div id="mobile-nav" class="mobile-nav hidden">
-        <button id="mobile-view-toggle" class="mobile-nav-btn active">
-            <i class="fas fa-calendar-alt"></i>
-            <span id="mobile-view-text">ორშ</span>
-        </button>
-        <button id="mobile-add-event" class="mobile-nav-btn">
-            <i class="fas fa-plus"></i>
-        </button>
-    </div>
-
     <div id="event-modal-backdrop" class="modal-overlay hidden">
         <div id="mobile-event-modal" class="modal">
             <div class="modal-header">
@@ -165,20 +165,13 @@
             </div>
             <div class="modal-body">
                 <form id="mobile-event-form">
+                    <p id="mobile-time-range">აირჩიე დრო კალენდარზე</p>
                     <div class="input-group">
                         <label for="mobile-event-type-select">მოვლენის ტიპი</label>
                         <select id="mobile-event-type-select" name="eventType">
                             <option value="busy">დაკავებული</option>
                             <option value="preferred">პრიორიტეტული</option>
                         </select>
-                    </div>
-                    <div class="input-group">
-                        <label for="mobile-start-time">დაწყება</label>
-                        <input type="time" id="mobile-start-time" name="startTime" required>
-                    </div>
-                    <div class="input-group">
-                        <label for="mobile-end-time">დასრულება</label>
-                        <input type="time" id="mobile-end-time" name="endTime" required>
                     </div>
                     <div class="input-group">
                         <label class="custom-checkbox">
