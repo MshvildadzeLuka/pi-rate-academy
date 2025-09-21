@@ -1450,7 +1450,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } finally {
         elements.saveLectureBtn.classList.remove('loading');
       }
-    } 
+    }
 
       // Determine if we are creating a new lecture or updating an existing one
       const isUpdating = !!calendarState.activeLecture;
