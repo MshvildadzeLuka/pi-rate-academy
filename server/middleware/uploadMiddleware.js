@@ -30,8 +30,8 @@ const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB (increased for PDFs)
-    files: 1 // Max 1 file per upload for notes
+    fileSize: 5000 * 1024 * 1024, // 5000MB
+    files: 1
   }
 });
 
