@@ -26,71 +26,6 @@
 </head>
 <body>
     <div id="header-placeholder"></div>
-
-    <div class="mobile-header">
-        <button class="mobile-menu-btn" id="mobile-menu-btn">
-            <i class="fas fa-bars"></i>
-        </button>
-        <h1>ქვიზები</h1>
-        <div class="mobile-user">
-            <i class="fas fa-user"></i>
-        </div>
-    </div>
-
-    <div class="mobile-nav" id="mobile-nav">
-        <button class="close-mobile-nav" id="close-mobile-nav">
-            <i class="fas fa-times"></i>
-        </button>
-        <div class="mobile-nav-content">
-            <div class="mobile-user-info">
-                <div class="user-avatar">
-                    <i class="fas fa-user-circle"></i>
-                </div>
-                <div class="user-details">
-                    <span class="user-name" id="mobile-user-name">მომხმარებელი</span>
-                    <span class="user-role" id="mobile-user-role">სტუდენტი</span>
-                </div>
-            </div>
-            
-            <nav class="mobile-tabs-nav">
-                <button class="mobile-tab-btn active" data-tab="active">
-                    <i class="fas fa-play-circle"></i>
-                    <span>აქტიური</span>
-                </button>
-                <button class="mobile-tab-btn" data-tab="upcoming">
-                    <i class="fas fa-clock"></i>
-                    <span>მომავალი</span>
-                </button>
-                <button class="mobile-tab-btn" data-tab="completed">
-                    <i class="fas fa-check-circle"></i>
-                    <span>დასრულებული</span>
-                </button>
-                <button class="mobile-tab-btn" data-tab="past-due">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span>ვადაგასული</span>
-                </button>
-            </nav>
-            
-            <div class="mobile-actions" id="teacher-admin-mobile-controls" style="display: none;">
-                <div class="mobile-form-group">
-                    <label for="mobile-group-select">ჯგუფი:</label>
-                    <select id="mobile-group-select"></select>
-                </div>
-                <button class="mobile-create-quiz-btn" id="mobile-create-quiz-btn">
-                    <i class="fas fa-plus"></i> ახალი ქვიზი
-                </button>
-            </div>
-            
-            <div class="mobile-footer">
-                <button class="mobile-logout-btn" id="mobile-logout-btn">
-                    <i class="fas fa-sign-out-alt"></i> გასვლა
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div class="content-overlay" id="content-overlay"></div>
-
     <main class="quizzes-container">
         <div class="quizzes-main-header">
             <h1>ქვიზები</h1>
@@ -118,13 +53,12 @@
                     <p>ქვიზების ჩატვირთვა...</p>
                 </div>
             </div>
-            <div id="quiz-detail-view" class="view" style="display: none;"></div>
+            <div id="quiz-detail-view" class="view"></div>
         </div>
     </main>
 
     <div id="modal-backdrop" class="modal-backdrop" style="display: none;"></div>
 
-    <!-- Templates -->
     <template id="template-quiz-item">
         <div class="quiz-item" data-id="" data-action="view-detail">
             <div class="quiz-item-icon">
