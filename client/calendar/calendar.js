@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     userGroups: [],
     isRecurring: false,
     isManualInputMode: false,
-    activeDayIndex: 0 // New state for mobile single-day view
+    activeDayIndex: (new Date().getDay() + 6) % 7, // Set default active day to today
   };
 
   const elements = {
@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     eventTitleInput: document.getElementById('event-title-input'),
     addEventFab: document.getElementById('add-event-fab'),
     eventModalBackdrop: document.getElementById('event-modal-backdrop'),
-    mobileDayNav: document.getElementById('mobile-day-nav')
+    mobileDayNav: document.getElementById('mobile-day-nav'),
   };
 
   // Show notification toast
@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Update time indicator every minute
       updateCurrentTimeIndicator();
       setInterval(updateCurrentTimeIndicator, 60000);
-      
+
       // Initial render for mobile layout
       handleResize();
       window.addEventListener('resize', handleResize);
@@ -161,8 +161,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const endTimeStr = elements.manualEndTime.value;
 
       if (!title || !dayIndex || !startTimeStr || !endTimeStr) {
-          showNotification('გთხოვთ, შეავსოთ ყველა ველი', 'error');
-          return;
+        showNotification('გთხოვთ, შეავსოთ ყველა ველი', 'error');
+        return;
       }
 
       const startDate = new Date(getStartOfWeek(state.mainViewDate));
@@ -246,10 +246,10 @@ document.addEventListener('DOMContentLoaded', () => {
       clearSelection();
       renderEventsForWeek();
       showNotification('მოვლენა წარმატებით შეინახა!', 'success');
-      
+
       // Close modal on mobile
       if (window.innerWidth < 992) {
-          elements.eventModalBackdrop.classList.add('hidden');
+        elements.eventModalBackdrop.classList.add('hidden');
       }
     } catch (error) {
       console.error('მოვლენის შენახვა ვერ მოხერხდა:', error);
@@ -315,10 +315,10 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMiniCalendar();
     renderEventsForWeek();
     updateSidebarUI('add');
-    
+
     // Update active day for mobile
     if (window.innerWidth < 992) {
-        updateActiveDayForMobile();
+      updateActiveDayForMobile();
     }
   }
 
@@ -516,14 +516,14 @@ document.addEventListener('DOMContentLoaded', () => {
       state.miniCalDate.setMonth(state.miniCalDate.getMonth() + 1);
       renderMiniCalendar();
     });
-    
+
     // Mobile day navigation buttons
     elements.mobileDayNav.querySelectorAll('.mobile-day-nav-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const dayIndex = parseInt(btn.dataset.day);
-            state.activeDayIndex = dayIndex;
-            updateActiveDayForMobile();
-        });
+      btn.addEventListener('click', () => {
+        const dayIndex = parseInt(btn.dataset.day);
+        state.activeDayIndex = dayIndex;
+        updateActiveDayForMobile();
+      });
     });
 
     elements.saveEventBtn.addEventListener('click', saveEvent);
@@ -547,93 +547,100 @@ document.addEventListener('DOMContentLoaded', () => {
       slot.addEventListener('mousedown', startSelection);
       slot.addEventListener('mouseenter', continueSelection);
       slot.addEventListener('click', toggleSlotSelection);
-      slot.addEventListener('touchstart', handleTouchStart, { passive: true });
+      slot.addEventListener('touchstart', handleTouchStart, {
+        passive: true
+      });
     });
 
     document.addEventListener('mouseup', endSelection);
     document.addEventListener('touchend', endSelection);
-    
+
     elements.sidebarTimeRange.addEventListener('click', toggleManualInputs);
     addManualInputListeners();
     elements.eventForm.addEventListener('submit', (e) => {
       e.preventDefault();
       saveEvent();
     });
-    
+
     // FAB for mobile
     if (elements.addEventFab) {
-        elements.addEventFab.addEventListener('click', () => {
-            elements.eventModalBackdrop.classList.remove('hidden');
-        });
+      elements.addEventFab.addEventListener('click', () => {
+        elements.eventModalBackdrop.classList.remove('hidden');
+      });
     }
-    
+
     if (elements.eventModalBackdrop) {
-        elements.eventModalBackdrop.addEventListener('click', (e) => {
-            if (e.target === elements.eventModalBackdrop || e.target.closest('.close-modal-btn')) {
-                elements.eventModalBackdrop.classList.add('hidden');
-            }
-        });
+      elements.eventModalBackdrop.addEventListener('click', (e) => {
+        if (e.target === elements.eventModalBackdrop || e.target.closest('.close-modal-btn')) {
+          elements.eventModalBackdrop.classList.add('hidden');
+        }
+      });
     }
   }
-
+  
   function updateActiveDayForMobile() {
     document.querySelectorAll('.mobile-day-nav-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`.mobile-day-nav-btn[data-day="${state.activeDayIndex}"]`).classList.add('active');
+    const activeBtn = document.querySelector(`.mobile-day-nav-btn[data-day="${state.activeDayIndex}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
 
     document.querySelectorAll('.day-column-header').forEach(header => header.classList.remove('active'));
     document.querySelectorAll('.day-column').forEach(column => column.classList.remove('active'));
 
-    document.querySelector(`.day-column-header[data-day-header="${state.activeDayIndex}"]`).classList.add('active');
-    document.querySelector(`.day-column[data-day="${state.activeDayIndex}"]`).classList.add('active');
+    const activeHeader = document.querySelector(`.day-column-header[data-day-header="${state.activeDayIndex}"]`);
+    if (activeHeader) activeHeader.classList.add('active');
+
+    const activeColumn = document.querySelector(`.day-column[data-day="${state.activeDayIndex}"]`);
+    if (activeColumn) activeColumn.classList.add('active');
   }
 
   function handleResize() {
     if (window.innerWidth < 992) {
       elements.mobileDayNav.classList.remove('hidden');
+      updateActiveDayForMobile();
     } else {
       elements.mobileDayNav.classList.add('hidden');
       document.querySelectorAll('.day-column-header').forEach(header => header.classList.add('active'));
       document.querySelectorAll('.day-column').forEach(column => column.classList.add('active'));
     }
   }
-  
+
   function addManualInputListeners() {
-      const manualInputs = elements.eventForm.querySelectorAll('#manual-day-select, #manual-start-time, #manual-end-time');
-      manualInputs.forEach(input => input.addEventListener('change', handleManualTimeChange));
+    const manualInputs = elements.eventForm.querySelectorAll('#manual-day-select, #manual-start-time, #manual-end-time');
+    manualInputs.forEach(input => input.addEventListener('change', handleManualTimeChange));
   }
-  
+
   function toggleManualInputs() {
-      state.isManualInputMode = !state.isManualInputMode;
-      if (state.isManualInputMode) {
-          elements.manualTimeInputs.classList.remove('hidden');
-          elements.sidebarTimeRange.classList.add('hidden');
-          clearSelection();
-      } else {
-          elements.manualTimeInputs.classList.add('hidden');
-          elements.sidebarTimeRange.classList.remove('hidden');
-          handleManualTimeChange();
-      }
+    state.isManualInputMode = !state.isManualInputMode;
+    if (state.isManualInputMode) {
+      elements.manualTimeInputs.classList.remove('hidden');
+      elements.sidebarTimeRange.classList.add('hidden');
+      clearSelection();
+    } else {
+      elements.manualTimeInputs.classList.add('hidden');
+      elements.sidebarTimeRange.classList.remove('hidden');
+      handleManualTimeChange();
+    }
   }
-  
+
   function handleManualTimeChange() {
     const dayOfWeek = elements.manualDaySelect.value;
     const startTimeStr = elements.manualStartTime.value;
     const endTimeStr = elements.manualEndTime.value;
-    
+
     if (dayOfWeek && startTimeStr && endTimeStr) {
       const startMinutes = timeToMinutes(startTimeStr);
       const endMinutes = timeToMinutes(endTimeStr);
-      
+
       if (endMinutes > startMinutes) {
-          elements.sidebarTimeRange.textContent = `${formatTime(startTimeStr)} - ${formatTime(endTimeStr)}`;
-          elements.saveEventBtn.disabled = false;
+        elements.sidebarTimeRange.textContent = `${formatTime(startTimeStr)} - ${formatTime(endTimeStr)}`;
+        elements.saveEventBtn.disabled = false;
       } else {
-          elements.sidebarTimeRange.textContent = 'დასრულების დრო უნდა იყოს დაწყების შემდეგ';
-          elements.saveEventBtn.disabled = true;
+        elements.sidebarTimeRange.textContent = 'დასრულების დრო უნდა იყოს დაწყების შემდეგ';
+        elements.saveEventBtn.disabled = true;
       }
     } else {
-        elements.sidebarTimeRange.textContent = 'გთხოვთ, შეავსოთ ყველა ველი';
-        elements.saveEventBtn.disabled = true;
+      elements.sidebarTimeRange.textContent = 'გთხოვთ, შეავსოთ ყველა ველი';
+      elements.saveEventBtn.disabled = true;
     }
   }
 
@@ -647,13 +654,18 @@ document.addEventListener('DOMContentLoaded', () => {
     touchStartY = e.touches[0].clientY;
     startSelection(e);
   }
-  
+
   function toggleSlotSelection(e) {
     // Only run this on tap, not drag
     if (state.isDragging) return;
-    
+
     const targetSlot = e.target.closest('.time-slot');
     if (!targetSlot) return;
+    
+    // Check if the slot belongs to the currently active day on mobile
+    if (window.innerWidth < 992 && parseInt(targetSlot.dataset.day) !== state.activeDayIndex) {
+        return;
+    }
 
     if (state.selectedSlots.has(targetSlot)) {
       state.selectedSlots.delete(targetSlot);
@@ -753,7 +765,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       document.querySelector(`input[name="event-type"][value="${eventData.type}"]`).checked = true;
     }
-    
+
     elements.eventTitleInput.value = eventData ? eventData.title : '';
   }
 
@@ -931,33 +943,33 @@ document.addEventListener('DOMContentLoaded', () => {
   const apiService = {
     // Re-added the core fetch function for clarity
     async fetch(endpoint, options = {}) {
-        const token = localStorage.getItem('piRateToken');
-        const headers = {
-            'Content-Type': 'application/json',
-            ...options.headers
-        };
+      const token = localStorage.getItem('piRateToken');
+      const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+      };
 
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+          ...options,
+          headers
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || `API error: ${response.status}`);
         }
 
-        try {
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-                ...options,
-                headers
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `API error: ${response.status}`);
-            }
-
-            return response.status === 204 ? null : response.json();
-        } catch (error) {
-            console.error('API request failed:', error);
-            showNotification('Network error. Please try again.', 'error');
-            throw error;
-        }
+        return response.status === 204 ? null : response.json();
+      } catch (error) {
+        console.error('API request failed:', error);
+        showNotification('Network error. Please try again.', 'error');
+        throw error;
+      }
     }
   };
 
