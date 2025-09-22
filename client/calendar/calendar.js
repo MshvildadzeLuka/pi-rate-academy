@@ -1,4 +1,3 @@
-
 document.addEventListener('DOMContentLoaded', () => {
   const API_BASE_URL = '/api';
 
@@ -12,7 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
     activeEvent: null,
     userGroups: [],
     isRecurring: false,
-    isManualInputMode: false
+    isManualInputMode: false,
+    activeDayIndex: 0 // New state for mobile single-day view
   };
 
   const elements = {
@@ -39,6 +39,9 @@ document.addEventListener('DOMContentLoaded', () => {
     manualStartTime: document.getElementById('manual-start-time'),
     manualEndTime: document.getElementById('manual-end-time'),
     eventTitleInput: document.getElementById('event-title-input'),
+    addEventFab: document.getElementById('add-event-fab'),
+    eventModalBackdrop: document.getElementById('event-modal-backdrop'),
+    mobileDayNav: document.getElementById('mobile-day-nav')
   };
 
   // Show notification toast
@@ -101,6 +104,10 @@ document.addEventListener('DOMContentLoaded', () => {
       // Update time indicator every minute
       updateCurrentTimeIndicator();
       setInterval(updateCurrentTimeIndicator, 60000);
+      
+      // Initial render for mobile layout
+      handleResize();
+      window.addEventListener('resize', handleResize);
     } catch (error) {
       console.error('Calendar initialization failed:', error);
       showNotification('Calendar initialization failed', 'error');
@@ -140,9 +147,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function saveEvent() {
     let type, isRecurring, title, payload;
-    
+
     // Determine source of data (mouse selection or manual input)
-    const isManual = state.isManualInputMode;
+    const isManual = elements.manualTimeInputs.classList.contains('active');
 
     type = document.querySelector('input[name="event-type"]:checked').value;
     isRecurring = elements.recurringCheckbox.checked;
@@ -152,12 +159,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const dayIndex = elements.manualDaySelect.value;
       const startTimeStr = elements.manualStartTime.value;
       const endTimeStr = elements.manualEndTime.value;
-      
+
       if (!title || !dayIndex || !startTimeStr || !endTimeStr) {
           showNotification('გთხოვთ, შეავსოთ ყველა ველი', 'error');
           return;
       }
-      
+
       const startDate = new Date(getStartOfWeek(state.mainViewDate));
       startDate.setDate(startDate.getDate() + parseInt(dayIndex));
       const [startH, startM] = startTimeStr.split(':').map(Number);
@@ -172,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showNotification('დასრულების დრო უნდა იყოს დაწყების შემდეგ', 'error');
         return;
       }
-      
+
       payload = {
         type,
         title,
@@ -188,15 +195,15 @@ document.addEventListener('DOMContentLoaded', () => {
         payload.startTime = startDate.toISOString();
         payload.endTime = endDate.toISOString();
       }
-      
+
     } else if (state.selectedSlots.size > 0) {
       const slots = Array.from(state.selectedSlots).sort((a, b) => timeToMinutes(a.dataset.time) - timeToMinutes(b.dataset.time));
       const startSlot = slots[0];
       const endSlot = slots[slots.length - 1];
-      
+
       const dayIndex = parseInt(startSlot.dataset.day);
       const dayOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'][dayIndex];
-      
+
       payload = {
         type,
         title,
@@ -228,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showNotification('გთხოვთ, აირჩიოთ დრო კალენდარზე', 'error');
       return;
     }
-    
+
     try {
       const response = await apiService.fetch('/calendar-events', {
         method: 'POST',
@@ -239,6 +246,11 @@ document.addEventListener('DOMContentLoaded', () => {
       clearSelection();
       renderEventsForWeek();
       showNotification('მოვლენა წარმატებით შეინახა!', 'success');
+      
+      // Close modal on mobile
+      if (window.innerWidth < 992) {
+          elements.eventModalBackdrop.classList.add('hidden');
+      }
     } catch (error) {
       console.error('მოვლენის შენახვა ვერ მოხერხდა:', error);
       showNotification('მოვლენის შენახვა ვერ მოხერხდა: ' + error.message, 'error');
@@ -303,6 +315,11 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMiniCalendar();
     renderEventsForWeek();
     updateSidebarUI('add');
+    
+    // Update active day for mobile
+    if (window.innerWidth < 992) {
+        updateActiveDayForMobile();
+    }
   }
 
   function renderWeekDisplay() {
@@ -415,7 +432,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           const eventStartDate = new Date(event.startTime);
           const eventEndDate = new Date(event.endTime);
-          
+
           if (eventStartDate.toDateString() === currentDayDate.toDateString()) {
             render = true;
             // FIX: Use UTC methods for consistent time formatting from ISO string.
@@ -499,6 +516,15 @@ document.addEventListener('DOMContentLoaded', () => {
       state.miniCalDate.setMonth(state.miniCalDate.getMonth() + 1);
       renderMiniCalendar();
     });
+    
+    // Mobile day navigation buttons
+    elements.mobileDayNav.querySelectorAll('.mobile-day-nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const dayIndex = parseInt(btn.dataset.day);
+            state.activeDayIndex = dayIndex;
+            updateActiveDayForMobile();
+        });
+    });
 
     elements.saveEventBtn.addEventListener('click', saveEvent);
     elements.deleteEventBtn.addEventListener('click', () => {
@@ -520,19 +546,55 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.time-slot').forEach(slot => {
       slot.addEventListener('mousedown', startSelection);
       slot.addEventListener('mouseenter', continueSelection);
+      slot.addEventListener('click', toggleSlotSelection);
       slot.addEventListener('touchstart', handleTouchStart, { passive: true });
     });
 
     document.addEventListener('mouseup', endSelection);
     document.addEventListener('touchend', endSelection);
-
+    
     elements.sidebarTimeRange.addEventListener('click', toggleManualInputs);
     addManualInputListeners();
-
     elements.eventForm.addEventListener('submit', (e) => {
       e.preventDefault();
       saveEvent();
     });
+    
+    // FAB for mobile
+    if (elements.addEventFab) {
+        elements.addEventFab.addEventListener('click', () => {
+            elements.eventModalBackdrop.classList.remove('hidden');
+        });
+    }
+    
+    if (elements.eventModalBackdrop) {
+        elements.eventModalBackdrop.addEventListener('click', (e) => {
+            if (e.target === elements.eventModalBackdrop || e.target.closest('.close-modal-btn')) {
+                elements.eventModalBackdrop.classList.add('hidden');
+            }
+        });
+    }
+  }
+
+  function updateActiveDayForMobile() {
+    document.querySelectorAll('.mobile-day-nav-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`.mobile-day-nav-btn[data-day="${state.activeDayIndex}"]`).classList.add('active');
+
+    document.querySelectorAll('.day-column-header').forEach(header => header.classList.remove('active'));
+    document.querySelectorAll('.day-column').forEach(column => column.classList.remove('active'));
+
+    document.querySelector(`.day-column-header[data-day-header="${state.activeDayIndex}"]`).classList.add('active');
+    document.querySelector(`.day-column[data-day="${state.activeDayIndex}"]`).classList.add('active');
+  }
+
+  function handleResize() {
+    if (window.innerWidth < 992) {
+      elements.mobileDayNav.classList.remove('hidden');
+    } else {
+      elements.mobileDayNav.classList.add('hidden');
+      document.querySelectorAll('.day-column-header').forEach(header => header.classList.add('active'));
+      document.querySelectorAll('.day-column').forEach(column => column.classList.add('active'));
+    }
   }
   
   function addManualInputListeners() {
@@ -585,9 +647,26 @@ document.addEventListener('DOMContentLoaded', () => {
     touchStartY = e.touches[0].clientY;
     startSelection(e);
   }
+  
+  function toggleSlotSelection(e) {
+    // Only run this on tap, not drag
+    if (state.isDragging) return;
+    
+    const targetSlot = e.target.closest('.time-slot');
+    if (!targetSlot) return;
+
+    if (state.selectedSlots.has(targetSlot)) {
+      state.selectedSlots.delete(targetSlot);
+      targetSlot.classList.remove('selection-active');
+    } else {
+      state.selectedSlots.add(targetSlot);
+      targetSlot.classList.add('selection-active');
+    }
+    updateSidebarWithSelection();
+  }
 
   function startSelection(e) {
-    if (state.isManualInputMode) return;
+    if (window.innerWidth < 992) return; // Disable drag on mobile for better tap experience
 
     if (e.target.classList.contains('event-block')) {
       const eventId = e.target.dataset.eventId;
@@ -651,7 +730,7 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.recurringCheckbox.checked = false;
       elements.recurringLabelText.textContent = 'Apply to all weeks';
 
-      if (state.selectedSlots.size === 0 && !state.isManualInputMode) {
+      if (state.selectedSlots.size === 0 && !elements.manualTimeInputs.classList.contains('active')) {
         elements.sidebarTimeRange.textContent = 'Select time on calendar';
       }
     } else if (mode === 'edit') {
@@ -741,7 +820,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('.event-block.active-event').forEach(el => el.classList.remove('active-event'));
     state.activeEvent = null;
-    
+
     if (resetSidebar) {
       state.isManualInputMode = false;
       elements.manualTimeInputs.classList.add('hidden');
@@ -848,7 +927,7 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.currentTimeIndicator.style.display = 'block';
     }
   }
-  
+
   const apiService = {
     // Re-added the core fetch function for clarity
     async fetch(endpoint, options = {}) {
@@ -861,7 +940,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
         }
-        
+
         try {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, {
                 ...options,
