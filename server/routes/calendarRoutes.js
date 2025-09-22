@@ -23,48 +23,32 @@ function ensureTimeFormat(timeStr) {
 // @desc    Get all personal events + lectures for the logged-in user
 // @route   GET /api/calendar-events/my-schedule
 // @access  Private
+// server/routes/calendarRoutes.js
 router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
-    const userId = req.user._id;
-    const { start, end } = req.query;
-
-    const user = await User.findById(userId).populate('groups');
-    const userGroupIds = user.groups ? user.groups.map(group => group._id) : [];
-
-    // Fetch all personal events for the user
+    // ...
     const personalEvents = await CalendarEvent.find({ userId }).lean();
+    // This formattedPersonal map is the root cause of the error.
+    // It should be removed as the client can parse the ISO string directly.
+    // The client code will be updated to handle the raw ISO strings.
 
-    const formattedPersonal = personalEvents.map(event => ({
-        ...event,
-        startTimeLocal: event.isRecurring ?
-            ensureTimeFormat(event.recurringStartTime) :
-            (event.startTime ? new Date(event.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }) : null),
-        endTimeLocal: event.isRecurring ?
-            ensureTimeFormat(event.recurringEndTime) :
-            (event.endTime ? new Date(event.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }) : null)
+    // ...
+    const formattedLectures = groupLectures.map(lecture => ({
+        _id: lecture._id,
+        title: lecture.title,
+        type: 'lecture',
+        // The server should just pass the raw ISO dates.
+        startTime: lecture.startTime,
+        endTime: lecture.endTime,
+        groupId: lecture.assignedGroup._id,
+        groupName: lecture.assignedGroup.name,
+        isRecurring: lecture.isRecurring,
+        recurrenceRule: lecture.recurrenceRule,
+        // Remove startTimeLocal and endTimeLocal as they are the source of the bug.
     }));
 
-    let groupLectures = [];
-    if (userGroupIds.length > 0) {
-        try {
-            // FIX: This query has been corrected to work for both single and recurring events.
-            let lectureQuery = {
-                assignedGroup: { $in: userGroupIds },
-                // This condition correctly handles events that either end after the start of the week
-                // or are recurring with no end date.
-                $or: [
-                    { isRecurring: true },
-                    { endTime: { $gte: new Date(start) } }
-                ]
-            };
-            const lectures = await Lecture.find(lectureQuery)
-                .populate('assignedGroup', 'name')
-                .lean();
-            groupLectures = lectures;
-        } catch (error) {
-            console.error(`Failed to fetch lectures for user's groups:`, error);
-        }
-    }
-
+    const allEvents = [...personalEvents, ...formattedLectures];
+    res.status(200).json({ success: true, data: allEvents });
+}));
     const formattedLectures = groupLectures.map(lecture => ({
         _id: lecture._id,
         title: lecture.title,
