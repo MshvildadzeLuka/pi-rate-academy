@@ -837,7 +837,6 @@ select:focus {
   .day-column {
     display: none;
   }
-
   .day-column-header.active,
   .day-column.active {
     display: flex;
