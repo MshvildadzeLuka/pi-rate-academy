@@ -1,6 +1,9 @@
-/* ===== BASE STYLES & VARIABLES ===== */
+/* =========================================================================
+// FILE: quizzes.css (Rewritten for Unified Responsive Design)
+// ========================================================================= */
+
 :root {
-    /* Color System */
+    /* Core Color Palette */
     --background-primary: #121212;
     --background-secondary: #1e1e1e;
     --background-tertiary: #2a2a2a;
@@ -1119,9 +1122,9 @@ body {
 }
 
 .question-image-preview img {
-    width: 100%;
-    border-radius: var(--border-radius-md);
+    max-width: 100%;
     max-height: 200px;
+    border-radius: var(--border-radius-md);
     object-fit: contain;
 }
 
@@ -1250,6 +1253,7 @@ body {
     max-width: 100%;
     max-height: 300px;
     border-radius: var(--border-radius-md);
+    object-fit: contain;
 }
 
 .options-container-taking {
@@ -2090,4 +2094,6 @@ body {
     .question-review-item {
         break-inside: avoid;
     }
+}
+
 }
