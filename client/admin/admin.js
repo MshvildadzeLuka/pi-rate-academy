@@ -1114,7 +1114,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const dateString = currentDate.toISOString().split('T')[0];
 
             // Check if this instance was deleted by an exception
-            const isException = memberEvents.some(ex => ex.exceptionDate === dateString && ex.title === `DELETED: ${event._id}`);
+            const isException = memberEvents.some(ex => ex.exceptionDate === dateString && exc.title === `DELETED: ${event._id}`);
             if (!isException) {
               eventDays.push(dayIndex);
               // Ensure time is in HH:MM format
@@ -1123,25 +1123,41 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           }
         } else if (event.startTime) {
-          // For single-instance events, find which day of the week it falls on
+          // FIX: Use UTC methods for consistent calculations.
           const eventDate = new Date(event.startTime);
-          const dayIndex = (eventDate.getDay() + 6) % 7; // Monday is 0
-          eventDays.push(dayIndex);
-          eventStartMin = eventDate.getHours() * 60 + eventDate.getMinutes();
-          eventEndMin = new Date(event.endTime).getHours() * 60 + new Date(event.endTime).getMinutes();
+          const startOfWeekUtc = getStartOfWeekUTC(calendarState.mainViewDate);
+
+          // Get the UTC day of the week (Monday=1...Sunday=0)
+          const dayIndex = (eventDate.getUTCDay() + 6) % 7; 
+          
+          const eventStartUtcHours = eventDate.getUTCHours();
+          const eventStartUtcMinutes = eventDate.getUTCMinutes();
+          const eventEndUtcHours = new Date(event.endTime).getUTCHours();
+          const eventEndUtcMinutes = new Date(event.endTime).getUTCMinutes();
+
+          // Only process events that fall within the current week's UTC date range.
+          const weekEndDateUtc = new Date(startOfWeekUtc);
+          weekEndDateUtc.setUTCDate(weekEndDateUtc.getUTCDate() + 7);
+          
+          if (eventDate >= startOfWeekUtc && eventDate < weekEndDateUtc) {
+              eventDays.push(dayIndex);
+              eventStartMin = eventStartUtcHours * 60 + eventStartUtcMinutes;
+              eventEndMin = eventEndUtcHours * 60 + eventEndUtcMinutes;
+          }
         }
 
         // 3. Mark the slots in the availability map
         for (const day of eventDays) {
-          const startSlot = Math.floor(eventStartMin / 30);
-          const endSlot = Math.ceil(eventEndMin / 30);
+          const startSlot = Math.floor((eventStartMin - 8 * 60) / 30);
+          const endSlot = Math.ceil((eventEndMin - 8 * 60) / 30);
 
           for (let slot = startSlot; slot < endSlot; slot++) {
-            // Count the number of busy and preferred events in each slot
-            if (event.type === 'busy') {
-              availabilityMap[day][slot].busy++;
-            } else if (event.type === 'preferred') {
-              availabilityMap[day][slot].preferred++;
+            if (availabilityMap[day] && availabilityMap[day][slot]) {
+              if (event.type === 'busy') {
+                availabilityMap[day][slot].busy++;
+              } else if (event.type === 'preferred') {
+                availabilityMap[day][slot].preferred++;
+              }
             }
           }
         }
@@ -1197,40 +1213,51 @@ document.addEventListener('DOMContentLoaded', () => {
       const endOfWeek = getEndOfWeek(calendarState.mainViewDate);
       endOfWeek.setHours(23, 59, 59, 999);
 
+      // Clear existing events first
+      document.querySelectorAll('.event-block').forEach(el => el.remove());
+
       calendarState.lectures.forEach(lecture => {
+        const lectureDate = new Date(lecture.startTime);
+        
         if (lecture.isRecurring) {
           const weekdayMap = { MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6, SU: 0 };
           const rruleWeekdays = lecture.recurrenceRule?.byweekday || [];
           
           for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
               if (rruleWeekdays.some(wd => weekdayMap[wd] === dayIndex)) {
-                  const lectureDate = new Date(startOfWeek);
-                  lectureDate.setDate(startOfWeek.getDate() + dayIndex);
+                  const currentDate = new Date(startOfWeek);
+                  currentDate.setDate(startOfWeek.getDate() + dayIndex);
 
                   const dtstart = new Date(lecture.recurrenceRule.dtstart);
                   const until = lecture.recurrenceRule.until ? new Date(lecture.recurrenceRule.until) : null;
 
-                  if (lectureDate >= dtstart && (!until || lectureDate <= until)) {
+                  if (currentDate >= dtstart && (!until || currentDate <= until)) {
+                      // FIX: Use UTC times for rendering
+                      const formattedStart = `${String(lectureDate.getUTCHours()).padStart(2, '0')}:${String(lectureDate.getUTCMinutes()).padStart(2, '0')}`;
+                      const formattedEnd = `${String(new Date(lecture.endTime).getUTCHours()).padStart(2, '0')}:${String(new Date(lecture.endTime).getUTCMinutes()).padStart(2, '0')}`;
+                      
                       createEventBlock({
                           _id: lecture._id,
                           title: lecture.title,
-                          start: new Date(lecture.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                          end: new Date(lecture.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                          start: formattedStart,
+                          end: formattedEnd,
                           type: 'lecture',
                       }, dayIndex);
                   }
               }
           }
         } else {
-          const lectureDate = new Date(lecture.startTime);
-          
+          // FIX: Use UTC methods for calculating start and end times for single events
           if (lectureDate >= startOfWeek && lectureDate <= endOfWeek) {
             const dayIndex = (lectureDate.getDay() + 6) % 7;
+            const formattedStart = `${String(lectureDate.getUTCHours()).padStart(2, '0')}:${String(lectureDate.getUTCMinutes()).padStart(2, '0')}`;
+            const formattedEnd = `${String(new Date(lecture.endTime).getUTCHours()).padStart(2, '0')}:${String(new Date(lecture.endTime).getUTCMinutes()).padStart(2, '0')}`;
+
             createEventBlock({
               _id: lecture._id,
               title: lecture.title,
-              start: lectureDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-              end: new Date(lecture.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+              start: formattedStart,
+              end: formattedEnd,
               type: 'lecture',
             }, dayIndex);
           }
@@ -1404,7 +1431,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const startSlot = slots[0];
       const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
       const lectureDate = new Date(startOfWeek);
-      lectureDate.setDate(startOfWeek.getDate() + parseInt(startSlot.dataset.day));
+      lectureDate.setDate(lectureDate.getDate() + parseInt(startSlot.dataset.day));
 
       const [startH, startM] = startSlot.dataset.time.split(':');
       const startTime = new Date(lectureDate.setHours(parseInt(startH), parseInt(startM)));
@@ -1416,7 +1443,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const payload = {
         title: elements.lectureTitleInput.value.trim(),
-        // Correctly pass the ISO strings with local timezone
+        // FIX: Correctly pass ISO strings using UTC methods
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         groupId: elements.groupSelect.value,
@@ -1447,10 +1474,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Reset the selection and sidebar form
         clearSelection();
-        showToast(isUpdating ? 'ლექცია განახლებულია' : 'ლექცია დაემატა', 'success');
+        showNotification(isUpdating ? 'ლექცია განახლებულია' : 'ლექცია დაემატა', 'success');
       } catch (error) {
         console.error(`Error saving lecture:`, error);
-        showToast(`შეცდომა: ${error.message}`, 'error');
+        showNotification(`შეცდომა: ${error.message}`, 'error');
       } finally {
         elements.saveLectureBtn.classList.remove('loading');
       }
@@ -1635,6 +1662,16 @@ document.addEventListener('DOMContentLoaded', () => {
       end.setDate(start.getDate() + 6);
       return end;
     }
+    
+    // FIX: Add a new utility function to get the start of the week in UTC.
+    function getStartOfWeekUTC(date) {
+        const d = new Date(date);
+        const day = d.getUTCDay();
+        const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
+        const newDate = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), diff));
+        return newDate;
+    }
+
 
     function getStartOfWeekFromYearAndWeek(year, week) {
       const date = new Date(year, 0, 1 + (week - 1) * 7);
