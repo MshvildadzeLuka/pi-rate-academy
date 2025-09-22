@@ -1,3 +1,4 @@
+
 document.addEventListener('DOMContentLoaded', () => {
   const API_BASE_URL = '/api';
 
@@ -396,8 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let render = false;
         let isException = false;
-        let startTimeStr = event.startTimeLocal;
-        let endTimeStr = event.endTimeLocal;
+        let startTimeStr, endTimeStr;
 
         if (event.isRecurring) {
           if (event.dayOfWeek) {
@@ -407,27 +407,20 @@ document.addEventListener('DOMContentLoaded', () => {
               );
               if (!isException) {
                 render = true;
-                startTimeStr = ensureTimeFormat(event.recurringStartTime || startTimeStr);
-                endTimeStr = ensureTimeFormat(event.recurringEndTime || endTimeStr);
-              }
-            }
-          } else if (event.type === 'lecture' && event.recurrenceRule) {
-            const rruleWeekdays = event.recurrenceRule.byweekday || [];
-            const weekdayMap = { MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6, SU: 0 };
-            if (rruleWeekdays.some(wd => weekdayMap[wd] === dayIndex)) {
-              const dtstart = new Date(event.recurrenceRule.dtstart);
-              const until = event.recurrenceRule.until ? new Date(event.recurrenceRule.until) : null;
-              if (currentDayDate >= dtstart && (!until || currentDayDate <= until)) {
-                render = true;
+                startTimeStr = ensureTimeFormat(event.recurringStartTime);
+                endTimeStr = ensureTimeFormat(event.recurringEndTime);
               }
             }
           }
         } else {
           const eventStartDate = new Date(event.startTime);
+          const eventEndDate = new Date(event.endTime);
+          
           if (eventStartDate.toDateString() === currentDayDate.toDateString()) {
             render = true;
-            startTimeStr = ensureTimeFormat(startTimeStr || formatTime(eventStartDate));
-            endTimeStr = ensureTimeFormat(endTimeStr || formatTime(new Date(event.endTime)));
+            // FIX: Use UTC methods for consistent time formatting from ISO string.
+            startTimeStr = `${String(eventStartDate.getUTCHours()).padStart(2, '0')}:${String(eventStartDate.getUTCMinutes()).padStart(2, '0')}`;
+            endTimeStr = `${String(eventEndDate.getUTCHours()).padStart(2, '0')}:${String(eventEndDate.getUTCMinutes()).padStart(2, '0')}`;
           }
         }
 
