@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ka">
 <head>
@@ -25,96 +26,62 @@
 </head>
 <body>
     <div id="header-placeholder"></div>
-    <main class="quizzes-container">
-        <div class="quizzes-main-header">
-            <h1>ქვიზები</h1>
-            <div class="header-actions" id="teacher-admin-controls" style="display: none;">
-                <div class="form-group">
-                    <select id="group-select" aria-label="აირჩიეთ ჯგუფი"></select>
-                </div>
-                <button id="create-quiz-btn" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> ახალი ქვიზი
-                </button>
-            </div>
-        </div>
 
-        <nav class="tabs-nav" id="tabs-nav">
-            <button class="tab-btn active" data-tab="active">აქტიური</button>
-            <button class="tab-btn" data-tab="upcoming">მომავალი</button>
-            <button class="tab-btn" data-tab="completed">დასრულებული</button>
-            <button class="tab-btn" data-tab="past-due">ვადაგასული</button>
-        </nav>
-
-        <div class="content-area">
-            <div id="quiz-list-view" class="view active">
-                <div class="loading-state">
-                    <div class="loading-spinner"></div>
-                    <p>ქვიზების ჩატვირთვა...</p>
+    <div id="quiz-wrapper">
+        <main class="quizzes-container">
+            <div class="quizzes-main-header">
+                <h1>ქვიზები</h1>
+                <div class="header-actions" id="teacher-admin-controls" style="display: none;">
+                    <div class="form-group">
+                        <select id="group-select" aria-label="აირჩიეთ ჯგუფი"></select>
+                    </div>
+                    <button id="create-quiz-btn" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> ახალი ქვიზი
+                    </button>
                 </div>
             </div>
-            <div id="quiz-detail-view" class="view"></div>
-        </div>
-    </main>
 
-    <div id="modal-backdrop" class="modal-backdrop" style="display: none;"></div>
+            <nav class="tabs-nav" id="tabs-nav">
+                <button class="tab-btn active" data-action="change-tab" data-tab="active">აქტიური</button>
+                <button class="tab-btn" data-action="change-tab" data-tab="upcoming">მომავალი</button>
+                <button class="tab-btn" data-action="change-tab" data-tab="completed">დასრულებული</button>
+                <button class="tab-btn" data-action="change-tab" data-tab="past-due">ვადაგასული</button>
+            </nav>
 
-    <template id="template-quiz-item">
-        <div class="quiz-item" data-id="" data-action="view-detail">
-            <div class="quiz-item-icon">
-                <i class="fas fa-file-alt"></i>
+            <div class="content-area">
+                <div id="quiz-list-view" class="view active">
+                    </div>
+                <div id="quiz-detail-view" class="view" style="display: none;">
+                    </div>
             </div>
-            <div class="quiz-item-info">
-                <h3 class="quiz-item-title"></h3>
-                <div class="quiz-item-meta">
-                    <span class="quiz-due-date"></span>
-                    <span class="quiz-time-limit"></span>
-                </div>
-            </div>
-            <div class="quiz-item-status">
-                <span class="status-badge"></span>
-            </div>
-        </div>
-    </template>
+        </main>
 
-    <template id="template-empty-state">
-        <div class="empty-state">
-            <i class="fas fa-file-alt"></i>
-            <h3>ქვიზები არ მოიძებნა</h3>
-            <p>ამ კატეგორიაში ქვიზები არ არის ან არ ხელმისაწვდომია</p>
-        </div>
-    </template>
-
+        <div id="modal-backdrop" class="modal-backdrop" style="display: none;"></div>
+    </div>
     <template id="template-create-edit-quiz-modal">
-        <div class="modal create-quiz-modal" role="dialog" aria-labelledby="modal-title">
+        <div class="modal" id="create-quiz-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
             <div class="modal-header">
-                <h2 id="modal-title">
-                    <i class="fas fa-plus-circle"></i>
-                    <span>ქვიზის შექმნა</span>
-                </h2>
-                <button class="close-modal-btn" data-action="close-modal" aria-label="მოდალის დახურვა">
-                    <i class="fas fa-times"></i>
-                </button>
+                <h2 id="modal-title">ქვიზის შექმნა</h2>
+                <button class="close-modal-btn" data-action="close-modal" aria-label="მოდალის დახურვა">&times;</button>
             </div>
-            <form id="quiz-form" class="quiz-form">
+            <form id="quiz-form">
                 <div class="modal-body">
                     <div class="form-group">
                         <label for="quiz-title">სათაური</label>
-                        <input type="text" id="quiz-title" name="title" required placeholder="ქვიზის სათაური">
+                        <input type="text" id="quiz-title" name="title" required>
                     </div>
-                    <div class="form-group">
+                     <div class="form-group">
                         <label for="quiz-description">აღწერა</label>
-                        <textarea id="quiz-description" name="description" rows="3" placeholder="ქვიზის აღწერა"></textarea>
+                        <textarea id="quiz-description" name="description" rows="3"></textarea>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label for="quiz-group">ჯგუფი</label>
-                            <select id="quiz-group" name="groupId" required>
-                                <option value="">აირჩიეთ ჯგუფი</option>
-                            </select>
+                            <select id="quiz-group" name="groupId" required></select>
                         </div>
                         <div class="form-group">
                             <label for="quiz-time-limit">დროის ლიმიტი (წუთები)</label>
-                            <input type="number" id="quiz-time-limit" name="timeLimit" min="1" placeholder="60">
+                            <input type="number" id="quiz-time-limit" name="timeLimit" min="1">
                         </div>
                     </div>
                     <div class="form-row">
@@ -132,7 +99,7 @@
                         <div class="section-header">
                             <h3>კითხვები</h3>
                             <div class="section-actions">
-                                <button type="button" class="btn btn-secondary" id="add-from-quiz-bank-btn">
+                                <button type="button" class="btn btn-secondary" id="add-from-quiz-bank-btn" data-action="add-from-quiz-bank">
                                     <i class="fas fa-book"></i> ბანკიდან დამატება
                                 </button>
                                 <button type="button" class="btn btn-primary" id="add-question-btn" data-action="add-question">
@@ -140,7 +107,8 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="questions-container" id="questions-container"></div>
+                        <div class="questions-container" id="questions-container">
+                            </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -148,6 +116,23 @@
                     <button type="submit" class="btn btn-primary">ქვიზის შენახვა</button>
                 </div>
             </form>
+        </div>
+    </template>
+
+    <template id="template-quiz-bank-modal">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="quiz-bank-title">
+            <div class="modal-header">
+                <h2 id="quiz-bank-title">აირჩიეთ ქვიზის შაბლონი</h2>
+                <button class="close-modal-btn" data-action="close-modal" aria-label="მოდალის დახურვა">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="list-container quiz-bank-list">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-action="close-modal">გაუქმება</button>
+            </div>
         </div>
     </template>
 
@@ -159,15 +144,9 @@
                     <button type="button" class="btn btn-secondary btn-icon" data-action="preview-question" aria-label="კითხვის გადახედვა">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button type="button" class="btn btn-icon move-up-btn" data-action="move-question-up" aria-label="კითხვის აწევა">
-                        <i class="fas fa-arrow-up"></i>
-                    </button>
-                    <button type="button" class="btn btn-icon move-down-btn" data-action="move-question-down" aria-label="კითხვის დაწევა">
-                        <i class="fas fa-arrow-down"></i>
-                    </button>
-                    <button type="button" class="btn btn-icon delete-question-btn" data-action="delete-question" aria-label="კითხვის წაშლა">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    <button type="button" class="btn btn-icon move-up-btn" data-action="move-question-up" aria-label="კითხვის აწევა"><i class="fas fa-arrow-up"></i></button>
+                    <button type="button" class="btn btn-icon move-down-btn" data-action="move-question-down" aria-label="კითხვის დაწევა"><i class="fas fa-arrow-down"></i></button>
+                    <button type="button" class="btn btn-icon delete-question-btn" data-action="delete-question" aria-label="კითხვის წაშლა"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
             
@@ -185,19 +164,15 @@
                     <input type="file" class="question-image-input" accept="image/*" style="display: none;">
                 </div>
                 <div class="question-image-preview" style="display: none;">
-                    <img src="" alt="კითხვის სურათის პრევიუ">
-                    <button type="button" class="remove-image-btn" data-action="remove-question-image" aria-label="სურათის წაშლა">
-                        <i class="fas fa-times"></i>
-                    </button>
+                    <img src="" alt="კითხვის სურათის პრევიუ" data-public-id="">
+                    <button type="button" class="remove-image-btn" data-action="remove-question-image" aria-label="სურათის წაშლა"><i class="fas fa-times"></i></button>
                 </div>
             </div>
 
             <div class="form-group options-container-wrapper">
                 <label>პასუხის ვარიანტები</label>
                 <div class="options-container"></div>
-                <button type="button" class="btn btn-secondary add-option-btn" data-action="add-option">
-                    <i class="fas fa-plus"></i> ვარიანტის დამატება
-                </button>
+                <button type="button" class="btn btn-secondary add-option-btn" data-action="add-option"><i class="fas fa-plus"></i> ვარიანტის დამატება</button>
             </div>
 
             <div class="form-group">
@@ -229,10 +204,10 @@
     </template>
 
     <template id="template-quiz-instructions-modal">
-        <div class="modal quiz-instructions-modal" role="dialog" aria-labelledby="instructions-title">
+        <div class="modal quiz-instructions-modal" role="dialog" aria-modal="true" aria-labelledby="instructions-title">
             <div class="modal-header">
                 <h2 id="instructions-title">ქვიზის ინსტრუქცია: <span class="quiz-instructions-title"></span></h2>
-                <button class="close-modal-btn" aria-label="მოდალის დახურვა">&times;</button>
+                <button class="close-modal-btn" data-action="close-modal" aria-label="მოდალის დახურვა">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="quiz-instructions-content">
@@ -240,7 +215,7 @@
                     <div id="password-field-container" style="display: none;">
                         <div class="form-group">
                             <label for="quiz-password">ქვიზის პაროლი</label>
-                            <input type="password" id="quiz-password" class="form-control" required placeholder="შეიყვანეთ პაროლი">
+                            <input type="password" id="quiz-password" class="form-control" required>
                         </div>
                     </div>
                     
@@ -294,21 +269,14 @@
                 <div class="question-image-container" style="display: none;">
                     <img src="" alt="კითხვის სურათი">
                 </div>
-                <div class="options-container-taking"></div>
+                <div class="options-container-taking">
+                    </div>
             </div>
             <div class="quiz-navigation">
-                <button class="btn btn-secondary prev-question-btn" data-action="prev-question" disabled>
-                    <i class="fas fa-arrow-left"></i> წინა
-                </button>
-                <button class="btn btn-warning" data-action="finish-quiz">
-                    <i class="fas fa-flag"></i> დასრულება
-                </button>
-                <button class="btn btn-primary next-question-btn" data-action="next-question">
-                    შემდეგი <i class="fas fa-arrow-right"></i>
-                </button>
-                <button class="btn btn-danger finish-quiz-btn" data-action="finish-quiz" style="display: none;">
-                    <i class="fas fa-paper-plane"></i> ქვიზის დასრულება
-                </button>
+                <button class="btn btn-secondary prev-question-btn" data-action="prev-question" disabled>წინა</button>
+                <button class="btn btn-warning" data-action="finish-quiz">დასრულება</button>
+                <button class="btn btn-primary next-question-btn" data-action="next-question">შემდეგი</button>
+                <button class="btn btn-danger finish-quiz-btn" data-action="finish-quiz" style="display: none;">ქვიზის დასრულება</button>
             </div>
         </div>
     </template>
@@ -328,11 +296,10 @@
                 </div>
             </div>
             <h3 class="review-title">კითხვების გადახედვა</h3>
-            <div class="questions-review"></div>
+            <div class="questions-review">
+                </div>
             <div class="results-actions">
-                <button class="btn btn-primary" data-action="back-to-list">
-                    <i class="fas fa-arrow-left"></i> უკან ქვიზების სიაში
-                </button>
+                <button class="btn btn-primary" data-action="back-to-list">უკან ქვიზების სიაში</button>
             </div>
         </div>
     </template>
@@ -347,7 +314,8 @@
             <div class="question-image-review" style="display: none;">
                 <img src="" alt="კითხვის სურათი">
             </div>
-            <div class="options-review"></div>
+            <div class="options-review">
+                </div>
             <div class="solution-container">
                 <h4>ამოხსნა</h4>
                 <div class="solution-text"></div>
@@ -405,7 +373,8 @@
             </div>
             <div class="student-attempts-container">
                 <h3>სტუდენტების მცდელობები</h3>
-                <div class="student-list"></div>
+                <div class="student-list">
+                    </div>
             </div>
         </div>
     </template>
@@ -419,7 +388,6 @@
             <div class="attempt-info">
                 <span class="attempt-status"></span>
                 <span class="attempt-score"></span>
-                <span class="attempt-time"></span>
             </div>
             <div class="attempt-actions">
                 <button class="btn btn-secondary view-attempt-btn" data-action="view-student-attempt">
@@ -430,6 +398,7 @@
     </template>
 
     <div id="notification-container" aria-live="assertive" aria-atomic="true"></div>
+
     <script src="/header/header.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/quiz/quizzes.js"></script>
