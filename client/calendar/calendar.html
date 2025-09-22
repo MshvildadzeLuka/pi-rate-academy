@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ka">
 <head>
@@ -22,6 +21,10 @@
 
     <div class="page-wrapper">
         <aside class="calendar-sidebar">
+            <div class="sidebar-toggle" id="sidebar-toggle">
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            
             <div id="mini-calendar">
                 <div class="mini-calendar-header">
                     <button id="mini-cal-prev-month" aria-label="წინა თვე">
@@ -47,28 +50,25 @@
             <div id="event-form-panel">
                 <h2>დაამატე განრიგში</h2>
                 <form id="event-form">
-                    <p id="sidebar-time-range">აირჩიე დრო კალენდარზე</p>
-                    <div class="manual-time-inputs hidden" id="manual-time-inputs">
-                        <div class="input-group">
-                            <label for="manual-day-select">კვირის დღე</label>
-                            <select id="manual-day-select" name="manual-day-select">
-                                <option value="0">ორშაბათი</option>
-                                <option value="1">სამშაბათი</option>
-                                <option value="2">ოთხშაბათი</option>
-                                <option value="3">ხუთშაბათი</option>
-                                <option value="4">პარასკევი</option>
-                                <option value="5">შაბათი</option>
-                                <option value="6">კვირა</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label for="manual-start-time">დაწყების დრო</label>
-                            <input type="time" id="manual-start-time" name="manual-start-time" value="08:00">
-                        </div>
-                        <div class="input-group">
-                            <label for="manual-end-time">დასრულების დრო</label>
-                            <input type="time" id="manual-end-time" name="manual-end-time" value="09:00">
-                        </div>
+                    <div class="input-group">
+                        <label for="event-day-select">დღე</label>
+                        <select id="event-day-select" name="event-day-select">
+                            <option value="0">ორშაბათი</option>
+                            <option value="1">სამშაბათი</option>
+                            <option value="2">ოთხშაბათი</option>
+                            <option value="3">ხუთშაბათი</option>
+                            <option value="4">პარასკევი</option>
+                            <option value="5">შაბათი</option>
+                            <option value="6">კვირა</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="event-start-time">დაწყების დრო</label>
+                        <input type="time" id="event-start-time" name="event-start-time" value="08:00">
+                    </div>
+                    <div class="input-group">
+                        <label for="event-end-time">დასრულების დრო</label>
+                        <input type="time" id="event-end-time" name="event-end-time" value="09:00">
                     </div>
                     <div class="input-group">
                         <label>მოვლენის ტიპი</label>
@@ -99,7 +99,7 @@
                              <i class="fas fa-trash"></i>
                              წაშლა
                          </button>
-                         <button type="submit" id="save-event-btn" class="btn btn-primary" disabled>
+                         <button type="submit" id="save-event-btn" class="btn btn-primary">
                              <i class="fas fa-save"></i>
                              შენახვა
                          </button>
@@ -120,9 +120,13 @@
                         <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
+                <div class="view-toggle">
+                    <button id="day-view-btn" class="view-toggle-btn active">დღე</button>
+                    <button id="week-view-btn" class="view-toggle-btn">კვირა</button>
+                </div>
             </div>
     
-            <div id="mobile-day-nav" class="mobile-day-nav hidden">
+            <div id="mobile-day-nav" class="mobile-day-nav">
                 <button class="mobile-day-nav-btn" data-day="0">ორშ</button>
                 <button class="mobile-day-nav-btn" data-day="1">სამ</button>
                 <button class="mobile-day-nav-btn" data-day="2">ოთხ</button>
@@ -133,7 +137,7 @@
             </div>
             
             <div class="calendar-grid-wrapper">
-                <div class="calendar-grid">
+                <div class="calendar-grid week-view">
                     <div id="current-time-indicator" class="current-time-indicator"></div>
                     <div class="grid-header time-column-header"></div>
                     <div class="grid-header day-column-header" data-day-header="0">
@@ -174,11 +178,23 @@
                     <div class="day-column" data-day="5"></div>
                     <div class="day-column" data-day="6"></div>
                 </div>
+
+                <div class="calendar-grid day-view hidden">
+                    <div id="day-view-current-time-indicator" class="current-time-indicator"></div>
+                    <div class="grid-header time-column-header"></div>
+                    <div class="grid-header day-column-header" data-day-header="0">
+                        <span class="day-name">ორშ</span>
+                        <span class="day-number"></span>
+                    </div>
+                    
+                    <div class="time-column" id="day-view-time-column"></div>
+                    <div class="day-column" data-day="0"></div>
+                </div>
             </div>
         </main>
     </div>
 
-    <button id="add-event-fab" class="fab hidden" aria-label="ახალი მოვლენის დამატება">
+    <button id="add-event-fab" class="fab" aria-label="ახალი მოვლენის დამატება">
         <i class="fas fa-plus"></i>
     </button>
     
@@ -192,7 +208,26 @@
             </div>
             <div class="modal-body">
                 <form id="mobile-event-form">
-                    <p id="mobile-time-range" class="mobile-time-range-text">აირჩიე დრო კალენდარზე</p>
+                    <div class="input-group">
+                        <label for="mobile-day-select">დღე</label>
+                        <select id="mobile-day-select" name="mobile-day-select">
+                            <option value="0">ორშაბათი</option>
+                            <option value="1">სამშაბათი</option>
+                            <option value="2">ოთხშაბათი</option>
+                            <option value="3">ხუთშაბათი</option>
+                            <option value="4">პარასკევი</option>
+                            <option value="5">შაბათი</option>
+                            <option value="6">კვირა</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="mobile-start-time">დაწყების დრო</label>
+                        <input type="time" id="mobile-start-time" name="mobile-start-time" value="08:00">
+                    </div>
+                    <div class="input-group">
+                        <label for="mobile-end-time">დასრულების დრო</label>
+                        <input type="time" id="mobile-end-time" name="mobile-end-time" value="09:00">
+                    </div>
                     <div class="input-group">
                         <label for="mobile-event-type-select">მოვლენის ტიპი</label>
                         <select id="mobile-event-type-select" name="eventType">
@@ -212,6 +247,10 @@
                         </label>
                     </div>
                     <div class="form-actions">
+                        <button type="button" id="mobile-delete-btn" class="btn btn-danger" disabled>
+                            <i class="fas fa-trash"></i>
+                            წაშლა
+                        </button>
                         <button type="submit" id="mobile-save-btn" class="btn btn-primary">
                             <i class="fas fa-save"></i>
                             შენახვა
