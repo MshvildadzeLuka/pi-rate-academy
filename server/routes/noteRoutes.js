@@ -1,3 +1,4 @@
+// server/routes/noteRoutes.js
 const streamifier = require('streamifier');
 const cloudinary = require('cloudinary').v2;
 const express = require('express');
@@ -197,10 +198,11 @@ router.get('/:id/download', protect, asyncHandler(async (req, res, next) => {
     // Pipe the file stream to the response
     response.data.pipe(res);
     
-    // Handle stream errors
+    // **FIXED:** Handle stream errors gracefully by ending the response
     response.data.on('error', (err) => {
-      console.error('Stream error:', err);
-      return next(new ErrorResponse('Error downloading file', 500));
+      console.error('Stream error during download:', err);
+      // Cleanly end the response with a 500 status and a message
+      res.status(500).send('Error downloading file: ' + err.message);
     });
     
   } catch (error) {
