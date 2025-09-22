@@ -1,3 +1,4 @@
+// server/server.js
 // Load environment variables
 const dotenv = require('dotenv');
 dotenv.config();
@@ -73,6 +74,7 @@ app.use(cors({
 // =================================================================
 
 // Middleware
+// FIX: Changed file size limits to 5000mb to allow for large downloads and uploads.
 app.use(express.json({ limit: '5000mb' }));
 app.use(express.urlencoded({ limit: '5000mb', extended: true }));
 
