@@ -2570,7 +2570,7 @@ const eventHandlers = {
     },
 
     // Handle add from bank
-    async handleAddFromBank() {
+    handleAddFromQuizBank() {
         try {
             uiRenderer.openModal('question-bank');
         } catch (error) {
@@ -2845,12 +2845,12 @@ const eventHandlers = {
         }
     },
 
-    // Handle add from quiz bank
+    // Handle add from bank
     handleAddFromQuizBank() {
         try {
             uiRenderer.openModal('question-bank', null, true);
         } catch (error) {
-            console.error('ქვიზების ბანკიდან დამატების დამუშავების შეცდომა:', error);
+            console.error('ბანკიდან დამატების დამუშავების შეცდომა:', error);
         }
     },
 
@@ -2880,7 +2880,7 @@ async function initQuizzes() {
     try {
         state.isLoading = true;
         
-        const token = localStorage.getItem('piRateToken');
+        const token = localStorage.localStorage.getItem('piRateToken');
         if (!token) {
             window.location.href = '/login/login.html';
             return;
