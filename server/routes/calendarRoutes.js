@@ -23,51 +23,39 @@ function ensureTimeFormat(timeStr) {
 // @desc    Get all personal events + lectures for the logged-in user
 // @route   GET /api/calendar-events/my-schedule
 // @access  Private
-// server/routes/calendarRoutes.js
 router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
-    // ...
-    const personalEvents = await CalendarEvent.find({ userId }).lean();
-    // This formattedPersonal map is the root cause of the error.
-    // It should be removed as the client can parse the ISO string directly.
-    // The client code will be updated to handle the raw ISO strings.
+    // Correctly structured and commented code
+    const { start, end } = req.query;
+    const { _id: userId } = req.user;
 
-    // ...
+    const [personalEvents, groupLectures] = await Promise.all([
+        CalendarEvent.find({ userId }).lean(),
+        Lecture.find({
+            assignedGroup: { $in: req.user.groups },
+            $or: [
+                {
+                    isRecurring: false,
+                    startTime: { $gte: new Date(start) },
+                    endTime: { $lte: new Date(end) }
+                },
+                { isRecurring: true }
+            ]
+        }).populate('assignedGroup', 'name').lean()
+    ]);
+
     const formattedLectures = groupLectures.map(lecture => ({
         _id: lecture._id,
         title: lecture.title,
         type: 'lecture',
-        // The server should just pass the raw ISO dates.
         startTime: lecture.startTime,
         endTime: lecture.endTime,
         groupId: lecture.assignedGroup._id,
         groupName: lecture.assignedGroup.name,
         isRecurring: lecture.isRecurring,
         recurrenceRule: lecture.recurrenceRule,
-        // Remove startTimeLocal and endTimeLocal as they are the source of the bug.
     }));
 
     const allEvents = [...personalEvents, ...formattedLectures];
-    res.status(200).json({ success: true, data: allEvents });
-}));
-    const formattedLectures = groupLectures.map(lecture => ({
-        _id: lecture._id,
-        title: lecture.title,
-        type: 'lecture',
-        startTime: lecture.startTime,
-        endTime: lecture.endTime,
-        groupId: lecture.assignedGroup._id,
-        groupName: lecture.assignedGroup.name,
-        isRecurring: lecture.isRecurring,
-        recurrenceRule: lecture.recurrenceRule,
-        startTimeLocal: lecture.startTime ? new Date(lecture.startTime).toLocaleTimeString('en-GB', {
-            hour: '2-digit', minute: '2-digit', hour12: false
-        }) : null,
-        endTimeLocal: lecture.endTime ? new Date(lecture.endTime).toLocaleTimeString('en-GB', {
-            hour: '2-digit', minute: '2-digit', hour12: false
-        }) : null,
-    }));
-
-    const allEvents = [...formattedPersonal, ...formattedLectures];
     res.status(200).json({ success: true, data: allEvents });
 }));
 
