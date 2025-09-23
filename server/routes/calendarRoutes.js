@@ -20,45 +20,6 @@ function ensureTimeFormat(timeStr) {
     return `${hours.padStart(2, '0')}:${(minutes || '00').padStart(2, '0')}`;
 }
 
-// @desc    Get all personal events + lectures for the logged-in user
-// @route   GET /api/calendar-events/my-schedule
-// @access  Private
-router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
-    // Correctly structured and commented code
-    const { start, end } = req.query;
-    const { _id: userId } = req.user;
-
-    const [personalEvents, groupLectures] = await Promise.all([
-        CalendarEvent.find({ userId }).lean(),
-        Lecture.find({
-            assignedGroup: { $in: req.user.groups },
-            $or: [
-                {
-                    isRecurring: false,
-                    startTime: { $gte: new Date(start) },
-                    endTime: { $lte: new Date(end) }
-                },
-                { isRecurring: true }
-            ]
-        }).populate('assignedGroup', 'name').lean()
-    ]);
-
-    const formattedLectures = groupLectures.map(lecture => ({
-        _id: lecture._id,
-        title: lecture.title,
-        type: 'lecture',
-        startTime: lecture.startTime,
-        endTime: lecture.endTime,
-        groupId: lecture.assignedGroup._id,
-        groupName: lecture.assignedGroup.name,
-        isRecurring: lecture.isRecurring,
-        recurrenceRule: lecture.recurrenceRule,
-    }));
-
-    const allEvents = [...personalEvents, ...formattedLectures];
-    res.status(200).json({ success: true, data: allEvents });
-}));
-
 // @desc    Get all personal availability events for all members of a specific group
 // @route   GET /api/calendar-events/group/:groupId
 // @access  Private (Admin/Teacher)
@@ -90,6 +51,7 @@ router.get('/group/:groupId', protect, asyncHandler(async (req, res, next) => {
 // @route   POST /api/calendar-events
 // @access  Private
 router.post('/', protect, asyncHandler(async (req, res, next) => {
+    // FIX: Add `title` to the destructuring
     const { type, isRecurring, dayOfWeek, recurringStartTime, recurringEndTime, startTime, endTime, title } = req.body;
     if (!['busy', 'preferred'].includes(type)) {
         return next(new ErrorResponse('Invalid event type', 400));
@@ -98,6 +60,7 @@ router.post('/', protect, asyncHandler(async (req, res, next) => {
         userId: req.user._id,
         creatorId: req.user._id,
         type,
+        // FIX: Ensure the new `title` is passed to the model
         title,
         isRecurring,
         dayOfWeek,
