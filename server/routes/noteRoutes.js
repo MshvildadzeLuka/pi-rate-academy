@@ -1,5 +1,4 @@
-const streamifier = require('streamifier');
-const cloudinary = require('cloudinary').v2;
+// noteRoutes.js (Minor updates for better error handling and ensuring raw file integrity during download)
 const express = require('express');
 const router = express.Router();
 const Note = require('../models/noteModel');
@@ -79,33 +78,39 @@ router.post('/', protect, restrictTo('Teacher', 'Admin'), upload.single('file'),
         return next(new ErrorResponse('Please upload a file.', 400));
     }
 
-    // CORRECTED: This block correctly handles PDF uploads for Cloudinary
+    // Use Cloudinary for ALL file types
     try {
-        const result = await new Promise((resolve, reject) => {
-            const uploadStream = cloudinary.uploader.upload_stream(
-                {
-                    folder: `pi-rate-academy/notes`,
-                    resource_type: 'raw', // Use 'raw' for non-image files like PDFs
-                    public_id: req.file.originalname
-                },
-                (error, result) => {
-                    if (error) return reject(error);
-                    resolve(result);
-                }
-            );
-            streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
+        const cloudinaryUploader = createCloudinaryUploader('notes');
+        await new Promise((resolve, reject) => {
+            cloudinaryUploader(req, res, (err) => {
+                if (err) return reject(err);
+                resolve();
+            });
         });
+        
+        const fileUrl = req.file.url;
+        const publicId = req.file.public_id;
+        const resourceType = req.file.resource_type;
 
-        if (!result || !result.secure_url) {
+        if (!fileUrl || !publicId) {
             return next(new ErrorResponse('File upload to cloud storage failed. Please try again.', 500));
+        }
+        
+        // Check if group exists and user has access
+        const group = await Group.findById(groupId);
+        if (!group) {
+            return next(new ErrorResponse('Group not found', 404));
+        }
+        if (req.user.role !== 'Admin' && !req.user.groups.map(g => g.toString()).includes(groupId)) {
+            return next(new ErrorResponse('Not authorized to add notes to this group', 403));
         }
         
         const note = await Note.create({
             title: title || req.file.originalname,
             description: description || '',
             fileName: req.file.originalname,
-            fileUrl: result.secure_url,
-            publicId: result.public_id,
+            fileUrl: fileUrl,
+            publicId: publicId,
             groupId,
             creatorId: req.user._id,
             fileType: req.file.mimetype,
@@ -121,8 +126,8 @@ router.post('/', protect, restrictTo('Teacher', 'Admin'), upload.single('file'),
         });
 
     } catch (error) {
-        console.error('Cloudinary PDF Upload Error:', error);
-        return next(new ErrorResponse('Failed to upload PDF file to cloud storage.', 500));
+        console.error('Cloudinary Upload Error:', error);
+        return next(new ErrorResponse('Failed to upload file to cloud storage.', 500));
     }
 }));
 
@@ -183,20 +188,25 @@ router.get('/:id/download', protect, asyncHandler(async (req, res, next) => {
     const response = await axios({
       method: 'GET',
       url: note.fileUrl,
-      responseType: 'stream'
+      responseType: 'stream',
+      headers: {
+        'Accept': '*/*'
+      }
     });
     
+    // Set appropriate headers for download
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(note.fileName)}"`);
     res.setHeader('Content-Type', note.fileType);
-
-    // **FIXED:** Handle stream errors on the response object
-    response.data.on('error', (err) => {
-      console.error('Stream error during download:', err);
-      // Stop the download and send a 500 error
-      res.status(500).send('Error downloading file: ' + err.message);
-    });
-
+    res.setHeader('Content-Length', response.headers['content-length'] || note.fileSize);
+    
+    // Pipe the file stream to the response
     response.data.pipe(res);
+    
+    // Handle stream errors
+    response.data.on('error', (err) => {
+      console.error('Stream error:', err);
+      return next(new ErrorResponse('Error downloading file', 500));
+    });
     
   } catch (error) {
     console.error('Download error:', error);
