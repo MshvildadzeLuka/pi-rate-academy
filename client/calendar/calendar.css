@@ -1,3 +1,4 @@
+// file: client/calendar/calendar.css
 :root {
   /* Reverted to original global dark theme colors */
   --background-primary: #121212;
@@ -1093,4 +1094,6 @@ select:focus {
   .modal {
     max-height: 85vh;
   }
+}
+
 }
