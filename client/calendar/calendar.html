@@ -1,18 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ka">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calendar | Pi-Rate Academy</title>
+    <title>კალენდარი | Pi-Rate Academy</title>
     <link rel="stylesheet" href="/assets/css/global.css">
     <script src="/assets/js/auth.js" defer></script>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
     <link rel="stylesheet" href="/header/header.css">
-    
     <link rel="stylesheet" href="/calendar/calendar.css">
 </head>
 <body>
@@ -21,35 +21,88 @@
 
     <div class="page-wrapper">
         <aside class="calendar-sidebar">
+            <div class="sidebar-toggle" id="sidebar-toggle">
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            
             <div id="mini-calendar">
                 <div class="mini-calendar-header">
-                    <button id="mini-cal-prev-month" aria-label="Previous Month"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></button>
+                    <button id="mini-cal-prev-month" aria-label="წინა თვე">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
                     <h2 id="mini-cal-month-year"></h2>
-                    <button id="mini-cal-next-month" aria-label="Next Month"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></button>
+                    <button id="mini-cal-next-month" aria-label="შემდეგი თვე">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
                 </div>
                 <div class="mini-calendar-weekdays">
-                    <div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div>S</div>
+                    <div>ორშ</div>
+                    <div>სამ</div>
+                    <div>ოთხ</div>
+                    <div>ხუთ</div>
+                    <div>პარ</div>
+                    <div>შაბ</div>
+                    <div>კვი</div>
                 </div>
                 <div id="mini-calendar-days" class="mini-calendar-days"></div>
             </div>
 
-            <div id="add-event-panel">
-                <h2>Add to Schedule</h2>
-                <form id="event-form" onsubmit="return false;">
-                    <p id="sidebar-time-range">Select a time on the calendar</p>
+            <div id="event-form-panel">
+                <h2>დაამატე განრიგში</h2>
+                <form id="event-form">
                     <div class="input-group">
-                        <label>Event Type</label>
+                        <label for="event-day-select">დღე</label>
+                        <select id="event-day-select" name="event-day-select">
+                            <option value="0">ორშაბათი</option>
+                            <option value="1">სამშაბათი</option>
+                            <option value="2">ოთხშაბათი</option>
+                            <option value="3">ხუთშაბათი</option>
+                            <option value="4">პარასკევი</option>
+                            <option value="5">შაბათი</option>
+                            <option value="6">კვირა</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="event-start-time">დაწყების დრო</label>
+                        <input type="time" id="event-start-time" name="event-start-time" value="08:00">
+                    </div>
+                    <div class="input-group">
+                        <label for="event-end-time">დასრულების დრო</label>
+                        <input type="time" id="event-end-time" name="event-end-time" value="09:00">
+                    </div>
+                    <div class="input-group">
+                        <label>მოვლენის ტიპი</label>
                         <div class="radio-group-tabs">
-                            <label class="custom-radio-tab"><input type="radio" name="event-type" value="busy" checked><span>Busy</span></label>
-                            <label class="custom-radio-tab"><input type="radio" name="event-type" value="preferred"><span>Preferred</span></label>
+                            <label class="custom-radio-tab">
+                                <input type="radio" name="event-type" value="busy" checked>
+                                <span>დაკავებული</span>
+                            </label>
+                            <label class="custom-radio-tab">
+                                <input type="radio" name="event-type" value="preferred">
+                                <span>პრიორიტეტული</span>
+                            </label>
                         </div>
                     </div>
                     <div class="input-group">
-                        <label class="custom-checkbox"><input type="checkbox" id="recurring-event-checkbox" checked><span class="checkbox-box"></span><span id="recurring-label-text">Apply to all weeks</span></label>
+                        <label for="event-title-input">მოვლენის სათაური</label>
+                        <input type="text" id="event-title-input" placeholder="მაგ., საოფისე საათები">
+                    </div>
+                    <div class="input-group">
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="recurring-event-checkbox">
+                            <span class="checkbox-box"></span>
+                            <span id="recurring-label-text">გამოყენება ყველა კვირაში</span>
+                        </label>
                     </div>
                     <div class="form-actions">
-                         <button type="button" id="delete-event-btn" class="btn btn-danger" disabled>Delete</button>
-                         <button type="submit" id="save-event-btn" class="btn btn-primary" disabled>Save</button>
+                         <button type="button" id="delete-event-btn" class="btn btn-danger" disabled>
+                             <i class="fas fa-trash"></i>
+                             წაშლა
+                         </button>
+                         <button type="submit" id="save-event-btn" class="btn btn-primary">
+                             <i class="fas fa-save"></i>
+                             შენახვა
+                         </button>
                     </div>
                 </form>
             </div>
@@ -57,24 +110,64 @@
 
         <main class="main-calendar-view">
             <div class="calendar-header">
-                <button id="today-btn" class="today-btn">Today</button>
+                <button id="today-btn" class="today-btn">დღეს</button>
                 <div class="week-nav">
-                    <button id="prev-week-btn" aria-label="Previous Week"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></button>
+                    <button id="prev-week-btn" aria-label="წინა კვირა">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
                     <h2 id="current-week-display"></h2>
-                    <button id="next-week-btn" aria-label="Next Week"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></button>
+                    <button id="next-week-btn" aria-label="შემდეგი კვირა">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="view-toggle">
+                    <button id="day-view-btn" class="view-toggle-btn active">დღე</button>
+                    <button id="week-view-btn" class="view-toggle-btn">კვირა</button>
                 </div>
             </div>
     
+            <div id="mobile-day-nav" class="mobile-day-nav">
+                <button class="mobile-day-nav-btn" data-day="0">ორშ</button>
+                <button class="mobile-day-nav-btn" data-day="1">სამ</button>
+                <button class="mobile-day-nav-btn" data-day="2">ოთხ</button>
+                <button class="mobile-day-nav-btn" data-day="3">ხუთ</button>
+                <button class="mobile-day-nav-btn" data-day="4">პარ</button>
+                <button class="mobile-day-nav-btn" data-day="5">შაბ</button>
+                <button class="mobile-day-nav-btn" data-day="6">კვი</button>
+            </div>
+            
             <div class="calendar-grid-wrapper">
-                <div class="calendar-grid">
+                <div class="calendar-grid week-view">
+                    <div id="current-time-indicator" class="current-time-indicator"></div>
                     <div class="grid-header time-column-header"></div>
-                    <div class="grid-header day-column-header" data-day-header="0"><span class="day-name">Mon</span><span class="day-number"></span></div>
-                    <div class="grid-header day-column-header" data-day-header="1"><span class="day-name">Tue</span><span class="day-number"></span></div>
-                    <div class="grid-header day-column-header" data-day-header="2"><span class="day-name">Wed</span><span class="day-number"></span></div>
-                    <div class="grid-header day-column-header" data-day-header="3"><span class="day-name">Thu</span><span class="day-number"></span></div>
-                    <div class="grid-header day-column-header" data-day-header="4"><span class="day-name">Fri</span><span class="day-number"></span></div>
-                    <div class="grid-header day-column-header" data-day-header="5"><span class="day-name">Sat</span><span class="day-number"></span></div>
-                    <div class="grid-header day-column-header" data-day-header="6"><span class="day-name">Sun</span><span class="day-number"></span></div>
+                    <div class="grid-header day-column-header" data-day-header="0">
+                        <span class="day-name">ორშ</span>
+                        <span class="day-number"></span>
+                    </div>
+                    <div class="grid-header day-column-header" data-day-header="1">
+                        <span class="day-name">სამ</span>
+                        <span class="day-number"></span>
+                    </div>
+                    <div class="grid-header day-column-header" data-day-header="2">
+                        <span class="day-name">ოთხ</span>
+                        <span class="day-number"></span>
+                    </div>
+                    <div class="grid-header day-column-header" data-day-header="3">
+                        <span class="day-name">ხუთ</span>
+                        <span class="day-number"></span>
+                    </div>
+                    <div class="grid-header day-column-header" data-day-header="4">
+                        <span class="day-name">პარ</span>
+                        <span class="day-number"></span>
+                    </div>
+                    <div class="grid-header day-column-header" data-day-header="5">
+                        <span class="day-name">შაბ</span>
+                        <span class="day-number"></span>
+                    </div>
+                    <div class="grid-header day-column-header" data-day-header="6">
+                        <span class="day-name">კვი</span>
+                        <span class="day-number"></span>
+                    </div>
                     
                     <div class="time-column" id="time-column"></div>
                     <div class="day-column" data-day="0"></div>
@@ -85,8 +178,87 @@
                     <div class="day-column" data-day="5"></div>
                     <div class="day-column" data-day="6"></div>
                 </div>
+
+                <div class="calendar-grid day-view hidden">
+                    <div id="day-view-current-time-indicator" class="current-time-indicator"></div>
+                    <div class="grid-header time-column-header"></div>
+                    <div class="grid-header day-column-header" data-day-header="0">
+                        <span class="day-name">ორშ</span>
+                        <span class="day-number"></span>
+                    </div>
+                    
+                    <div class="time-column" id="day-view-time-column"></div>
+                    <div class="day-column" data-day="0"></div>
+                </div>
             </div>
         </main>
+    </div>
+
+    <button id="add-event-fab" class="fab" aria-label="ახალი მოვლენის დამატება">
+        <i class="fas fa-plus"></i>
+    </button>
+    
+    <div id="event-modal-backdrop" class="modal-overlay hidden">
+        <div id="mobile-event-modal" class="modal">
+            <div class="modal-header">
+                <h2>დაამატე განრიგში</h2>
+                <button class="close-modal-btn" aria-label="დახურვა">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="mobile-event-form">
+                    <div class="input-group">
+                        <label for="mobile-day-select">დღე</label>
+                        <select id="mobile-day-select" name="mobile-day-select">
+                            <option value="0">ორშაბათი</option>
+                            <option value="1">სამშაბათი</option>
+                            <option value="2">ოთხშაბათი</option>
+                            <option value="3">ხუთშაბათი</option>
+                            <option value="4">პარასკევი</option>
+                            <option value="5">შაბათი</option>
+                            <option value="6">კვირა</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="mobile-start-time">დაწყების დრო</label>
+                        <input type="time" id="mobile-start-time" name="mobile-start-time" value="08:00">
+                    </div>
+                    <div class="input-group">
+                        <label for="mobile-end-time">დასრულების დრო</label>
+                        <input type="time" id="mobile-end-time" name="mobile-end-time" value="09:00">
+                    </div>
+                    <div class="input-group">
+                        <label for="mobile-event-type-select">მოვლენის ტიპი</label>
+                        <select id="mobile-event-type-select" name="eventType">
+                            <option value="busy">დაკავებული</option>
+                            <option value="preferred">პრიორიტეტული</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="mobile-event-title-input">მოვლენის სათაური</label>
+                        <input type="text" id="mobile-event-title-input" placeholder="მაგ., საოფისე საათები">
+                    </div>
+                    <div class="input-group">
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="mobile-recurring-checkbox">
+                            <span class="checkbox-box"></span>
+                            <span>გამოყენება ყველა კვირაში</span>
+                        </label>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" id="mobile-delete-btn" class="btn btn-danger" disabled>
+                            <i class="fas fa-trash"></i>
+                            წაშლა
+                        </button>
+                        <button type="submit" id="mobile-save-btn" class="btn btn-primary">
+                            <i class="fas fa-save"></i>
+                            შენახვა
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
     
     <script src="/header/header.js"></script>
