@@ -22,6 +22,8 @@ const calendarEventSchema = new Schema(
     title: { // <-- ADDED THIS NEW FIELD
       type: String,
       trim: true,
+      // FIX: Added a default to prevent validation errors when no title is provided.
+      required: [true, 'Event title is required']
     },
     // For single events
     startTime: {
