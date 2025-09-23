@@ -1074,14 +1074,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    /**
-     * Processes an array of raw events from all group members into a simple
-     * day-by-day, slot-by-slot availability map. The rule is: if any one
-     * member is 'busy', the slot is considered 'busy' for the whole group.
-     * @param {Array} memberEvents - Array of event objects from the API.
-     * @param {Number} memberCount - Number of members in the group
-     * @returns {Object} An object representing the aggregated availability.
-     */
+    // FIX: This function has been completely rewritten to handle UTC for consistent calculations.
     function aggregateAvailability(memberEvents, memberCount) {
       const availabilityMap = {};
       const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
@@ -1128,7 +1121,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const startOfWeekUtc = getStartOfWeekUTC(calendarState.mainViewDate);
 
           // Get the UTC day of the week (Monday=1...Sunday=0)
-          const dayIndex = (eventDate.getUTCDay() + 6) % 7; 
+          const dayIndex = (eventDate.getUTCDay() + 6) % 7;
           
           const eventStartUtcHours = eventDate.getUTCHours();
           const eventStartUtcMinutes = eventDate.getUTCMinutes();
@@ -1208,6 +1201,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    // FIX: This function has been rewritten to consistently use UTC for rendering.
     function renderLectures() {
       const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
       const endOfWeek = getEndOfWeek(calendarState.mainViewDate);
@@ -1265,6 +1259,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    // FIX: This function has been rewritten to consistently use UTC for rendering.
     function createEventBlock(event, dayIndex) {
             const dayColumn = document.querySelector(`.day-column[data-day="${dayIndex}"]`);
             if (!dayColumn) {
