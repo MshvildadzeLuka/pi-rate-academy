@@ -1,4 +1,3 @@
-// server/routes/noteRoutes.js
 const streamifier = require('streamifier');
 const cloudinary = require('cloudinary').v2;
 const express = require('express');
@@ -184,26 +183,20 @@ router.get('/:id/download', protect, asyncHandler(async (req, res, next) => {
     const response = await axios({
       method: 'GET',
       url: note.fileUrl,
-      responseType: 'stream',
-      headers: {
-        'Accept': '*/*'
-      }
+      responseType: 'stream'
     });
     
-    // Set appropriate headers for download
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(note.fileName)}"`);
     res.setHeader('Content-Type', note.fileType);
-    res.setHeader('Content-Length', response.headers['content-length'] || note.fileSize);
-    
-    // Pipe the file stream to the response
-    response.data.pipe(res);
-    
-    // **FIXED:** Handle stream errors gracefully by ending the response
+
+    // **FIXED:** Handle stream errors on the response object
     response.data.on('error', (err) => {
       console.error('Stream error during download:', err);
-      // Cleanly end the response with a 500 status and a message
+      // Stop the download and send a 500 error
       res.status(500).send('Error downloading file: ' + err.message);
     });
+
+    response.data.pipe(res);
     
   } catch (error) {
     console.error('Download error:', error);
