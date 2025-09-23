@@ -100,7 +100,6 @@ body {
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition-speed) ease;
-  min-height: 44px;
 }
 
 .view-toggle-btn.active {
@@ -139,7 +138,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
 }
 #mini-cal-prev-month:hover, #mini-cal-next-month:hover {
   background-color: var(--background-tertiary);
@@ -176,7 +174,6 @@ body {
   color: var(--text-primary);
   font-size: 0.95rem;
   font-weight: 500;
-  min-height: 44px;
 }
 .mini-calendar-day:hover {
   background-color: var(--background-tertiary);
@@ -234,7 +231,6 @@ select {
   background-color: var(--background-secondary);
   color: var(--text-primary);
   transition: border-color var(--transition-speed) ease;
-  min-height: 44px;
 }
 
 input[type="text"]:focus,
@@ -265,7 +261,6 @@ select:focus {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 44px;
 }
 .btn-primary {
   background: linear-gradient(45deg, var(--primary-accent), #0066cc);
@@ -316,10 +311,6 @@ select:focus {
   cursor: pointer;
   transition: all var(--transition-speed) ease;
   font-size: 0.95rem;
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 .custom-radio-tab input[type="radio"]:checked + span {
   color: var(--primary-accent);
@@ -359,7 +350,6 @@ select:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
 }
 #prev-week-btn:hover, #next-week-btn:hover {
   background-color: var(--background-tertiary);
@@ -384,7 +374,6 @@ select:focus {
   transition: all var(--transition-speed) ease;
   font-size: 1rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  min-height: 44px;
 }
 .today-btn:hover {
   background-color: var(--background-tertiary);
@@ -402,9 +391,6 @@ select:focus {
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  position: sticky;
-  top: 0;
-  z-index: 20;
 }
 .mobile-day-nav::-webkit-scrollbar {
   display: none;
@@ -421,7 +407,6 @@ select:focus {
   cursor: pointer;
   transition: all var(--transition-speed) ease;
   white-space: nowrap;
-  min-height: 44px;
 }
 .mobile-day-nav-btn.active {
   background-color: var(--background-tertiary);
@@ -542,7 +527,6 @@ select:focus {
   user-select: none;
   transition: background-color var(--transition-speed) ease;
   position: relative;
-  min-height: 44px;
 }
 .time-slot:nth-child(2n-1) { border-top-style: dashed; }
 .time-slot:hover {
@@ -639,7 +623,6 @@ select:focus {
   cursor: pointer;
   font-size: 1rem;
   padding: 8px 0;
-  min-height: 44px;
 }
 .custom-checkbox input[type="checkbox"] { display: none; }
 .checkbox-box {
@@ -807,7 +790,6 @@ select:focus {
   align-items: center;
   justify-content: center;
   transition: all var(--transition-speed) ease;
-  min-height: 44px;
 }
 .close-modal-btn:hover {
   background-color: var(--background-tertiary);
@@ -830,12 +812,7 @@ select:focus {
 }
 
 /* Mobile Responsive Styles */
-@media (max-width: 992px) {
-  body {
-    overflow-y: auto;
-    height: auto;
-  }
-
+@media (max-width: 1200px) {
   .page-wrapper {
     flex-direction: column;
     height: auto;
@@ -845,24 +822,36 @@ select:focus {
     width: 100%;
     border-right: none;
     border-bottom: 1px solid var(--background-tertiary);
-    position: static;
-    transform: none;
-    display: block;
-    overflow-y: visible;
-    box-shadow: none;
+    max-height: 40vh;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    transform: translateY(calc(-100% + 60px));
+    transition: transform 0.3s ease;
   }
 
-  #event-form-panel {
-    display: none;
+  .calendar-sidebar.expanded {
+    transform: translateY(0);
   }
 
   .sidebar-toggle {
-    display: none;
+    display: flex;
+  }
+
+  .sidebar-toggle i {
+    transition: transform 0.3s ease;
+  }
+
+  .calendar-sidebar.expanded .sidebar-toggle i {
+    transform: rotate(180deg);
   }
 
   .main-calendar-view {
-    padding: 15px;
-    height: auto;
+    padding: 20px;
+    height: calc(100vh - var(--header-height) - 60px);
+    margin-top: 60px;
   }
 
   .calendar-grid {
@@ -890,6 +879,7 @@ select:focus {
 
   .time-label {
     font-size: 0.8rem;
+    height: 70px;
   }
 
   .day-column {
@@ -918,9 +908,11 @@ select:focus {
 
   #current-week-display {
     font-size: 1.5rem;
-    min-width: auto;
+    min-width: 250px;
   }
+}
 
+@media (max-width: 992px) {
   .mobile-day-nav {
     display: flex;
     gap: 5px;
@@ -1101,4 +1093,6 @@ select:focus {
   .modal {
     max-height: 85vh;
   }
+}
+
 }
