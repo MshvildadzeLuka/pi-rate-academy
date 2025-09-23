@@ -414,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
       currentDayDate.setDate(currentDayDate.getDate() + dayIndex);
       const dayStr = currentDayDate.toISOString().split('T')[0];
       const dayColumn = document.querySelector(`.week-view .day-column[data-day="${dayIndex}"]`);
-      const dayViewColumn = document.querySelector(`.day-view .day-column[data-day="${dayIndex}"]`);
+      const dayViewColumn = document.querySelector(`.day-view .day-column`);
 
       state.allEvents.forEach(event => {
         if (event.title && event.title.startsWith('DELETED:')) return;
@@ -448,27 +448,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (render) {
-          renderEventBlock({
+          const eventData = {
             ...event,
             startTime: startTimeStr,
             endTime: endTimeStr
-          }, dayColumn, isException);
-          
+          };
+
+          if (dayColumn) {
+            renderEventBlock(eventData, dayColumn);
+          }
+
           if (dayViewColumn && dayIndex === state.activeDayIndex) {
-            renderEventBlock({
-              ...event,
-              startTime: startTimeStr,
-              endTime: endTimeStr
-            }, dayViewColumn, isException);
+            renderEventBlock(eventData, dayViewColumn);
           }
         }
       });
     }
   }
 
-  function renderEventBlock(eventData, dayColumn, isException = false) {
-    if (isException || !dayColumn) return;
-
+  function renderEventBlock(eventData, dayColumn) {
     const startMinutes = timeToMinutes(eventData.startTime);
     const endMinutes = timeToMinutes(eventData.endTime);
     const durationMinutes = endMinutes - startMinutes;
@@ -599,7 +597,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Sidebar toggle for mobile
+    // Sidebar toggle for desktop
     if (elements.sidebarToggle) {
       elements.sidebarToggle.addEventListener('click', () => {
         elements.calendarSidebar.classList.toggle('expanded');
@@ -629,11 +627,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const activeBtn = document.querySelector(`.mobile-day-nav-btn[data-day="${state.activeDayIndex}"]`);
     if (activeBtn) activeBtn.classList.add('active');
 
+    const dayNames = ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'];
+
     document.querySelectorAll('.day-view .day-column-header').forEach(header => {
       header.classList.remove('active');
       if (parseInt(header.dataset.dayHeader) === state.activeDayIndex) {
         header.classList.add('active');
       }
+      const dayViewHeaderName = header.querySelector('.day-name');
+      if (dayViewHeaderName) dayViewHeaderName.textContent = dayNames[state.activeDayIndex];
     });
 
     document.querySelectorAll('.day-view .day-column').forEach(column => {
