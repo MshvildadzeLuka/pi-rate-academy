@@ -1,3 +1,4 @@
+
 // Updated calendar.js for user calendar with group lectures support
 document.addEventListener('DOMContentLoaded', () => {
   // ======================================================
@@ -157,6 +158,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const payload = { type, isRecurring };
 
+    // FIX: Add a default title to the payload.
+    payload.title = type === 'busy' ? 'დაკავებული დრო' : 'სასურველი დრო';
+
     if (isRecurring) {
       payload.dayOfWeek = dayName;
       payload.recurringStartTime = startSlot.dataset.time;
@@ -280,6 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // FIX: Reworked the rendering logic to correctly handle recurring lectures.
   function renderEventsForWeek() {
     const startOfWeek = getStartOfWeek(state.mainViewDate);
     const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
