@@ -79,20 +79,20 @@ document.addEventListener('DOMContentLoaded', () => {
             showLoadingState();
             
             const token = localStorage.getItem('piRateToken');
-            const promises = [
+            const [teachersRes, userRes, groupsRes, allUsersRes] = await Promise.allSettled([
                 apiFetch('/api/users/teachers'),
                 token ? apiFetch('/api/users/profile') : Promise.resolve(null),
                 token ? apiFetch('/api/groups/my-groups') : Promise.resolve([]),
                 token ? apiFetch('/api/users') : Promise.resolve(null)
-            ];
-
-            const [teachers, user, groups, allUsers] = await Promise.all(promises);
+            ]);
             
-            state.teachers = teachers;
-            state.currentUser = user;
-            state.myGroups = groups;
-            state.allUsers = allUsers?.data || allUsers || [];
-            state.totalPages = Math.ceil(teachers.length / TEACHERS_PER_PAGE) || 1;
+            // Handle successful and failed promises gracefully
+            state.teachers = teachersRes.status === 'fulfilled' ? teachersRes.value : [];
+            state.currentUser = userRes.status === 'fulfilled' ? userRes.value : null;
+            state.myGroups = groupsRes.status === 'fulfilled' ? groupsRes.value : [];
+            state.allUsers = allUsersRes.status === 'fulfilled' ? allUsersRes.value?.data || [] : [];
+            
+            state.totalPages = Math.ceil(state.teachers.length / TEACHERS_PER_PAGE) || 1;
 
             renderTeachersPage();
             setupEventListeners();
