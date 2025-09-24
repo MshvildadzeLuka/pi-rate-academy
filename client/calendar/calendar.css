@@ -833,57 +833,60 @@ select:focus {
 /* Mobile Responsive Styles */
 @media (max-width: 1200px) {
   .page-wrapper {
+    /* Corrects the layout to stack elements vertically, ensuring they are not pushed off-screen */
     flex-direction: column;
-    /* On mobile, the main content will be stacked below the sidebar */
-    height: auto;
-    padding-top: calc(100vh - var(--header-height));
+    min-height: calc(100vh - var(--header-height));
+    position: relative;
+    overflow-y: auto;
   }
-  
+
   .calendar-sidebar {
     width: 100%;
     border-right: none;
     border-bottom: 1px solid var(--background-tertiary);
     
-    /* This is the key change to make the sidebar fixed and full-height */
-    height: calc(100vh - var(--header-height));
-    position: fixed;
-    top: var(--header-height);
+    /* Sets the sidebar as a large block at the top of the page flow */
+    position: relative;
+    top: 0;
     left: 0;
-    z-index: 30;
-
-    /* The sidebar is initially hidden on mobile and slides into view when toggled */
-    transform: translateX(-100%);
+    right: 0;
+    z-index: 20;
+    
+    /* This transform makes the sidebar collapsed by default on smaller screens */
+    transform: translateY(calc(-100% + 60px));
     transition: transform 0.3s ease;
   }
-  
+
   .calendar-sidebar.expanded {
-    transform: translateX(0);
+    transform: translateY(0);
   }
-  
-  /* The toggle button is always visible */
+
   .sidebar-toggle {
     display: flex;
-    position: fixed;
-    top: calc(var(--header-height) + 10px);
-    right: 10px;
-    z-index: 35;
+    position: sticky; /* Sticky position ensures the toggle button stays visible as you scroll */
+    top: 0;
+    right: 0;
+    margin-left: auto;
+    z-index: 25;
   }
-  
+
   .sidebar-toggle i {
     transition: transform 0.3s ease;
   }
-  
+
   .calendar-sidebar.expanded .sidebar-toggle i {
     transform: rotate(180deg);
   }
-  
+
   .main-calendar-view {
     padding: 20px;
-    /* Pushes the main content down to account for the space taken by the fixed sidebar */
-    margin-top: calc(100vh - var(--header-height));
+    /* This ensures the main calendar view starts immediately after the sidebar */
+    margin-top: 0;
+    height: auto;
+    flex-grow: 1;
+    overflow-y: visible;
   }
-  
-  /* Rest of the mobile-specific styles remain the same as before */
+
   .calendar-grid {
     min-width: 100%;
   }
@@ -941,7 +944,6 @@ select:focus {
     min-width: 250px;
   }
 }
-
 @media (max-width: 992px) {
   .mobile-day-nav {
     display: flex;
