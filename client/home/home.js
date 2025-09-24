@@ -79,14 +79,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const promises = [
                 apiFetch('/api/users/teachers'),
                 token ? apiFetch('/api/users/profile') : Promise.resolve(null),
-                token ? apiFetch('/api/groups/my-groups') : Promise.resolve([])
+                token ? apiFetch('/api/groups/my-groups') : Promise.resolve([]),
+                token ? apiFetch('/api/users') : Promise.resolve(null)
             ];
 
-            const [teachers, user, groups] = await Promise.all(promises);
+            const [teachers, user, groups, allUsers] = await Promise.all(promises);
             
             state.teachers = teachers;
             state.currentUser = user;
             state.myGroups = groups;
+            state.allUsers = allUsers?.data || allUsers || [];
             state.totalPages = Math.ceil(teachers.length / TEACHERS_PER_PAGE) || 1;
 
             renderTeachersPage();
