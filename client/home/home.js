@@ -257,30 +257,41 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!state.myGroups || state.myGroups.length === 0) {
                 return alert('თქვენ არ ხართ რომელიმე ჯგუფში დარეგისტრირებული.');
             }
-            
-            if (state.myGroups.length === 1 && state.myGroups[0].zoomLink) {
-                window.open(state.myGroups[0].zoomLink, '_blank');
+
+            if (!zoomModal) {
+                return console.error('Zoom modal element not found.');
+            }
+
+            const groupsWithLinks = state.myGroups.filter(group => group.zoomLink);
+
+            if (groupsWithLinks.length === 0) {
+                const groupList = zoomModal.querySelector('#group-list');
+                groupList.innerHTML = `<p style="text-align:center; color: var(--text-secondary);">ამჟამად არ არის ხელმისაწვდომი ზუმის ზარები.</p>`;
+                zoomModal.classList.remove('hidden');
+                return;
+            }
+
+            if (groupsWithLinks.length === 1) {
+                window.open(groupsWithLinks[0].zoomLink, '_blank');
             } else {
                 const groupList = zoomModal.querySelector('#group-list');
                 groupList.innerHTML = '';
 
                 const adminUser = (Array.isArray(state.allUsers) ? state.allUsers.find(u => u.role === 'Admin') : null);
 
-                state.myGroups.forEach(group => {
-                    if (group && group.zoomLink) {
-                        const btn = document.createElement('button');
-                        
-                        const teacher = (Array.isArray(group.users) ? group.users.find(u => u.role === 'Teacher') : null) || adminUser;
+                groupsWithLinks.forEach(group => {
+                    const btn = document.createElement('button');
+                    
+                    const teacher = (Array.isArray(group.users) ? group.users.find(u => u.role === 'Teacher') : null) || adminUser;
 
-                        if (teacher) {
-                            btn.textContent = `ჯგუფის შეკრება: ${group.name} (${teacher.firstName} ${teacher.lastName})`;
-                        } else {
-                            btn.textContent = `ჯგუფის შეკრება: ${group.name}`;
-                        }
-                        
-                        btn.onclick = () => window.open(group.zoomLink, '_blank');
-                        groupList.appendChild(btn);
+                    if (teacher) {
+                        btn.textContent = `ჯგუფის შეკრება: ${group.name} (${teacher.firstName} ${teacher.lastName})`;
+                    } else {
+                        btn.textContent = `ჯგუფის შეკრება: ${group.name}`;
                     }
+                    
+                    btn.onclick = () => window.open(group.zoomLink, '_blank');
+                    groupList.appendChild(btn);
                 });
                 zoomModal.classList.remove('hidden');
             }
