@@ -267,7 +267,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const groupsWithLinks = state.myGroups.filter(group => group.zoomLink);
+            const groupsWithLinks = [];
+            for (let i = 0; i < state.myGroups.length; i++) {
+                const group = state.myGroups[i];
+                if (group && group.zoomLink) {
+                    groupsWithLinks.push(group);
+                }
+            }
 
             if (groupsWithLinks.length === 0) {
                 const groupList = zoomModal.querySelector('#group-list');
@@ -284,7 +290,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const adminUser = (Array.isArray(state.allUsers) ? state.allUsers.find(u => u.role === 'Admin') : null);
 
-                groupsWithLinks.forEach(group => {
+                for (let i = 0; i < groupsWithLinks.length; i++) {
+                    const group = groupsWithLinks[i];
                     const btn = document.createElement('button');
                     
                     const teacher = (Array.isArray(group.users) ? group.users.find(u => u.role === 'Teacher') : null) || adminUser;
@@ -297,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     btn.onclick = () => window.open(group.zoomLink, '_blank');
                     groupList.appendChild(btn);
-                });
+                }
                 zoomModal.classList.remove('hidden');
             }
         });
