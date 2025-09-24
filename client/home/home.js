@@ -12,6 +12,8 @@
  * ===================================================================
  */
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('home.js script has started executing.');
+
     // ======================================================
     // =============== CONFIG & STATE MANAGEMENT ============
     // ======================================================
@@ -250,6 +252,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // "Join Call" button and modal
         joinCallBtn?.addEventListener('click', () => {
+            console.log('Join Call button clicked.');
+
             if (!state.currentUser) {
                 return alert('გთხოვთ, ჯერ გაიაროთ ავტორიზაცია.');
             }
@@ -259,29 +263,39 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (!zoomModal) {
-                return console.error('Zoom modal element not found.');
+                console.error('Zoom modal element not found.');
+                return;
             }
-
+            
+            console.log('User has groups. Filtering groups with Zoom links...');
             const groupsWithLinks = state.myGroups.filter(group => group.zoomLink);
+            console.log(`Found ${groupsWithLinks.length} group(s) with Zoom links.`);
 
             if (groupsWithLinks.length === 0) {
                 const groupList = zoomModal.querySelector('#group-list');
-                groupList.innerHTML = `<p style="text-align:center; color: var(--text-secondary);">ამჟამად არ არის ხელმისაწვდომი ზუმის ზარები.</p>`;
+                if (groupList) {
+                    groupList.innerHTML = `<p style="text-align:center; color: var(--text-secondary);">ამჟამად არ არის ხელმისაწვდომი ზუმის ზარები.</p>`;
+                }
+                console.log('No Zoom links found. Displaying empty modal with message.');
                 zoomModal.classList.remove('hidden');
                 return;
             }
 
             if (groupsWithLinks.length === 1) {
+                console.log('Only one group with a Zoom link found. Redirecting directly...');
                 window.open(groupsWithLinks[0].zoomLink, '_blank');
             } else {
+                console.log('Multiple groups with Zoom links found. Displaying selection modal...');
                 const groupList = zoomModal.querySelector('#group-list');
                 groupList.innerHTML = '';
 
+                // Add checks to prevent crashes if state.allUsers is not an array
                 const adminUser = (Array.isArray(state.allUsers) ? state.allUsers.find(u => u.role === 'Admin') : null);
 
                 groupsWithLinks.forEach(group => {
                     const btn = document.createElement('button');
                     
+                    // Add a check to prevent crashes if group.users is not an array
                     const teacher = (Array.isArray(group.users) ? group.users.find(u => u.role === 'Teacher') : null) || adminUser;
 
                     if (teacher) {
