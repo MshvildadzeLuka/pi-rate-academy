@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentUser: null,
         teachers: [],
         myGroups: [],
+        allUsers: [],
         currentPage: 1,
         totalPages: 1,
     };
@@ -263,15 +264,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const groupList = zoomModal.querySelector('#group-list');
                 groupList.innerHTML = '';
 
-                // Get the admin user from the state
-                const adminUser = state.allUsers.find(u => u.role === 'Admin');
+                const adminUser = (Array.isArray(state.allUsers) ? state.allUsers.find(u => u.role === 'Admin') : null);
 
                 state.myGroups.forEach(group => {
                     if (group.zoomLink) {
                         const btn = document.createElement('button');
                         
-                        // Find the group's teacher or default to admin
-                        const teacher = group.users.find(u => u.role === 'Teacher') || adminUser;
+                        const teacher = (Array.isArray(group.users) ? group.users.find(u => u.role === 'Teacher') : null) || adminUser;
 
                         if (teacher) {
                             btn.textContent = `ჯგუფის შეკრება: ${group.name} (${teacher.firstName} ${teacher.lastName})`;
