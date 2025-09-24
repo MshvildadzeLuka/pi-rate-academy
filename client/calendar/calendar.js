@@ -1,4 +1,3 @@
-
 // file: client/calendar/calendar.js
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = '/api';
@@ -14,7 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
         isRecurring: false,
         activeDayIndex: (new Date().getDay() + 6) % 7,
         currentView: 'week',
-        isMobile: window.innerWidth < 992
+        isMobile: window.innerWidth < 992,
+        isDragging: false,
+        dragStartSlot: null,
     };
 
     // DOM Elements: Centralized access to all DOM elements
@@ -57,7 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
         weekViewBtn: document.getElementById('week-view-btn'),
         weekViewGrid: document.querySelector('.calendar-grid.week-view'),
         dayViewGrid: document.querySelector('.calendar-grid.day-view'),
-        calendarSidebar: document.querySelector('.calendar-sidebar')
+        calendarSidebar: document.querySelector('.calendar-sidebar'),
+        selectionTimeRange: document.getElementById('selection-time-range')
     };
 
     // Notification toast function
@@ -112,8 +114,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function initializeCalendar() {
         try {
             await fetchUserGroups();
-            await fetchEvents();
             generateTimeSlots();
+            await fetchEvents();
             renderAll();
             addEventListeners();
 
@@ -146,10 +148,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             document.body.classList.add('loading');
-            const eventsResponse = await apiFetch(
+            
+            // Fetch personal events
+            const personalEventsResponse = await apiFetch(
                 `/calendar-events/my-schedule?start=${startOfWeek.toISOString()}&end=${endOfWeek.toISOString()}`
             );
-            state.allEvents = eventsResponse?.data || [];
+            const personalEvents = personalEventsResponse?.data || [];
+            
+            // Fetch lectures for all user's groups
+            const lecturePromises = state.userGroups.map(group => 
+                apiFetch(`/lectures/group/${group._id}?start=${startOfWeek.toISOString()}&end=${endOfWeek.toISOString()}`)
+            );
+            
+            const lectureResponses = await Promise.all(lecturePromises);
+            const lectures = lectureResponses.flatMap(res => res?.data || []);
+            
+            state.allEvents = [...personalEvents, ...lectures];
+
         } catch (error) {
             console.error('Failed to load events:', error);
             state.allEvents = [];
@@ -559,9 +574,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        document.querySelectorAll('.time-slot').forEach(slot => {
-            slot.addEventListener('click', toggleSlotSelection);
-        });
+        const calendarGrid = document.querySelector('.calendar-grid-wrapper');
+        if (calendarGrid) {
+            calendarGrid.addEventListener('mousedown', handleMouseDown);
+            calendarGrid.addEventListener('mouseup', handleMouseUp);
+            calendarGrid.addEventListener('mousemove', handleMouseMove);
+        }
 
         elements.eventDaySelect.addEventListener('change', updateFormValidity);
         elements.eventStartTime.addEventListener('change', updateFormValidity);
@@ -677,6 +695,95 @@ document.addEventListener('DOMContentLoaded', () => {
         renderEventsForWeek();
     }
 
+    // New functions for drag-and-drop selection
+    function handleMouseDown(e) {
+        const targetSlot = e.target.closest('.time-slot');
+        if (!targetSlot) {
+            clearSelection();
+            return;
+        }
+
+        if (state.isMobile && parseInt(targetSlot.dataset.day) !== state.activeDayIndex) {
+            clearSelection();
+            return;
+        }
+
+        state.isDragging = true;
+        state.dragStartSlot = targetSlot;
+        clearSelection();
+        state.selectedSlots.add(targetSlot);
+        targetSlot.classList.add('selected');
+    }
+
+    function handleMouseMove(e) {
+        if (!state.isDragging || !state.dragStartSlot) return;
+
+        const endSlot = e.target.closest('.time-slot');
+        if (!endSlot || endSlot.dataset.day !== state.dragStartSlot.dataset.day) return;
+
+        const allSlots = Array.from(document.querySelectorAll(`.time-slot[data-day="${state.dragStartSlot.dataset.day}"]`));
+        const startIndex = allSlots.indexOf(state.dragStartSlot);
+        const endIndex = allSlots.indexOf(endSlot);
+
+        if (startIndex === -1 || endIndex === -1) return;
+
+        // Clear previous selection
+        document.querySelectorAll('.time-slot.selected').forEach(slot => slot.classList.remove('selected'));
+        state.selectedSlots.clear();
+
+        // Select new range
+        const [min, max] = [Math.min(startIndex, endIndex), Math.max(startIndex, endIndex)];
+        for (let i = min; i <= max; i++) {
+            allSlots[i].classList.add('selected');
+            state.selectedSlots.add(allSlots[i]);
+        }
+        updateFormWithSelection();
+    }
+
+    function handleMouseUp() {
+        state.isDragging = false;
+        if (state.selectedSlots.size > 0) {
+            updateFormWithSelection();
+        } else {
+            clearForm();
+        }
+    }
+
+    // Update form inputs with selected slots
+    function updateFormWithSelection() {
+        if (state.selectedSlots.size === 0) {
+            clearForm();
+            return;
+        }
+
+        const sortedSlots = Array.from(state.selectedSlots).sort((a, b) => {
+            const dayA = parseInt(a.dataset.day);
+            const dayB = parseInt(b.dataset.day);
+            if (dayA !== dayB) return dayA - dayB;
+            
+            const timeA = timeToMinutes(a.dataset.time);
+            const timeB = timeToMinutes(b.dataset.time);
+            return timeA - timeB;
+        });
+
+        const firstSlot = sortedSlots[0];
+        const lastSlot = sortedSlots[sortedSlots.length - 1];
+        
+        const startTime = firstSlot.dataset.time;
+        const endTimeInMinutes = timeToMinutes(lastSlot.dataset.time) + 30; // End of the last selected slot
+        const endTime = minutesToTime(endTimeInMinutes);
+
+        // Update form inputs
+        elements.eventDaySelect.value = firstSlot.dataset.day;
+        elements.eventStartTime.value = startTime;
+        elements.eventEndTime.value = endTime;
+
+        // Update selection display panel
+        elements.selectionTimeRange.textContent = `${formatTime(startTime)} - ${formatTime(endTime)}`;
+
+        updateFormValidity();
+    }
+
     // Toggle selected time slots
     function toggleSlotSelection(e) {
         const targetSlot = e.target.closest('.time-slot');
@@ -693,6 +800,7 @@ document.addEventListener('DOMContentLoaded', () => {
             targetSlot.classList.add('selected');
             state.selectedSlots.add(targetSlot);
         }
+        updateFormWithSelection();
     }
 
     // Handle click on an existing event block
@@ -767,7 +875,7 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.mobileStartTime.value = start;
             elements.mobileEndTime.value = end;
             elements.mobileEventTitleInput.value = eventData.title || '';
-            elements.mobileEventTypeSelect.value = eventData.type;
+            mobileEventTypeSelect.value = eventData.type;
             
             elements.mobileDeleteBtn.disabled = false;
             elements.mobileRecurringCheckbox.checked = eventData.isRecurring;
@@ -800,6 +908,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.eventTitleInput.value = '';
         document.querySelector('input[name="event-type"][value="busy"]').checked = true;
         elements.recurringCheckbox.checked = false;
+        elements.selectionTimeRange.textContent = 'აირჩიეთ დრო კალენდარზე';
         updateFormValidity();
     }
 
@@ -833,6 +942,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!timeStr || !timeStr.includes(':')) return 0;
         const [h, m] = timeStr.split(':').map(Number);
         return h * 60 + m;
+    };
+
+    const minutesToTime = (totalMinutes) => {
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
     };
 
     const formatTime = (timeStr, includePeriod = true) => {
