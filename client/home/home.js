@@ -250,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // "Join Call" button and modal
+        // Corrected "Join Call" button and modal logic
         joinCallBtn?.addEventListener('click', () => {
             console.log('Join Call button clicked.');
 
@@ -270,7 +270,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const groupsWithLinks = [];
             for (let i = 0; i < state.myGroups.length; i++) {
                 const group = state.myGroups[i];
-                // Failsafe checks for group data
                 if (group && group.zoomLink) {
                     groupsWithLinks.push(group);
                 }
@@ -280,11 +279,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const groupList = zoomModal.querySelector('#group-list');
                 groupList.innerHTML = `<p style="text-align:center; color: var(--text-secondary);">ამჟამად არ არის ხელმისაწვდომი ზუმის ზარები.</p>`;
                 zoomModal.classList.remove('hidden');
-                return;
-            }
-
-            if (groupsWithLinks.length === 1) {
-                window.open(groupsWithLinks[0].zoomLink, '_blank');
             } else {
                 const groupList = zoomModal.querySelector('#group-list');
                 groupList.innerHTML = '';
