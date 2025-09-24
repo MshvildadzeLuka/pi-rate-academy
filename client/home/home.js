@@ -266,36 +266,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Zoom modal element not found.');
                 return;
             }
-            
-            console.log('User has groups. Filtering groups with Zoom links...');
+
             const groupsWithLinks = state.myGroups.filter(group => group.zoomLink);
-            console.log(`Found ${groupsWithLinks.length} group(s) with Zoom links.`);
 
             if (groupsWithLinks.length === 0) {
                 const groupList = zoomModal.querySelector('#group-list');
-                if (groupList) {
-                    groupList.innerHTML = `<p style="text-align:center; color: var(--text-secondary);">ამჟამად არ არის ხელმისაწვდომი ზუმის ზარები.</p>`;
-                }
-                console.log('No Zoom links found. Displaying empty modal with message.');
+                groupList.innerHTML = `<p style="text-align:center; color: var(--text-secondary);">ამჟამად არ არის ხელმისაწვდომი ზუმის ზარები.</p>`;
                 zoomModal.classList.remove('hidden');
                 return;
             }
 
             if (groupsWithLinks.length === 1) {
-                console.log('Only one group with a Zoom link found. Redirecting directly...');
                 window.open(groupsWithLinks[0].zoomLink, '_blank');
             } else {
-                console.log('Multiple groups with Zoom links found. Displaying selection modal...');
                 const groupList = zoomModal.querySelector('#group-list');
                 groupList.innerHTML = '';
 
-                // Add checks to prevent crashes if state.allUsers is not an array
                 const adminUser = (Array.isArray(state.allUsers) ? state.allUsers.find(u => u.role === 'Admin') : null);
 
                 groupsWithLinks.forEach(group => {
                     const btn = document.createElement('button');
                     
-                    // Add a check to prevent crashes if group.users is not an array
                     const teacher = (Array.isArray(group.users) ? group.users.find(u => u.role === 'Teacher') : null) || adminUser;
 
                     if (teacher) {
