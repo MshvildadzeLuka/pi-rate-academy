@@ -1,19 +1,15 @@
+
 /**
  * ===================================================================
- * HOME PAGE SCRIPT (v4.0 - Georgian & Mobile Optimized)
+ * HOME PAGE SCRIPT (v4.1 - FIXED GROUP SELECTION)
  * for Pi-Rate Academy
  * ===================================================================
- * - Handles all dynamic content for the home page in Georgian.
- * - Enhanced mobile responsiveness and user experience.
- * - Features instructor pagination with asynchronous rating fetching.
- * - Redirects to a dedicated page for detailed instructor profiles.
- * - Implements a "Join Call" modal for student group calls.
- * - Automatically refreshes data when the page is loaded from cache.
+ * - Fixed the group selection modal for multiple groups
+ * - Corrected the teacher name display in group buttons
+ * - Enhanced error handling for group calls
  * ===================================================================
  */
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('home.js script has started executing.');
-
     // ======================================================
     // =============== CONFIG & STATE MANAGEMENT ============
     // ======================================================
@@ -24,7 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
         currentUser: null,
         teachers: [],
         myGroups: [],
-        allUsers: [],
         currentPage: 1,
         totalPages: 1,
     };
@@ -79,20 +74,18 @@ document.addEventListener('DOMContentLoaded', () => {
             showLoadingState();
             
             const token = localStorage.getItem('piRateToken');
-            const [teachersRes, userRes, groupsRes, allUsersRes] = await Promise.allSettled([
+            const promises = [
                 apiFetch('/api/users/teachers'),
                 token ? apiFetch('/api/users/profile') : Promise.resolve(null),
-                token ? apiFetch('/api/groups/my-groups') : Promise.resolve([]),
-                token ? apiFetch('/api/users') : Promise.resolve(null)
-            ]);
+                token ? apiFetch('/api/groups/my-groups') : Promise.resolve([])
+            ];
+
+            const [teachers, user, groups] = await Promise.all(promises);
             
-            // Handle successful and failed promises gracefully
-            state.teachers = teachersRes.status === 'fulfilled' ? teachersRes.value : [];
-            state.currentUser = userRes.status === 'fulfilled' ? userRes.value : null;
-            state.myGroups = groupsRes.status === 'fulfilled' ? groupsRes.value : [];
-            state.allUsers = allUsersRes.status === 'fulfilled' ? allUsersRes.value?.data || [] : [];
-            
-            state.totalPages = Math.ceil(state.teachers.length / TEACHERS_PER_PAGE) || 1;
+            state.teachers = teachers;
+            state.currentUser = user;
+            state.myGroups = groups;
+            state.totalPages = Math.ceil(teachers.length / TEACHERS_PER_PAGE) || 1;
 
             renderTeachersPage();
             setupEventListeners();
@@ -250,80 +243,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Corrected "Join Call" button and modal logic
-        joinCallBtn?.addEventListener('click', () => {
-            console.log('Join Call button clicked.');
-
-            if (!state.currentUser) {
-                return alert('გთხოვთ, ჯერ გაიაროთ ავტორიზაცია.');
-            }
-            
-            if (!state.myGroups || state.myGroups.length === 0) {
-                return alert('თქვენ არ ხართ რომელიმე ჯგუფში დარეგისტრირებული.');
-            }
-
-            if (!zoomModal) {
-                console.error('Zoom modal element not found.');
-                return;
-            }
-
-            const groupsWithLinks = [];
-            for (let i = 0; i < state.myGroups.length; i++) {
-                const group = state.myGroups[i];
-                if (group && group.zoomLink) {
-                    groupsWithLinks.push(group);
-                }
-            }
-
-            if (groupsWithLinks.length === 0) {
-                const groupList = zoomModal.querySelector('#group-list');
-                groupList.innerHTML = `<p style="text-align:center; color: var(--text-secondary);">ამჟამად არ არის ხელმისაწვდომი ზუმის ზარები.</p>`;
-                zoomModal.classList.remove('hidden');
-            } else {
-                const groupList = zoomModal.querySelector('#group-list');
-                groupList.innerHTML = '';
-
-                let adminUser = null;
-                if (state.allUsers && state.allUsers.length > 0) {
-                    for(let i = 0; i < state.allUsers.length; i++) {
-                        if (state.allUsers[i].role === 'Admin') {
-                            adminUser = state.allUsers[i];
-                            break;
-                        }
-                    }
-                }
-
-                for (let i = 0; i < groupsWithLinks.length; i++) {
-                    const group = groupsWithLinks[i];
-                    const btn = document.createElement('button');
-                    
-                    let teacher = null;
-                    if (group.users && group.users.length > 0) {
-                        for(let j = 0; j < group.users.length; j++) {
-                            const user = group.users[j];
-                            if (user && user.role === 'Teacher') {
-                                teacher = user;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    if (!teacher) {
-                        teacher = adminUser;
-                    }
-
-                    if (teacher) {
-                        btn.textContent = `ჯგუფის შეკრება: ${group.name} (${teacher.firstName} ${teacher.lastName})`;
-                    } else {
-                        btn.textContent = `ჯგუფის შეკრება: ${group.name}`;
-                    }
-                    
-                    btn.onclick = () => window.open(group.zoomLink, '_blank');
-                    groupList.appendChild(btn);
-                }
-                zoomModal.classList.remove('hidden');
-            }
-        });
+        // "Join Call" button and modal - FIXED VERSION
+        joinCallBtn?.addEventListener('click', handleJoinCallClick);
 
         // Listeners for closing modals
         document.querySelectorAll('.modal-overlay').forEach(modal => {
@@ -332,6 +253,68 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             modal.querySelector('.close-modal')?.addEventListener('click', () => modal.classList.add('hidden'));
         });
+    }
+
+    /**
+     * Handles the join call button click with proper group selection
+     */
+    async function handleJoinCallClick() {
+        try {
+            if (!state.currentUser) {
+                alert('გთხოვთ, ჯერ გაიაროთ ავტორიზაცია.');
+                return;
+            }
+            
+            if (!state.myGroups || state.myGroups.length === 0) {
+                alert('თქვენ არ ხართ რომელიმე ჯგუფში დარეგისტრირებული.');
+                return;
+            }
+            
+            // Filter groups that have zoom links
+            const groupsWithZoom = state.myGroups.filter(group => group.zoomLink && group.zoomLink.trim() !== '');
+            
+            if (groupsWithZoom.length === 0) {
+                alert('თქვენს ჯგუფებს არ აქვთ Zoom ბმულები კონფიგურირებული.');
+                return;
+            }
+            
+            if (groupsWithZoom.length === 1) {
+                // Directly open the single group's zoom link
+                window.open(groupsWithZoom[0].zoomLink, '_blank');
+            } else {
+                // Show modal for multiple groups
+                showGroupSelectionModal(groupsWithZoom);
+            }
+        } catch (error) {
+            console.error('Error handling join call:', error);
+            alert('ჯგუფების ჩატვირთვისას მოხდა შეცდომა.');
+        }
+    }
+
+    /**
+     * Shows the group selection modal with available groups
+     * @param {Array} groups - Array of groups with zoom links
+     */
+    function showGroupSelectionModal(groups) {
+        const groupList = zoomModal.querySelector('#group-list');
+        groupList.innerHTML = '';
+
+        groups.forEach(group => {
+            const btn = document.createElement('button');
+            
+            // Find teacher for this group
+            const teacher = group.users ? group.users.find(u => u.role === 'Teacher' || u.role === 'Admin') : null;
+            const teacherName = teacher ? `${teacher.firstName} ${teacher.lastName}` : 'ინსტრუქტორი';
+            
+            btn.textContent = `${group.name} (${teacherName})`;
+            btn.onclick = () => {
+                window.open(group.zoomLink, '_blank');
+                zoomModal.classList.add('hidden');
+            };
+            groupList.appendChild(btn);
+        });
+
+        zoomModal.classList.remove('hidden');
     }
     
     /**
