@@ -208,6 +208,25 @@ body {
   font-weight: 600;
 }
 
+#selection-panel {
+  background-color: var(--background-tertiary);
+  border-radius: var(--border-radius);
+  padding: 15px;
+  margin-bottom: 25px;
+  text-align: center;
+}
+#selection-panel h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+#selection-time-range {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
 .input-group {
   margin-bottom: 25px;
 }
@@ -1093,6 +1112,4 @@ select:focus {
   .modal {
     max-height: 85vh;
   }
-}
-
 }
