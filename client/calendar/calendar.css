@@ -820,6 +820,7 @@ select:focus {
 
   .calendar-sidebar {
     width: 100%;
+    height: 120%;
     border-right: none;
     border-bottom: 1px solid var(--background-tertiary);
     max-height: 40vh;
