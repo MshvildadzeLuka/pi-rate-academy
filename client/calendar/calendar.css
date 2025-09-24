@@ -208,25 +208,6 @@ body {
   font-weight: 600;
 }
 
-#selection-panel {
-  background-color: var(--background-tertiary);
-  border-radius: var(--border-radius);
-  padding: 15px;
-  margin-bottom: 25px;
-  text-align: center;
-}
-#selection-panel h3 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-top: 0;
-  margin-bottom: 10px;
-}
-#selection-time-range {
-  font-size: 1rem;
-  color: var(--text-secondary);
-  margin: 0;
-}
-
 .input-group {
   margin-bottom: 25px;
 }
@@ -833,26 +814,20 @@ select:focus {
 /* Mobile Responsive Styles */
 @media (max-width: 1200px) {
   .page-wrapper {
-    /* Corrects the layout to stack elements vertically, ensuring they are not pushed off-screen */
     flex-direction: column;
-    min-height: calc(100vh - var(--header-height));
-    position: relative;
-    overflow-y: auto;
+    height: auto;
   }
 
   .calendar-sidebar {
     width: 100%;
     border-right: none;
     border-bottom: 1px solid var(--background-tertiary);
-    
-    /* Sets the sidebar as a large block at the top of the page flow */
-    position: relative;
+    max-height: 40vh;
+    position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    z-index: 20;
-    
-    /* This transform makes the sidebar collapsed by default on smaller screens */
+    z-index: 30;
     transform: translateY(calc(-100% + 60px));
     transition: transform 0.3s ease;
   }
@@ -863,11 +838,6 @@ select:focus {
 
   .sidebar-toggle {
     display: flex;
-    position: sticky; /* Sticky position ensures the toggle button stays visible as you scroll */
-    top: 0;
-    right: 0;
-    margin-left: auto;
-    z-index: 25;
   }
 
   .sidebar-toggle i {
@@ -880,11 +850,8 @@ select:focus {
 
   .main-calendar-view {
     padding: 20px;
-    /* This ensures the main calendar view starts immediately after the sidebar */
-    margin-top: 0;
-    height: auto;
-    flex-grow: 1;
-    overflow-y: visible;
+    height: calc(100vh - var(--header-height) - 60px);
+    margin-top: 60px;
   }
 
   .calendar-grid {
@@ -944,6 +911,7 @@ select:focus {
     min-width: 250px;
   }
 }
+
 @media (max-width: 992px) {
   .mobile-day-nav {
     display: flex;
@@ -1047,82 +1015,4 @@ select:focus {
   }
 }
 
-@media (max-width: 480px) {
-  .main-calendar-view {
-    padding: 15px;
-  }
-
-  .calendar-grid-wrapper {
-    border-radius: 8px;
-  }
-
-  .calendar-grid.week-view {
-    grid-template-columns: 50px repeat(7, 1fr);
-  }
-
-  .calendar-grid.day-view {
-    grid-template-columns: 50px 1fr;
-  }
-
-  .grid-header {
-    padding: 10px 4px;
-  }
-
-  .day-column-header .day-name {
-    font-size: 0.8rem;
-  }
-
-  .day-column-header .day-number {
-    font-size: 1.1rem;
-    width: 32px;
-    height: 32px;
-  }
-
-  .time-label {
-    font-size: 0.7rem;
-    height: 50px;
-  }
-
-  .today-btn {
-    padding: 8px 16px;
-    font-size: 0.9rem;
-  }
-
-  #event-form-panel {
-    padding: 15px;
-  }
-
-  #event-form-panel h2 {
-    font-size: 1.4rem;
-  }
-
-  .btn {
-    padding: 10px;
-    font-size: 0.85rem;
-  }
-
-  .week-view .current-time-indicator {
-    width: calc(100% - 50px);
-    left: 50px;
-  }
-
-  .day-view .current-time-indicator {
-    width: calc(100% - 50px);
-    left: 50px;
-  }
-
-  .radio-group-tabs {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .mobile-day-nav-btn {
-    min-width: 45px;
-    padding: 8px 6px;
-    font-size: 0.85rem;
-  }
-
-  .modal {
-    max-height: 85vh;
-  }
 }
