@@ -270,6 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const groupsWithLinks = [];
             for (let i = 0; i < state.myGroups.length; i++) {
                 const group = state.myGroups[i];
+                // Failsafe checks for group data
                 if (group && group.zoomLink) {
                     groupsWithLinks.push(group);
                 }
@@ -288,13 +289,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 const groupList = zoomModal.querySelector('#group-list');
                 groupList.innerHTML = '';
 
-                const adminUser = (Array.isArray(state.allUsers) ? state.allUsers.find(u => u.role === 'Admin') : null);
+                let adminUser = null;
+                if (state.allUsers && state.allUsers.length > 0) {
+                    for(let i = 0; i < state.allUsers.length; i++) {
+                        if (state.allUsers[i].role === 'Admin') {
+                            adminUser = state.allUsers[i];
+                            break;
+                        }
+                    }
+                }
 
                 for (let i = 0; i < groupsWithLinks.length; i++) {
                     const group = groupsWithLinks[i];
                     const btn = document.createElement('button');
                     
-                    const teacher = (Array.isArray(group.users) ? group.users.find(u => u.role === 'Teacher') : null) || adminUser;
+                    let teacher = null;
+                    if (group.users && group.users.length > 0) {
+                        for(let j = 0; j < group.users.length; j++) {
+                            if (group.users[j].role === 'Teacher') {
+                                teacher = group.users[j];
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (!teacher) {
+                        teacher = adminUser;
+                    }
 
                     if (teacher) {
                         btn.textContent = `ჯგუფის შეკრება: ${group.name} (${teacher.firstName} ${teacher.lastName})`;
