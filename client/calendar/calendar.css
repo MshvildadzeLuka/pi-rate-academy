@@ -834,45 +834,56 @@ select:focus {
 @media (max-width: 1200px) {
   .page-wrapper {
     flex-direction: column;
+    /* On mobile, the main content will be stacked below the sidebar */
     height: auto;
+    padding-top: calc(100vh - var(--header-height));
   }
-
+  
   .calendar-sidebar {
     width: 100%;
     border-right: none;
     border-bottom: 1px solid var(--background-tertiary);
-    max-height: 40vh;
-    position: absolute;
-    top: 0;
+    
+    /* This is the key change to make the sidebar fixed and full-height */
+    height: calc(100vh - var(--header-height));
+    position: fixed;
+    top: var(--header-height);
     left: 0;
-    right: 0;
     z-index: 30;
-    transform: translateY(calc(-100% + 60px));
+
+    /* The sidebar is initially hidden on mobile and slides into view when toggled */
+    transform: translateX(-100%);
     transition: transform 0.3s ease;
   }
-
+  
   .calendar-sidebar.expanded {
-    transform: translateY(0);
+    transform: translateX(0);
   }
-
+  
+  /* The toggle button is always visible */
   .sidebar-toggle {
     display: flex;
+    position: fixed;
+    top: calc(var(--header-height) + 10px);
+    right: 10px;
+    z-index: 35;
   }
-
+  
   .sidebar-toggle i {
     transition: transform 0.3s ease;
   }
-
+  
   .calendar-sidebar.expanded .sidebar-toggle i {
     transform: rotate(180deg);
   }
-
+  
   .main-calendar-view {
     padding: 20px;
-    height: calc(100vh - var(--header-height) - 60px);
-    margin-top: 60px;
+    /* Pushes the main content down to account for the space taken by the fixed sidebar */
+    margin-top: calc(100vh - var(--header-height));
   }
-
+  
+  /* Rest of the mobile-specific styles remain the same as before */
   .calendar-grid {
     min-width: 100%;
   }
