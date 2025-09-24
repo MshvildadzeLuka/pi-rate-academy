@@ -306,8 +306,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     let teacher = null;
                     if (group.users && group.users.length > 0) {
                         for(let j = 0; j < group.users.length; j++) {
-                            if (group.users[j].role === 'Teacher') {
-                                teacher = group.users[j];
+                            const user = group.users[j];
+                            if (user && user.role === 'Teacher') {
+                                teacher = user;
                                 break;
                             }
                         }
