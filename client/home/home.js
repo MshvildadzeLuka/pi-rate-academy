@@ -267,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const adminUser = (Array.isArray(state.allUsers) ? state.allUsers.find(u => u.role === 'Admin') : null);
 
                 state.myGroups.forEach(group => {
-                    if (group.zoomLink) {
+                    if (group && group.zoomLink) {
                         const btn = document.createElement('button');
                         
                         const teacher = (Array.isArray(group.users) ? group.users.find(u => u.role === 'Teacher') : null) || adminUser;
