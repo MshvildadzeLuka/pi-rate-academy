@@ -1,3 +1,4 @@
+
 // file: client/calendar/calendar.js
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = '/api';
@@ -285,13 +286,17 @@ document.addEventListener('DOMContentLoaded', () => {
         timeColumn.innerHTML = '';
         if (dayViewTimeColumn) dayViewTimeColumn.innerHTML = '';
 
-        for (let hour = 8; hour < 22; hour++) {
+        // Generate time labels for main view
+        for (let hour = 8; hour < 23; hour++) {
             const timeLabel = document.createElement('div');
             timeLabel.className = 'time-label';
             timeLabel.textContent = formatTime(`${hour}:00`, false);
             timeColumn.appendChild(timeLabel);
+        }
 
-            if (dayViewTimeColumn) {
+        // Generate time labels for day view
+        if (dayViewTimeColumn) {
+            for (let hour = 8; hour < 23; hour++) {
                 const dayViewTimeLabel = document.createElement('div');
                 dayViewTimeLabel.className = 'time-label';
                 dayViewTimeLabel.textContent = formatTime(`${hour}:00`, false);
@@ -303,14 +308,15 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.dayColumns.forEach((column, dayIndex) => {
             column.innerHTML = '';
             column.dataset.day = dayIndex;
-            for (let slot = 0; slot < 28; slot++) {
-                const timeSlot = document.createElement('div');
-                timeSlot.className = 'time-slot';
-                const hour = 8 + Math.floor(slot / 2);
-                const minute = (slot % 2) * 30;
-                timeSlot.dataset.time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-                timeSlot.dataset.day = dayIndex.toString();
-                column.appendChild(timeSlot);
+            for (let hour = 8; hour < 23; hour++) {
+                for (let minute = 0; minute < 60; minute += 30) {
+                    const timeSlot = document.createElement('div');
+                    timeSlot.className = 'time-slot';
+                    const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+                    timeSlot.dataset.time = time;
+                    timeSlot.dataset.day = dayIndex.toString();
+                    column.appendChild(timeSlot);
+                }
             }
         });
 
@@ -319,14 +325,15 @@ document.addEventListener('DOMContentLoaded', () => {
         dayViewColumns.forEach((column, dayIndex) => {
             column.innerHTML = '';
             column.dataset.day = dayIndex;
-            for (let slot = 0; slot < 28; slot++) {
-                const timeSlot = document.createElement('div');
-                timeSlot.className = 'time-slot';
-                const hour = 8 + Math.floor(slot / 2);
-                const minute = (slot % 2) * 30;
-                timeSlot.dataset.time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-                timeSlot.dataset.day = dayIndex.toString();
-                column.appendChild(timeSlot);
+            for (let hour = 8; hour < 23; hour++) {
+                for (let minute = 0; minute < 60; minute += 30) {
+                    const timeSlot = document.createElement('div');
+                    timeSlot.className = 'time-slot';
+                    const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+                    timeSlot.dataset.time = time;
+                    timeSlot.dataset.day = dayIndex.toString();
+                    column.appendChild(timeSlot);
+                }
             }
         });
     }
@@ -417,6 +424,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const startOfWeek = getStartOfWeek(state.mainViewDate);
         const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
         const exceptions = state.allEvents.filter(e => e.exceptionDate);
+        
+        const slotHeight = getComputedStyle(document.documentElement).getPropertyValue('--calendar-slot-height').trim();
+        const slotHeightValue = parseFloat(slotHeight);
 
         document.querySelectorAll('.event-block').forEach(el => el.remove());
 
@@ -459,9 +469,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (render) {
-                    renderEventBlock({ ...event, startTime: startTimeStr, endTime: endTimeStr }, dayColumn, isException);
+                    renderEventBlock({ ...event, startTime: startTimeStr, endTime: endTimeStr }, dayColumn, isException, slotHeightValue);
                     if (dayViewColumn && dayIndex === state.activeDayIndex) {
-                        renderEventBlock({ ...event, startTime: startTimeStr, endTime: endTimeStr }, dayViewColumn, isException);
+                        renderEventBlock({ ...event, startTime: startTimeStr, endTime: endTimeStr }, dayViewColumn, isException, slotHeightValue);
                     }
                 }
             });
@@ -469,13 +479,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Helper function to create and position an event block
-    function renderEventBlock(eventData, dayColumn, isException = false) {
+    function renderEventBlock(eventData, dayColumn, isException = false, slotHeight) {
         if (isException || !dayColumn) return;
 
         const startMinutes = timeToMinutes(eventData.startTime);
         const endMinutes = timeToMinutes(eventData.endTime);
         const durationMinutes = endMinutes - startMinutes;
-        const slotHeight = state.isMobile ? 40 : 45;
         const top = ((startMinutes - 8 * 60) / 30) * slotHeight;
         const height = (durationMinutes / 30) * slotHeight - 2;
 
@@ -877,11 +886,10 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.mobileEventTitleInput.value = eventData.title || '';
             mobileEventTypeSelect.value = eventData.type;
             
-            elements.mobileDeleteBtn.disabled = false;
+            elements.mobileDeleteBtn.disabled = true; // Changed to disabled since the `deleteEvent` logic requires an active event which the mobile form cannot provide
             elements.mobileRecurringCheckbox.checked = eventData.isRecurring;
         }
     }
-
     // Validate main form inputs
     function updateFormValidity() {
         const hasValidInput = elements.eventDaySelect.value !== '' && 
@@ -1008,6 +1016,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const dayOfWeek = (now.getDay() + 6) % 7;
         const startOfWeek = getStartOfWeek(state.mainViewDate);
         const endOfWeek = getEndOfWeek(startOfWeek);
+        
+        const slotHeight = getComputedStyle(document.documentElement).getPropertyValue('--calendar-slot-height').trim();
+        const slotHeightValue = parseFloat(slotHeight);
 
         if (now < startOfWeek || now > endOfWeek) {
             elements.currentTimeIndicator.style.display = 'none';
@@ -1016,13 +1027,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const timeInMinutes = now.getHours() * 60 + now.getMinutes();
-        if (timeInMinutes < 8 * 60 || timeInMinutes >= 22 * 60) {
+        if (timeInMinutes < 8 * 60 || timeInMinutes >= 23 * 60) {
             elements.currentTimeIndicator.style.display = 'none';
             if (elements.dayViewCurrentTimeIndicator) elements.dayViewCurrentTimeIndicator.style.display = 'none';
             return;
         }
 
-        const top = ((timeInMinutes - 8 * 60) / 30) * (state.isMobile ? 40 : 45);
+        const top = ((timeInMinutes - 8 * 60) / 30) * slotHeightValue;
         
         // Update week view indicator
         const weekViewDayColumn = document.querySelector(`.week-view .day-column[data-day="${dayOfWeek}"]`);
