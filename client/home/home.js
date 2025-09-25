@@ -96,8 +96,8 @@ document.addEventListener('DOMContentLoaded', () => {
             state.myGroups = groups || [];
             state.totalPages = Math.ceil(state.teachers.length / TEACHERS_PER_PAGE) || 1;
 
-            if (state.currentUser && ['Teacher', 'Admin'].includes(state.currentUser.role)) {
-                handleTeacherAdminUi();
+            if (state.currentUser && ['Teacher', 'Admin', 'Student'].includes(state.currentUser.role)) {
+                handleUserUi();
             }
 
             renderTeachersPage();
@@ -114,20 +114,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function handleTeacherAdminUi() {
+    function handleUserUi() {
         if (!teacherControls || !groupSelect || !joinCallBtn) return;
         
         const groupsWithZoom = state.myGroups.filter(g => g.zoomLink);
 
-        if (groupsWithZoom.length === 1) {
+        if (state.currentUser.role === 'Student' && groupsWithZoom.length === 1) {
             // Case 1: Only one group with a Zoom link, start call directly
             joinCallBtn.disabled = false;
             joinCallBtn.addEventListener('click', () => {
                 showNotification(`ზარის დაწყება ჯგუფისთვის "${groupsWithZoom[0].name}"`, 'success');
                 window.open(groupsWithZoom[0].zoomLink, '_blank');
             }, { once: true });
-        } else if (groupsWithZoom.length > 1) {
-            // Case 2: Multiple groups, show the dropdown
+        } else if (groupsWithZoom.length > 0) {
+            // Case 2: Admin/Teacher or Student in multiple groups, show the dropdown
             teacherControls.style.display = 'block';
             groupSelect.innerHTML = `<option value="">აირჩიეთ ჯგუფი</option>` +
                 groupsWithZoom.map(g => `<option value="${g._id}">${g.name}</option>`).join('');
