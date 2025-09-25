@@ -1,4 +1,3 @@
-
 /**
  * ===================================================================
  * HOME PAGE SCRIPT (v4.2 - Georgian & Mobile Optimized)
@@ -41,10 +40,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextPageBtn = document.getElementById('next-page-btn');
     const pageInfo = document.getElementById('page-info');
     const joinCallBtn = document.getElementById('join-call-btn');
-    const zoomModal = document.getElementById('zoom-modal');
-    const closeButtons = document.querySelectorAll('.close-modal');
-    const modalOverlays = document.querySelectorAll('.modal-overlay');
-
+    const teacherControls = document.getElementById('teacher-admin-controls');
+    const groupSelect = document.getElementById('group-select');
+    
     // ======================================================
     // =============== API HELPER ===========================
     // ======================================================
@@ -98,6 +96,11 @@ document.addEventListener('DOMContentLoaded', () => {
             state.myGroups = groups || [];
             state.totalPages = Math.ceil(state.teachers.length / TEACHERS_PER_PAGE) || 1;
 
+            if (state.currentUser && ['Teacher', 'Admin'].includes(state.currentUser.role)) {
+                renderGroupSelect();
+                joinCallBtn.disabled = true;
+            }
+
             renderTeachersPage();
             setupEventListeners();
             setupScrollAnimations();
@@ -133,6 +136,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // ======================================================
     // =============== RENDERING FUNCTIONS ==================
     // ======================================================
+    /**
+     * Renders the group selection dropdown for teachers and admins.
+     */
+    function renderGroupSelect() {
+        if (!teacherControls || !groupSelect) return;
+        
+        const groupsWithZoom = state.myGroups.filter(g => g.zoomLink);
+        
+        if (groupsWithZoom.length > 0) {
+            teacherControls.style.display = 'block';
+            groupSelect.innerHTML = `<option value="">აირჩიეთ ჯგუფი</option>` +
+                groupsWithZoom.map(g => `<option value="${g._id}">${g.name}</option>`).join('');
+        }
+    }
+
     /**
      * Renders the correct slice of instructors based on the current page.
      */
@@ -221,7 +239,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return starsHtml;
     }
-
+    
+    /**
+     * Displays a temporary notification on the screen.
+     */
+    function showNotification(message, type) {
+      const notificationContainer = document.getElementById('notification-container');
+      if (!notificationContainer) return;
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.innerHTML = `
+        <span class="icon">
+          <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+        </span>
+        <span class="message">${message}</span>
+      `;
+      notificationContainer.appendChild(notification);
+      setTimeout(() => notification.classList.add('show'), 10);
+      setTimeout(() => {
+          notification.classList.remove('show');
+          setTimeout(() => notification.remove(), 300);
+      }, 3000);
+    }
+    
     // ======================================================
     // =============== EVENT LISTENERS ======================
     // ======================================================
@@ -260,86 +300,24 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // "Join Call" button and modal
-        if (joinCallBtn) {
-            joinCallBtn.addEventListener('click', () => {
-                if (!state.currentUser) {
-                    alert('გთხოვთ, ჯერ გაიაროთ ავტორიზაცია.');
-                    return;
-                }
-                
-                const groupsWithZoom = state.myGroups.filter(group => group.zoomLink);
-                
-                if (groupsWithZoom.length === 0) {
-                    alert('თქვენს ჯგუფებს არ აქვთ Zoom ბმული.');
-                    return;
-                }
-
-                if (!zoomModal) {
-                    console.error('Zoom modal not found in DOM.');
-                    alert('ტექნიკური შეცდომა: მოდალის ჩვენება ვერ მოხერხდა.');
-                    return;
-                }
-
-                const groupList = zoomModal.querySelector('#group-list');
-                if (!groupList) {
-                    console.error('Group list element not found in modal.');
-                    return;
-                }
-                
-                // Clear previous list items
-                groupList.innerHTML = '';
-                
-                // For a single group, go directly to the call
-                if (groupsWithZoom.length === 1) {
-                    window.open(groupsWithZoom[0].zoomLink, '_blank');
-                    return;
-                }
-
-                // For multiple groups, display the list
-                groupsWithZoom.forEach(group => {
-                    const btn = document.createElement('button');
-                    
-                    // Find the group's teacher or admin from populated users
-                    const teacher = group.users.find(u => u.role === 'Teacher');
-                    const adminUser = group.users.find(u => u.role === 'Admin');
-                    const instructor = teacher || adminUser;
-                    
-                    if (instructor) {
-                        btn.textContent = `ჯგუფის შეკრება: ${group.name} (${instructor.firstName} ${instructor.lastName})`;
-                    } else {
-                        btn.textContent = `ჯგუფის შეკრება: ${group.name}`;
-                    }
-                    
-                    btn.onclick = () => {
-                        window.open(group.zoomLink, '_blank');
-                        zoomModal.classList.add('hidden');
-                    };
-                    
-                    groupList.appendChild(btn);
-                });
-                
-                zoomModal.classList.remove('hidden');
+        if (groupSelect) {
+            groupSelect.addEventListener('change', (e) => {
+                joinCallBtn.disabled = !e.target.value;
             });
         }
-
-        // Listeners for closing modals (updated to use 'hidden' class)
-        modalOverlays.forEach(modal => {
-            modal.addEventListener('click', (e) => { 
-                if (e.target === modal) {
-                    modal.classList.add('hidden');
-                }
-            });
-        });
         
-        closeButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const modal = btn.closest('.modal-overlay');
-                if (modal) {
-                    modal.classList.add('hidden');
+        if (joinCallBtn) {
+            joinCallBtn.addEventListener('click', () => {
+                const selectedGroupId = groupSelect.value;
+                const selectedGroup = state.myGroups.find(g => g._id === selectedGroupId);
+                
+                if (selectedGroup && selectedGroup.zoomLink) {
+                    window.open(selectedGroup.zoomLink, '_blank');
+                } else {
+                    showNotification('არჩეულ ჯგუფს არ აქვს Zoom ბმული.', 'error');
                 }
             });
-        });
+        }
     }
     
     /**
@@ -402,6 +380,37 @@ document.addEventListener('DOMContentLoaded', () => {
             color: var(--text-secondary);
             margin: 0;
         }
+        .empty-list-message {
+            text-align: center;
+            color: var(--text-secondary);
+            font-style: italic;
+            padding: 20px;
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            color: white;
+            z-index: 10000;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+            max-width: 300px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .notification.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .notification.success { background-color: #28a745; }
+        .notification.error { background-color: #dc3545; }
+        .notification.warning { background-color: #ffc107; color: black; }
+        .notification.info { background-color: #17a2b8; }
     `;
     document.head.appendChild(style);
 });
