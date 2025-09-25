@@ -1,7 +1,7 @@
 
 /**
  * ===================================================================
- * HOME PAGE SCRIPT (v4.1 - Georgian & Mobile Optimized)
+ * HOME PAGE SCRIPT (v4.2 - Georgian & Mobile Optimized)
  * for Pi-Rate Academy
  * ===================================================================
  * - Handles all dynamic content for the home page in Georgian.
@@ -14,6 +14,8 @@
  * - Updated modal visibility handling to match CSS (.visible class).
  * - Removed reliance on undefined state.allUsers; uses group.users instead.
  * - Improved error handling and robustness.
+ * - Updated "Join Call" logic to always show the modal with group list if there are groups with Zoom links, regardless of count.
+ * - If no groups or no Zoom links, show appropriate alert.
  * ===================================================================
  */
 document.addEventListener('DOMContentLoaded', () => {
@@ -276,47 +278,44 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
                 
-                if (groupsWithZoom.length === 1) {
-                    window.open(groupsWithZoom[0].zoomLink, '_blank');
-                } else {
-                    if (!zoomModal) {
-                        console.error('Zoom modal not found in DOM.');
-                        alert('ტექნიკური შეცდომა: მოდალის ჩვენება ვერ მოხერხდა.');
-                        return;
-                    }
-                    
-                    const groupList = zoomModal.querySelector('#group-list');
-                    if (!groupList) {
-                        console.error('Group list element not found in modal.');
-                        return;
-                    }
-                    
-                    groupList.innerHTML = '';
-                    
-                    groupsWithZoom.forEach(group => {
-                        const btn = document.createElement('button');
-                        
-                        // Find the group's teacher or admin from populated users
-                        const teacher = group.users.find(u => u.role === 'Teacher');
-                        const adminUser = group.users.find(u => u.role === 'Admin');
-                        const instructor = teacher || adminUser;
-                        
-                        if (instructor) {
-                            btn.textContent = `ჯგუფის შეკრება: ${group.name} (${instructor.firstName} ${instructor.lastName})`;
-                        } else {
-                            btn.textContent = `ჯგუფის შეკრება: ${group.name}`;
-                        }
-                        
-                        btn.onclick = () => {
-                            window.open(group.zoomLink, '_blank');
-                            zoomModal.classList.remove('visible');
-                        };
-                        
-                        groupList.appendChild(btn);
-                    });
-                    
-                    zoomModal.classList.add('visible');
+                // Always show the modal with the list of groups
+                if (!zoomModal) {
+                    console.error('Zoom modal not found in DOM.');
+                    alert('ტექნიკური შეცდომა: მოდალის ჩვენება ვერ მოხერხდა.');
+                    return;
                 }
+                
+                const groupList = zoomModal.querySelector('#group-list');
+                if (!groupList) {
+                    console.error('Group list element not found in modal.');
+                    return;
+                }
+                
+                groupList.innerHTML = '';
+                
+                groupsWithZoom.forEach(group => {
+                    const btn = document.createElement('button');
+                    
+                    // Find the group's teacher or admin from populated users
+                    const teacher = group.users.find(u => u.role === 'Teacher');
+                    const adminUser = group.users.find(u => u.role === 'Admin');
+                    const instructor = teacher || adminUser;
+                    
+                    if (instructor) {
+                        btn.textContent = `ჯგუფის შეკრება: ${group.name} (${instructor.firstName} ${instructor.lastName})`;
+                    } else {
+                        btn.textContent = `ჯგუფის შეკრება: ${group.name}`;
+                    }
+                    
+                    btn.onclick = () => {
+                        window.open(group.zoomLink, '_blank');
+                        zoomModal.classList.remove('visible');
+                    };
+                    
+                    groupList.appendChild(btn);
+                });
+                
+                zoomModal.classList.add('visible');
             });
         }
 
