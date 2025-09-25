@@ -414,25 +414,25 @@ select:focus {
 }
 
 .calendar-grid-wrapper {
-  overflow-y: auto;
+  overflow: auto;
   flex-grow: 1;
   border-radius: var(--border-radius);
   border: 1px solid var(--background-tertiary);
-  background-color: var(--background-secondary); /* Corrected background to be uniform */
+  background-color: var(--background-secondary);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   position: relative;
 }
 
 .calendar-grid {
   display: grid;
-  background-color: var(--background-secondary); /* Corrected background to be uniform */
+  background-color: var(--background-secondary);
   position: relative;
-  /* Removed min-width to prevent horizontal scrolling */
   height: 100%;
 }
 
 .calendar-grid.week-view {
-  grid-template-columns: 80px repeat(7, 1fr); /* Flexible columns */
+  grid-template-columns: 80px repeat(7, minmax(100px, 1fr)); /* Use flexible units */
+  min-width: 0; /* Ensures the grid does not force overflow */
 }
 
 .calendar-grid.day-view {
