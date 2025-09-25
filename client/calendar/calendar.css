@@ -855,13 +855,17 @@ select:focus {
     margin-top: 60px;
   }
 
-  .calendar-grid {
-    min-width: 100%;
-  }
+ .calendar-grid {
+  display: grid;
+  background-color: var(--background-secondary);
+  position: relative;
+  /* Removed min-width to prevent horizontal scrolling */
+  height: 100%;
+}
 
-  .calendar-grid.week-view {
-    grid-template-columns: 80px repeat(7, 1fr);
-  }
+.calendar-grid.week-view {
+  grid-template-columns: 80px repeat(7, minmax(100px, 1fr)); /* Flexible columns */
+}
 
   .calendar-grid.day-view {
     grid-template-columns: 80px 1fr;
