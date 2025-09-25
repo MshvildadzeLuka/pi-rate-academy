@@ -1,3 +1,4 @@
+
 /**
  * ===================================================================
  * HOME PAGE SCRIPT (v4.2 - Georgian & Mobile Optimized)
@@ -41,6 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const pageInfo = document.getElementById('page-info');
     const joinCallBtn = document.getElementById('join-call-btn');
     const zoomModal = document.getElementById('zoom-modal');
+    const closeButtons = document.querySelectorAll('.close-modal');
+    const modalOverlays = document.querySelectorAll('.modal-overlay');
 
     // ======================================================
     // =============== API HELPER ===========================
@@ -265,33 +268,35 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
                 
-                if (!state.myGroups || state.myGroups.length === 0) {
-                    alert('თქვენ არ ხართ რომელიმე ჯგუფში დარეგისტრირებული.');
-                    return;
-                }
-                
                 const groupsWithZoom = state.myGroups.filter(group => group.zoomLink);
                 
                 if (groupsWithZoom.length === 0) {
                     alert('თქვენს ჯგუფებს არ აქვთ Zoom ბმული.');
                     return;
                 }
-                
-                // Always show the modal with the list of groups
+
                 if (!zoomModal) {
                     console.error('Zoom modal not found in DOM.');
                     alert('ტექნიკური შეცდომა: მოდალის ჩვენება ვერ მოხერხდა.');
                     return;
                 }
-                
+
                 const groupList = zoomModal.querySelector('#group-list');
                 if (!groupList) {
                     console.error('Group list element not found in modal.');
                     return;
                 }
                 
+                // Clear previous list items
                 groupList.innerHTML = '';
                 
+                // For a single group, go directly to the call
+                if (groupsWithZoom.length === 1) {
+                    window.open(groupsWithZoom[0].zoomLink, '_blank');
+                    return;
+                }
+
+                // For multiple groups, display the list
                 groupsWithZoom.forEach(group => {
                     const btn = document.createElement('button');
                     
@@ -308,25 +313,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     btn.onclick = () => {
                         window.open(group.zoomLink, '_blank');
-                        zoomModal.classList.remove('visible');
+                        zoomModal.classList.add('hidden');
                     };
                     
                     groupList.appendChild(btn);
                 });
                 
-                zoomModal.classList.add('visible');
+                zoomModal.classList.remove('hidden');
             });
         }
 
-        // Listeners for closing modals (updated to use 'visible' class)
-        document.querySelectorAll('.modal-overlay').forEach(modal => {
+        // Listeners for closing modals (updated to use 'hidden' class)
+        modalOverlays.forEach(modal => {
             modal.addEventListener('click', (e) => { 
                 if (e.target === modal) {
-                    modal.classList.remove('visible');
+                    modal.classList.add('hidden');
                 }
             });
-            modal.querySelector('.close-modal')?.addEventListener('click', () => {
-                modal.classList.remove('visible');
+        });
+        
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const modal = btn.closest('.modal-overlay');
+                if (modal) {
+                    modal.classList.add('hidden');
+                }
             });
         });
     }
