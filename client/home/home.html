@@ -8,6 +8,7 @@
     <script src="/assets/js/auth.js" defer></script>
     <link rel="stylesheet" href="/header/header.css">
     <link rel="stylesheet" href="/home/home.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
 
@@ -18,7 +19,12 @@
             <div class="hero-content">
                 <h2 class="hero-title">მზად ხარ?</h2>
                 <p class="hero-subtitle">შენი შემდეგი ლექცია ერთი დაწკაპუნებით დაიწყება</p>
-                <button id="join-call-btn"><span>დარეკვა</span></button>
+                <div id="teacher-admin-controls" class="header-actions" style="display: none;">
+                    <div class="form-group">
+                        <select id="group-select" aria-label="აირჩიეთ ჯგუფი"></select>
+                    </div>
+                </div>
+                <button id="join-call-btn" disabled><span>დარეკვა</span></button>
             </div>
         </section>
 
@@ -45,15 +51,6 @@
         </div>
     </footer>
 
-    <div id="zoom-modal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <button class="close-modal">&times;</button>
-            <h3 id="modal-title">აირჩიეთ რომელ ჯგუფში გინდათ რომ დარეკოთ</h3>
-            <div id="group-list">
-                </div>
-        </div>
-    </div>
-
     <div id="teacher-profile-modal" class="modal-overlay hidden">
         <div class="modal-content teacher-profile">
             <button class="close-modal">&times;</button>
@@ -79,6 +76,8 @@
             </div>
         </div>
     </div>
+
+    <div id="notification-container" aria-live="assertive" aria-atomic="true"></div>
 
     <script src="/header/header.js"></script>
     <script src="/home/home.js"></script>
