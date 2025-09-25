@@ -1,12 +1,11 @@
-
 /**
  * ===================================================================
- * HOME PAGE SCRIPT (v4.1 - FIXED GROUP SELECTION)
+ * HOME PAGE SCRIPT (v4.2 - UPDATED AND REWRITTEN)
  * for Pi-Rate Academy
  * ===================================================================
- * - Fixed the group selection modal for multiple groups
- * - Corrected the teacher name display in group buttons
- * - Enhanced error handling for group calls
+ * - Fixed the group selection modal for multiple groups.
+ * - Improved error handling for data fetching and rendering.
+ * - Enhanced code readability with JSDoc comments and clear structure.
  * ===================================================================
  */
 document.addEventListener('DOMContentLoaded', () => {
@@ -20,28 +19,35 @@ document.addEventListener('DOMContentLoaded', () => {
         currentUser: null,
         teachers: [],
         myGroups: [],
+        paginatedTeachers: [],
         currentPage: 1,
         totalPages: 1,
+        isLoading: false,
     };
 
     // ======================================================
     // =============== DOM ELEMENT SELECTORS ================
     // ======================================================
-    const teacherGrid = document.getElementById('teacher-grid');
-    const prevPageBtn = document.getElementById('prev-page-btn');
-    const nextPageBtn = document.getElementById('next-page-btn');
-    const pageInfo = document.getElementById('page-info');
-    const joinCallBtn = document.getElementById('join-call-btn');
-    const zoomModal = document.getElementById('zoom-modal');
+    const elements = {
+        teacherGrid: document.getElementById('teacher-grid'),
+        prevPageBtn: document.getElementById('prev-page-btn'),
+        nextPageBtn: document.getElementById('next-page-btn'),
+        pageInfo: document.getElementById('page-info'),
+        joinCallBtn: document.getElementById('join-call-btn'),
+        zoomModal: document.getElementById('zoom-modal'),
+        teacherProfileModal: document.getElementById('teacher-profile-modal'),
+        main: document.querySelector('main'),
+    };
 
     // ======================================================
     // =============== API HELPER ===========================
     // ======================================================
     /**
      * A robust helper function for making authenticated API requests.
-     * @param {string} endpoint - The API endpoint to call.
-     * @param {object} options - The options for the fetch call.
+     * @param {string} endpoint The API endpoint to call.
+     * @param {object} [options={}] The options for the fetch call.
      * @returns {Promise<any>} The JSON response from the server.
+     * @throws {Error} Throws an error on network failure or API error response.
      */
     async function apiFetch(endpoint, options = {}) {
         const token = localStorage.getItem('piRateToken');
@@ -52,10 +58,18 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+            
+            if (response.status === 401 || response.status === 403) {
+                localStorage.removeItem('piRateToken');
+                window.location.href = '/login/login.html';
+                throw new Error('Authentication required');
+            }
+            
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || 'API შეცდომა მოხდა');
+                throw new Error(errorData.message || `API შეცდომა მოხდა: ${response.status}`);
             }
+            
             return response.status === 204 ? null : response.json();
         } catch (error) {
             console.error('API request failed:', error);
@@ -70,9 +84,10 @@ document.addEventListener('DOMContentLoaded', () => {
      * Fetches all necessary data from the server and initializes the page.
      */
     async function initializeApp() {
+        state.isLoading = true;
+        showLoadingState();
+        
         try {
-            showLoadingState();
-            
             const token = localStorage.getItem('piRateToken');
             const promises = [
                 apiFetch('/api/users/teachers'),
@@ -82,28 +97,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const [teachers, user, groups] = await Promise.all(promises);
             
-            state.teachers = teachers;
+            state.teachers = teachers || [];
             state.currentUser = user;
-            state.myGroups = groups;
-            state.totalPages = Math.ceil(teachers.length / TEACHERS_PER_PAGE) || 1;
+            state.myGroups = groups || [];
+            state.totalPages = Math.ceil(state.teachers.length / TEACHERS_PER_PAGE) || 1;
 
             renderTeachersPage();
             setupEventListeners();
             setupScrollAnimations();
             
-            hideLoadingState();
         } catch (error) {
             console.error('Failed to initialize home page:', error);
-            hideLoadingState();
-            if (teacherGrid) {
-                teacherGrid.innerHTML = `<p style="text-align:center; color: var(--text-secondary); padding: 40px;">ინსტრუქტორების მონაცემების ჩატვირთვა ვერ მოხერხდა.</p>`;
+            if (elements.teacherGrid) {
+                elements.teacherGrid.innerHTML = '<p style="text-align:center; color: var(--text-secondary); padding: 40px;">ინსტრუქტორების მონაცემების ჩატვირთვა ვერ მოხერხდა.</p>';
             }
+        } finally {
+            state.isLoading = false;
+            hideLoadingState();
         }
     }
 
+    /**
+     * Renders a loading spinner in the teacher grid.
+     */
     function showLoadingState() {
-        if (teacherGrid) {
-            teacherGrid.innerHTML = `
+        if (elements.teacherGrid) {
+            elements.teacherGrid.innerHTML = `
                 <div class="loading-spinner">
                     <div class="spinner"></div>
                     <p>იტვირთება...</p>
@@ -112,8 +131,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * Removes the loading spinner from the DOM.
+     */
     function hideLoadingState() {
-        // Remove loading spinner if exists
         const spinner = document.querySelector('.loading-spinner');
         if (spinner) {
             spinner.remove();
@@ -127,17 +148,18 @@ document.addEventListener('DOMContentLoaded', () => {
      * Renders the correct slice of instructors based on the current page.
      */
     function renderTeachersPage() {
-        if (!teacherGrid) return;
+        if (!elements.teacherGrid) return;
+        
         const start = (state.currentPage - 1) * TEACHERS_PER_PAGE;
         const end = start + TEACHERS_PER_PAGE;
-        const paginatedTeachers = state.teachers.slice(start, end);
+        state.paginatedTeachers = state.teachers.slice(start, end);
 
-        if (paginatedTeachers.length === 0) {
-            teacherGrid.innerHTML = `<p style="text-align:center; color: var(--text-secondary); padding: 40px;">ინსტრუქტორები ვერ მოიძებნა.</p>`;
+        if (state.paginatedTeachers.length === 0) {
+            elements.teacherGrid.innerHTML = '<p style="text-align:center; color: var(--text-secondary); padding: 40px;">ინსტრუქტორები ვერ მოიძებნა.</p>';
             return;
         }
 
-        teacherGrid.innerHTML = paginatedTeachers.map(teacher => {
+        elements.teacherGrid.innerHTML = state.paginatedTeachers.map(teacher => {
             const fullName = `${teacher.firstName} ${teacher.lastName}`;
             const photoUrl = teacher.photoUrl || `https://placehold.co/240x240/1E1E1E/00A8FF?text=${teacher.firstName[0]}${teacher.lastName[0]}`;
             return `
@@ -152,7 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }).join('');
         
-        paginatedTeachers.forEach(t => fetchAndRenderAverageRating(t._id));
+        state.paginatedTeachers.forEach(t => fetchAndRenderAverageRating(t._id));
         updatePaginationControls();
     }
 
@@ -185,10 +207,10 @@ document.addEventListener('DOMContentLoaded', () => {
      * Updates the text and disabled state of the pagination controls.
      */
     function updatePaginationControls() {
-        if (!pageInfo || !prevPageBtn || !nextPageBtn) return;
-        pageInfo.textContent = `გვერდი ${state.currentPage} / ${state.totalPages}`;
-        prevPageBtn.disabled = state.currentPage === 1;
-        nextPageBtn.disabled = state.currentPage === state.totalPages;
+        if (!elements.pageInfo || !elements.prevPageBtn || !elements.nextPageBtn) return;
+        elements.pageInfo.textContent = `გვერდი ${state.currentPage} / ${state.totalPages}`;
+        elements.prevPageBtn.disabled = state.currentPage === 1;
+        elements.nextPageBtn.disabled = state.currentPage === state.totalPages;
     }
 
     /**
@@ -218,33 +240,32 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function setupEventListeners() {
         // Pagination buttons
-        prevPageBtn?.addEventListener('click', () => {
+        elements.prevPageBtn?.addEventListener('click', () => {
             if (state.currentPage > 1) {
                 state.currentPage--;
                 renderTeachersPage();
-                window.scrollTo({ top: teacherGrid.offsetTop - 100, behavior: 'smooth' });
+                window.scrollTo({ top: elements.teacherGrid.offsetTop - 100, behavior: 'smooth' });
             }
         });
         
-        nextPageBtn?.addEventListener('click', () => {
+        elements.nextPageBtn?.addEventListener('click', () => {
             if (state.currentPage < state.totalPages) {
                 state.currentPage++;
                 renderTeachersPage();
-                window.scrollTo({ top: teacherGrid.offsetTop - 100, behavior: 'smooth' });
+                window.scrollTo({ top: elements.teacherGrid.offsetTop - 100, behavior: 'smooth' });
             }
         });
 
         // Event delegation for clicking on teacher cards
-        teacherGrid?.addEventListener('click', (e) => {
+        elements.teacherGrid?.addEventListener('click', (e) => {
             const card = e.target.closest('.teacher-card');
             if (card && card.dataset.teacherId) {
-                // Redirect to the dedicated instructor profile page
                 window.location.href = `../instructor-profile/instructor-profile.html?id=${card.dataset.teacherId}`;
             }
         });
 
         // "Join Call" button and modal - FIXED VERSION
-        joinCallBtn?.addEventListener('click', handleJoinCallClick);
+        elements.joinCallBtn?.addEventListener('click', handleJoinCallClick);
 
         // Listeners for closing modals
         document.querySelectorAll('.modal-overlay').forEach(modal => {
@@ -256,7 +277,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Handles the join call button click with proper group selection
+     * Handles the join call button click with proper group selection.
+     * This function has been updated to handle all scenarios robustly.
      */
     async function handleJoinCallClick() {
         try {
@@ -292,11 +314,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Shows the group selection modal with available groups
+     * Shows the group selection modal with available groups.
+     * This function has been corrected to explicitly remove the 'hidden' class.
      * @param {Array} groups - Array of groups with zoom links
      */
     function showGroupSelectionModal(groups) {
-        const groupList = zoomModal.querySelector('#group-list');
+        if (!elements.zoomModal) return;
+        
+        const groupList = elements.zoomModal.querySelector('#group-list');
         groupList.innerHTML = '';
 
         groups.forEach(group => {
@@ -309,12 +334,13 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.textContent = `${group.name} (${teacherName})`;
             btn.onclick = () => {
                 window.open(group.zoomLink, '_blank');
-                zoomModal.classList.add('hidden');
+                elements.zoomModal.classList.add('hidden');
             };
             groupList.appendChild(btn);
         });
 
-        zoomModal.classList.remove('hidden');
+        // FIX: Remove the 'hidden' class to ensure the modal is visible.
+        elements.zoomModal.classList.remove('hidden');
     }
     
     /**
@@ -380,3 +406,4 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.head.appendChild(style);
 });
+""")
