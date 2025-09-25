@@ -12,8 +12,8 @@
   --warning-color: #ffc107;
   --border-radius: 12px;
   --transition-speed: 0.3s;
-  --calendar-slot-height: 45px;
-  --calendar-row-count: 28; /* 14 hours * 2 slots/hour */
+  --calendar-slot-height: 40px; /* Adjusted slot height for better fit */
+  --calendar-row-count: 30; /* 15 hours * 2 slots/hour (8am to 11pm) */
   --header-height: 70px;
 }
 
@@ -418,25 +418,25 @@ select:focus {
   flex-grow: 1;
   border-radius: var(--border-radius);
   border: 1px solid var(--background-tertiary);
-  background-color: var(--background-secondary);
+  background-color: var(--background-secondary); /* Corrected background to be uniform */
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   position: relative;
 }
 
 .calendar-grid {
   display: grid;
-  background-color: var(--background-primary);
+  background-color: var(--background-secondary); /* Corrected background to be uniform */
   position: relative;
-  min-width: 900px;
+  /* Removed min-width to prevent horizontal scrolling */
   height: 100%;
 }
 
 .calendar-grid.week-view {
-  grid-template-columns: 100px repeat(7, 1fr);
+  grid-template-columns: 80px repeat(7, 1fr); /* Flexible columns */
 }
 
 .calendar-grid.day-view {
-  grid-template-columns: 100px 1fr;
+  grid-template-columns: 80px 1fr; /* Flexible columns */
 }
 
 .grid-header {
@@ -661,13 +661,13 @@ select:focus {
 }
 
 .week-view .current-time-indicator {
-  width: calc(100% - 100px);
-  left: 100px;
+  width: calc(100% - 80px);
+  left: 80px;
 }
 
 .day-view .current-time-indicator {
-  width: calc(100% - 100px);
-  left: 100px;
+  width: calc(100% - 80px);
+  left: 80px;
 }
 
 .current-time-indicator::before {
@@ -974,8 +974,8 @@ select:focus {
   }
 
   .day-column {
-    grid-template-rows: repeat(28, 35px);
-    min-height: 980px;
+    grid-template-rows: repeat(30, 35px); /* Adjusted for mobile */
+    min-height: calc(30 * 35px);
   }
 
   .time-slot {
@@ -1014,6 +1014,4 @@ select:focus {
     height: 50px;
     font-size: 1.2rem;
   }
-}
-
 }
