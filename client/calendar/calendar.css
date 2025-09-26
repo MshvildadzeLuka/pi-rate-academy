@@ -32,6 +32,11 @@ body {
 }
 
 /* Page Layout */
+body {
+    height: auto;
+    overflow-y: auto;
+}
+
 .page-wrapper {
     display: flex;
     height: auto;
@@ -39,6 +44,10 @@ body {
     gap: 0;
     position: relative;
     min-height: calc(100vh - var(--header-height));
+    transition: margin-left 0.3s ease-in-out;
+}
+.page-wrapper.sidebar-open {
+    margin-left: 380px; /* Compensate for sidebar width */
 }
 
 /* Sidebar */
@@ -52,8 +61,6 @@ body {
     overflow-y: auto;
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
     z-index: 20;
-    position: relative;
-    /* Collapsible styles */
     position: fixed;
     height: 100%;
     top: var(--header-height);
@@ -361,8 +368,9 @@ select:focus {
   color: var(--primary-accent);
 }
 
+/* Unified calendar grid with fixed horizontal layout */
 .calendar-grid-wrapper {
-  overflow: auto;
+  overflow-x: hidden; /* Prevent horizontal scrolling by default */
   flex-grow: 1;
   border-radius: var(--border-radius);
   border: 1px solid var(--background-tertiary);
@@ -370,11 +378,16 @@ select:focus {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   position: relative;
 }
+.calendar-grid-wrapper.sidebar-open {
+    overflow-x: auto; /* Enable horizontal scrolling when sidebar is open */
+}
+
 .calendar-grid {
   display: grid;
   background-color: var(--background-secondary);
-  position: relative;
   height: 100%;
+  grid-template-columns: var(--time-column-width) repeat(7, minmax(100px, 1fr));
+  min-width: 0;
 }
 .calendar-grid-wrapper .time-column-header,
 .calendar-grid-wrapper .time-column {
@@ -384,11 +397,6 @@ select:focus {
     background-color: var(--background-secondary);
     box-shadow: 1px 0 5px rgba(0, 0, 0, 0.2);
     border-right: 1px solid var(--background-tertiary);
-}
-
-.calendar-grid {
-  grid-template-columns: var(--time-column-width) repeat(7, minmax(100px, 1fr));
-  min-width: 0;
 }
 
 .add-event-btn {
@@ -775,13 +783,14 @@ select:focus {
 /* Mobile Responsive Styles */
 @media (min-width: 1200px) {
   body {
-    overflow-y: auto;
+    overflow-y: hidden;
   }
   .page-wrapper {
-    height: auto;
-    min-height: calc(100vh - var(--header-height));
+    height: calc(100vh - var(--header-height));
+    min-height: auto;
   }
   .main-calendar-view {
+    height: 100%;
     padding-left: 25px;
     height: auto;
   }
