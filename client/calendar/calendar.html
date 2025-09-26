@@ -128,6 +128,39 @@
                 </button>
             </div>
             
+            <!-- Mobile Day View -->
+            <div class="mobile-day-view">
+                <div class="mobile-day-header">
+                    <button class="mobile-day-nav-btn" id="mobile-prev-day">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="mobile-day-title" id="mobile-day-title"></div>
+                    <button class="mobile-day-nav-btn" id="mobile-next-day">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="mobile-day-events" id="mobile-day-events">
+                    <!-- Events will be populated here by JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Mobile Week View -->
+            <div class="mobile-week-view">
+                <div class="mobile-week-days" id="mobile-week-days">
+                    <!-- Week days will be populated here by JavaScript -->
+                </div>
+                <div class="mobile-week-events" id="mobile-week-events">
+                    <!-- Week events will be populated here by JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Mobile Time Grid View -->
+            <div class="mobile-time-grid">
+                <div class="mobile-time-slots" id="mobile-time-slots">
+                    <!-- Time slots will be populated here by JavaScript -->
+                </div>
+            </div>
+            
             <!-- Unified Calendar Grid -->
             <div id="calendar-main-grid" class="calendar-grid-wrapper">
                 <div class="calendar-grid">
@@ -187,6 +220,94 @@
                 </div>
             </div>
         </main>
+        
+        <!-- Mobile Bottom Navigation -->
+        <nav class="mobile-bottom-nav">
+            <button class="mobile-nav-item active" data-view="day">
+                <i class="fas fa-calendar-day"></i>
+                <span>დღე</span>
+            </button>
+            <button class="mobile-nav-item" data-view="week">
+                <i class="fas fa-calendar-week"></i>
+                <span>კვირა</span>
+            </button>
+            <button class="mobile-nav-item" data-view="time">
+                <i class="fas fa-clock"></i>
+                <span>დრო</span>
+            </button>
+            <button class="mobile-nav-item" id="mobile-add-event-btn">
+                <i class="fas fa-plus-circle"></i>
+                <span>დამატება</span>
+            </button>
+        </nav>
+    </div>
+    
+    <!-- Mobile Form Container -->
+    <div class="mobile-form-container" id="mobile-form-container">
+        <div class="mobile-form-header">
+            <div class="mobile-form-title" id="mobile-form-title">დაამატე განრიგში</div>
+            <button class="mobile-form-close" id="mobile-form-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="mobile-form-body">
+            <form id="event-mobile-form">
+                <div class="input-group">
+                    <label for="event-mobile-day-select">დღე</label>
+                    <select id="event-mobile-day-select" name="day-select">
+                        <option value="0">ორშაბათი</option>
+                        <option value="1">სამშაბათი</option>
+                        <option value="2">ოთხშაბათი</option>
+                        <option value="3">ხუთშაბათი</option>
+                        <option value="4">პარასკევი</option>
+                        <option value="5">შაბათი</option>
+                        <option value="6">კვირა</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="event-mobile-start-time">დაწყების დრო</label>
+                    <input type="time" id="event-mobile-start-time" name="start-time" value="08:00">
+                </div>
+                <div class="input-group">
+                    <label for="event-mobile-end-time">დასრულების დრო</label>
+                    <input type="time" id="event-mobile-end-time" name="end-time" value="09:00">
+                </div>
+                <div class="input-group">
+                    <label>მოვლენის ტიპი</label>
+                    <div class="radio-group-tabs">
+                        <label class="custom-radio-tab">
+                            <input type="radio" name="event-type" value="busy" checked>
+                            <span>დაკავებული</span>
+                        </label>
+                        <label class="custom-radio-tab">
+                            <input type="radio" name="event-type" value="preferred">
+                            <span>პრიორიტეტული</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label for="event-mobile-title-input">მოვლენის სათაური</label>
+                    <input type="text" id="event-mobile-title-input" placeholder="მაგ., საოფისე საათები">
+                </div>
+                <div class="input-group">
+                    <label class="custom-checkbox">
+                        <input type="checkbox" id="event-mobile-recurring-checkbox">
+                        <span class="checkbox-box"></span>
+                        <span>გამოყენება ყველა კვირაში</span>
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="event-mobile-delete-btn" class="btn btn-danger" disabled>
+                        <i class="fas fa-trash"></i>
+                        წაშლა
+                    </button>
+                    <button type="submit" id="event-mobile-save-btn" class="btn btn-primary">
+                        <i class="fas fa-save"></i>
+                        შენახვა
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
     
     <!-- Unified Modal for all screen sizes -->
