@@ -745,15 +745,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Update form inputs
         if(elements.calendarSidebar.classList.contains('open')) {
-            elements.eventDaySelect.value = firstSlot.dataset.day;
-            elements.eventStartTime.value = startTime;
-            elements.eventEndTime.value = endTime;
+            if(elements.eventDaySelect) elements.eventDaySelect.value = firstSlot.dataset.day;
+            if(elements.eventStartTime) elements.eventStartTime.value = startTime;
+            if(elements.eventEndTime) elements.eventEndTime.value = endTime;
             updateFormValidity(elements.eventForm);
         } else {
-            elements.eventModalDaySelect.value = firstSlot.dataset.day;
-            elements.eventModalStartTime.value = startTime;
-            elements.eventModalEndTime.value = endTime;
-            updateFormValidity(document.getElementById('event-modal-form'));
+            const form = document.getElementById('event-modal-form');
+            if(form) {
+                if(elements.eventModalDaySelect) elements.eventModalDaySelect.value = firstSlot.dataset.day;
+                if(elements.eventModalStartTime) elements.eventModalStartTime.value = startTime;
+                if(elements.eventModalEndTime) elements.eventModalEndTime.value = endTime;
+                updateFormValidity(form);
+            }
         }
     }
 
@@ -773,24 +776,29 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.innerWidth > 1200) {
             elements.calendarSidebar.classList.add('open');
             elements.pageWrapper.classList.add('sidebar-open');
-            elements.eventDaySelect.value = dayOfWeek;
-            elements.eventStartTime.value = startTime;
-            elements.eventEndTime.value = endTime;
-            elements.eventTitleInput.value = eventTitle;
-            document.querySelector(`#event-form input[name="event-type"][value="${eventType}"]`).checked = true;
-            elements.recurringCheckbox.checked = isRecurring;
-            elements.deleteEventBtn.disabled = false;
+            if(elements.eventDaySelect) elements.eventDaySelect.value = dayOfWeek;
+            if(elements.eventStartTime) elements.eventStartTime.value = startTime;
+            if(elements.eventEndTime) elements.eventEndTime.value = endTime;
+            if(elements.eventTitleInput) elements.eventTitleInput.value = eventTitle;
+            const busyRadio = document.querySelector(`#event-form input[name="event-type"][value="${eventType}"]`);
+            if(busyRadio) busyRadio.checked = true;
+            if(elements.recurringCheckbox) elements.recurringCheckbox.checked = isRecurring;
+            if(elements.deleteEventBtn) elements.deleteEventBtn.disabled = false;
             updateFormValidity(elements.eventForm);
         } else {
              elements.eventModalBackdrop.classList.remove('hidden');
-             elements.eventModalDaySelect.value = dayOfWeek;
-             elements.eventModalStartTime.value = startTime;
-             elements.eventModalEndTime.value = endTime;
-             elements.eventModalTitleInput.value = eventTitle;
-             document.querySelector(`#event-modal-form select[name="event-type"]`).value = eventType;
-             elements.eventModalRecurringCheckbox.checked = isRecurring;
-             elements.eventModalDeleteBtn.disabled = false;
-             updateFormValidity(document.getElementById('event-modal-form'));
+             const form = document.getElementById('event-modal-form');
+             if(form) {
+                 if(elements.eventModalDaySelect) elements.eventModalDaySelect.value = dayOfWeek;
+                 if(elements.eventModalStartTime) elements.eventModalStartTime.value = startTime;
+                 if(elements.eventModalEndTime) elements.eventModalEndTime.value = endTime;
+                 if(elements.eventModalTitleInput) elements.eventModalTitleInput.value = eventTitle;
+                 const typeSelect = form.querySelector(`select[name="event-type"]`);
+                 if (typeSelect) typeSelect.value = eventType;
+                 if(elements.eventModalRecurringCheckbox) elements.eventModalRecurringCheckbox.checked = isRecurring;
+                 if(elements.eventModalDeleteBtn) elements.eventModalDeleteBtn.disabled = false;
+                 updateFormValidity(form);
+             }
         }
         
         document.querySelectorAll('.event-block').forEach(el => el.classList.remove('active-event'));
@@ -817,10 +825,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Reset forms
     function clearForm() {
         if(elements.eventForm) {
-            elements.eventDaySelect.value = '0';
-            elements.eventStartTime.value = '08:00';
-            elements.eventEndTime.value = '09:00';
-            elements.eventTitleInput.value = '';
+            if(elements.eventDaySelect) elements.eventDaySelect.value = '0';
+            if(elements.eventStartTime) elements.eventStartTime.value = '08:00';
+            if(elements.eventEndTime) elements.eventEndTime.value = '09:00';
+            if(elements.eventTitleInput) elements.eventTitleInput.value = '';
             const busyRadio = document.querySelector('input[name="event-type"][value="busy"]');
             if(busyRadio) busyRadio.checked = true;
             if(elements.recurringCheckbox) elements.recurringCheckbox.checked = false;
@@ -832,10 +840,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function clearMobileForm() {
         const form = document.getElementById('event-modal-form');
         if(form) {
-            elements.eventModalDaySelect.value = '0';
-            elements.eventModalStartTime.value = '08:00';
-            elements.eventModalEndTime.value = '09:00';
-            elements.eventModalTitleInput.value = '';
+            if(elements.eventModalDaySelect) elements.eventModalDaySelect.value = '0';
+            if(elements.eventModalStartTime) elements.eventModalStartTime.value = '08:00';
+            if(elements.eventModalEndTime) elements.eventModalEndTime.value = '09:00';
+            if(elements.eventModalTitleInput) elements.eventModalTitleInput.value = '';
             const typeSelect = form.querySelector('select[name="event-type"]');
             if (typeSelect) typeSelect.value = 'busy';
             if (elements.eventModalRecurringCheckbox) elements.eventModalRecurringCheckbox.checked = false;
