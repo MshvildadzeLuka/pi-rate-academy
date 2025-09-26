@@ -1,3 +1,4 @@
+
 // file: client/calendar/calendar.js
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = '/api';
@@ -11,7 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
         activeEvent: null,
         userGroups: [],
         isRecurring: false,
-        activeDayIndex: (new Date().getDay() + 6) % 7, // 0 for Monday, 6 for Sunday
+        activeDayIndex: (new Date().getDay() + 6) % 7,
+        currentView: 'week',
         isMobile: window.innerWidth < 992,
         isDragging: false,
         dragStartSlot: null,
@@ -28,8 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
         todayBtn: document.getElementById('today-btn'),
         miniCalHeader: document.getElementById('mini-cal-month-year'),
         miniCalDaysGrid: document.getElementById('mini-calendar-days'),
-        miniCalPrevBtn: document.getElementById('mini-cal-prev-month-desktop'),
-        miniCalNextBtn: document.getElementById('mini-cal-next-month-desktop'),
+        miniCalPrevBtn: document.getElementById('mini-cal-prev-month'),
+        miniCalNextBtn: document.getElementById('mini-cal-next-month'),
         saveEventBtn: document.getElementById('save-event-btn'),
         deleteEventBtn: document.getElementById('delete-event-btn'),
         recurringCheckbox: document.getElementById('recurring-event-checkbox'),
@@ -49,18 +51,16 @@ document.addEventListener('DOMContentLoaded', () => {
         mobileStartTime: document.getElementById('mobile-start-time'),
         mobileEndTime: document.getElementById('mobile-end-time'),
         mobileEventTitleInput: document.getElementById('mobile-event-title-input'),
-        mobileEventTypeSelect: document.getElementById('mobile-event-type-select'),
         mobileRecurringCheckbox: document.getElementById('mobile-recurring-checkbox'),
         mobileSaveBtn: document.getElementById('mobile-save-btn'),
         mobileDeleteBtn: document.getElementById('mobile-delete-btn'),
-        calendarSidebar: document.querySelector('.calendar-sidebar'),
-        selectionTimeRange: document.getElementById('selection-time-range'),
+        sidebarToggle: document.getElementById('sidebar-toggle'),
+        dayViewBtn: document.getElementById('day-view-btn'),
+        weekViewBtn: document.getElementById('week-view-btn'),
         weekViewGrid: document.querySelector('.calendar-grid.week-view'),
         dayViewGrid: document.querySelector('.calendar-grid.day-view'),
-        miniCalHeaderMobile: document.getElementById('mini-cal-month-year-mobile'),
-        miniCalDaysGridMobile: document.getElementById('mini-calendar-days-mobile'),
-        miniCalPrevBtnMobile: document.getElementById('mini-cal-prev-month-mobile'),
-        miniCalNextBtnMobile: document.getElementById('mini-cal-next-month-mobile'),
+        calendarSidebar: document.querySelector('.calendar-sidebar'),
+        selectionTimeRange: document.getElementById('selection-time-range')
     };
 
     // Notification toast function
@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
-
+            
             if (response.status === 401 || response.status === 403) {
                 localStorage.removeItem('piRateToken');
                 window.location.href = '/login/login.html';
@@ -149,21 +149,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             document.body.classList.add('loading');
-
+            
             // Fetch personal events
             const personalEventsResponse = await apiFetch(
                 `/calendar-events/my-schedule?start=${startOfWeek.toISOString()}&end=${endOfWeek.toISOString()}`
             );
             const personalEvents = personalEventsResponse?.data || [];
-
+            
             // Fetch lectures for all user's groups
-            const lecturePromises = state.userGroups.map(group =>
+            const lecturePromises = state.userGroups.map(group => 
                 apiFetch(`/lectures/group/${group._id}?start=${startOfWeek.toISOString()}&end=${endOfWeek.toISOString()}`)
             );
-
+            
             const lectureResponses = await Promise.all(lecturePromises);
             const lectures = lectureResponses.flatMap(res => res?.data || []);
-
+            
             state.allEvents = [...personalEvents, ...lectures];
 
         } catch (error) {
@@ -281,19 +281,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTimeSlots() {
         const timeColumn = elements.timeColumn;
         const dayViewTimeColumn = elements.dayViewTimeColumn;
-
+        
         // Clear existing time slots
-        if (timeColumn) timeColumn.innerHTML = '';
+        timeColumn.innerHTML = '';
         if (dayViewTimeColumn) dayViewTimeColumn.innerHTML = '';
 
         // Generate time labels for main view
-        if (timeColumn) {
-            for (let hour = 8; hour < 23; hour++) {
-                const timeLabel = document.createElement('div');
-                timeLabel.className = 'time-label';
-                timeLabel.textContent = formatTime(`${hour}:00`, false);
-                timeColumn.appendChild(timeLabel);
-            }
+        for (let hour = 8; hour < 23; hour++) {
+            const timeLabel = document.createElement('div');
+            timeLabel.className = 'time-label';
+            timeLabel.textContent = formatTime(`${hour}:00`, false);
+            timeColumn.appendChild(timeLabel);
         }
 
         // Generate time labels for day view
@@ -305,12 +303,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 dayViewTimeColumn.appendChild(dayViewTimeLabel);
             }
         }
-        
-        // Clear all existing time slots
-        elements.dayColumns.forEach(column => column.innerHTML = '');
 
         // Generate time slots for week view
-        document.querySelectorAll('.week-view .day-column').forEach((column, dayIndex) => {
+        elements.dayColumns.forEach((column, dayIndex) => {
+            column.innerHTML = '';
             column.dataset.day = dayIndex;
             for (let hour = 8; hour < 23; hour++) {
                 for (let minute = 0; minute < 60; minute += 30) {
@@ -325,7 +321,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Generate time slots for day view
-        document.querySelectorAll('.day-view .day-column').forEach((column, dayIndex) => {
+        const dayViewColumns = document.querySelectorAll('.day-view .day-column');
+        dayViewColumns.forEach((column, dayIndex) => {
+            column.innerHTML = '';
             column.dataset.day = dayIndex;
             for (let hour = 8; hour < 23; hour++) {
                 for (let minute = 0; minute < 60; minute += 30) {
@@ -350,7 +348,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.isMobile) {
             updateActiveDayForMobile();
         }
-        updateView();
     }
 
     function renderWeekDisplay() {
@@ -383,59 +380,43 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderMiniCalendar() {
         const month = state.miniCalDate.getMonth();
         const year = state.miniCalDate.getFullYear();
+        elements.miniCalHeader.textContent = `${new Date(year, month).toLocaleString('ka-GE', { month: 'long' })} ${year}`;
+        elements.miniCalDaysGrid.innerHTML = '';
 
-        // Render for both desktop and mobile mini-calendars
-        const miniCalRenderers = [
-            { header: elements.miniCalHeader, days: elements.miniCalDaysGrid, prevBtn: elements.miniCalPrevBtn, nextBtn: elements.miniCalNextBtn },
-            { header: elements.miniCalHeaderMobile, days: elements.miniCalDaysGridMobile, prevBtn: elements.miniCalPrevBtnMobile, nextBtn: elements.miniCalNextBtnMobile },
-        ];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const startOfWeek = getStartOfWeek(state.mainViewDate);
 
-        miniCalRenderers.forEach(renderer => {
-            if (!renderer.header || !renderer.days) return;
-            
-            renderer.header.textContent = `${new Date(year, month).toLocaleString('ka-GE', { month: 'long' })} ${year}`;
-            renderer.days.innerHTML = '';
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const startOfWeek = getStartOfWeek(state.mainViewDate);
+        for (let i = 0; i < (firstDay + 6) % 7; i++) {
+            const day = document.createElement('div');
+            day.className = 'mini-calendar-day other-month';
+            elements.miniCalDaysGrid.appendChild(day);
+        }
 
-            const firstDay = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
+        for (let d = 1; d <= daysInMonth; d++) {
+            const day = document.createElement('div');
+            day.className = 'mini-calendar-day';
+            day.textContent = d;
+            const currentDay = new Date(year, month, d);
 
-            for (let i = 0; i < (firstDay + 6) % 7; i++) {
-                const day = document.createElement('div');
-                day.className = 'mini-calendar-day other-month';
-                renderer.days.appendChild(day);
+            if (currentDay.toDateString() === today.toDateString()) {
+                day.classList.add('current-day');
             }
 
-            for (let d = 1; d <= daysInMonth; d++) {
-                const day = document.createElement('div');
-                day.className = 'mini-calendar-day';
-                day.textContent = d;
-                const currentDay = new Date(year, month, d);
-
-                if (currentDay.toDateString() === today.toDateString()) {
-                    day.classList.add('current-day');
-                }
-
-                if (currentDay >= startOfWeek && currentDay <= new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000)) {
-                    day.classList.add('in-selected-week');
-                }
-
-                day.addEventListener('click', async () => {
-                    state.mainViewDate = new Date(currentDay);
-                    await fetchEvents();
-                    if (state.isMobile) {
-                        state.activeDayIndex = (currentDay.getDay() + 6) % 7;
-                        updateActiveDayForMobile();
-                    }
-                    renderAll();
-                });
-
-                renderer.days.appendChild(day);
+            if (currentDay >= startOfWeek && currentDay <= new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000)) {
+                day.classList.add('in-selected-week');
             }
-        });
+
+            day.addEventListener('click', () => {
+                state.mainViewDate = new Date(currentDay);
+                fetchEvents().then(() => renderAll());
+            });
+
+            elements.miniCalDaysGrid.appendChild(day);
+        }
     }
 
     // Render events on the main calendar grid
@@ -449,87 +430,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.querySelectorAll('.event-block').forEach(el => el.remove());
 
-        // Render for desktop week view
-        if (!state.isMobile) {
-            for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-                const currentDayDate = new Date(startOfWeek);
-                currentDayDate.setDate(currentDayDate.getDate() + dayIndex);
-                const dayStr = currentDayDate.toISOString().split('T')[0];
-                const dayColumn = document.querySelector(`.week-view .day-column[data-day="${dayIndex}"]`);
-
-                state.allEvents.forEach(event => {
-                    if (event.title && event.title.startsWith('DELETED:')) return;
-
-                    let render = false;
-                    let isException = false;
-                    let startTimeStr, endTimeStr;
-
-                    if (event.isRecurring) {
-                        if (event.dayOfWeek === dayNames[dayIndex]) {
-                            isException = exceptions.some(exc => exc.exceptionDate === dayStr && exc.title === `DELETED: ${event._id}`);
-                            if (!isException) {
-                                render = true;
-                                startTimeStr = ensureTimeFormat(event.recurringStartTime);
-                                endTimeStr = ensureTimeFormat(event.recurringEndTime);
-                            }
-                        }
-                    } else {
-                        const eventStartDate = new Date(event.startTime);
-                        const eventEndDate = new Date(event.endTime);
-                        if (eventStartDate.toDateString() === currentDayDate.toDateString()) {
-                            render = true;
-                            startTimeStr = `${String(eventStartDate.getHours()).padStart(2, '0')}:${String(eventStartDate.getMinutes()).padStart(2, '0')}`;
-                            endTimeStr = `${String(eventEndDate.getHours()).padStart(2, '0')}:${String(eventEndDate.getMinutes()).padStart(2, '0')}`;
-                        }
-                    }
-
-                    if (render) {
-                        renderEventBlock({ ...event, startTime: startTimeStr, endTime: endTimeStr }, dayColumn, isException, slotHeightValue);
-                    }
-                });
-            }
-        }
-        
-        // Render for mobile day view
-        if (state.isMobile) {
-            const dayIndex = state.activeDayIndex;
+        for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
             const currentDayDate = new Date(startOfWeek);
             currentDayDate.setDate(currentDayDate.getDate() + dayIndex);
             const dayStr = currentDayDate.toISOString().split('T')[0];
-            const dayColumn = document.querySelector(`.day-view .day-column[data-day="${0}"]`); // Mobile day view only has one column with data-day="0"
+            const dayColumn = document.querySelector(`.week-view .day-column[data-day="${dayIndex}"]`);
+            const dayViewColumn = document.querySelector(`.day-view .day-column[data-day="${dayIndex}"]`);
 
-            if (dayColumn) {
-                state.allEvents.forEach(event => {
-                    if (event.title && event.title.startsWith('DELETED:')) return;
+            state.allEvents.forEach(event => {
+                if (event.title && event.title.startsWith('DELETED:')) return;
 
-                    let render = false;
-                    let isException = false;
-                    let startTimeStr, endTimeStr;
-                    
-                    if (event.isRecurring) {
+                let render = false;
+                let isException = false;
+                let startTimeStr, endTimeStr;
+
+                if (event.isRecurring) {
+                    if (event.dayOfWeek) {
                         if (event.dayOfWeek === dayNames[dayIndex]) {
-                            isException = exceptions.some(exc => exc.exceptionDate === dayStr && exc.title === `DELETED: ${event._id}`);
+                            isException = exceptions.some(exc =>
+                                exc.exceptionDate === dayStr && exc.title === `DELETED: ${event._id}`
+                            );
                             if (!isException) {
                                 render = true;
                                 startTimeStr = ensureTimeFormat(event.recurringStartTime);
                                 endTimeStr = ensureTimeFormat(event.recurringEndTime);
                             }
                         }
-                    } else {
-                        const eventStartDate = new Date(event.startTime);
-                        const eventEndDate = new Date(event.endTime);
-                        if (eventStartDate.toDateString() === currentDayDate.toDateString()) {
-                            render = true;
-                            startTimeStr = `${String(eventStartDate.getHours()).padStart(2, '0')}:${String(eventStartDate.getMinutes()).padStart(2, '0')}`;
-                            endTimeStr = `${String(eventEndDate.getHours()).padStart(2, '0')}:${String(eventEndDate.getMinutes()).padStart(2, '0')}`;
-                        }
                     }
+                } else {
+                    const eventStartDate = new Date(event.startTime);
+                    const eventEndDate = new Date(event.endTime);
 
-                    if (render) {
-                        renderEventBlock({ ...event, startTime: startTimeStr, endTime: endTimeStr }, dayColumn, isException, slotHeightValue);
+                    if (eventStartDate.toDateString() === currentDayDate.toDateString()) {
+                        render = true;
+                        startTimeStr = `${String(eventStartDate.getHours()).padStart(2, '0')}:${String(eventStartDate.getMinutes()).padStart(2, '0')}`;
+                        endTimeStr = `${String(eventEndDate.getHours()).padStart(2, '0')}:${String(eventEndDate.getMinutes()).padStart(2, '0')}`;
                     }
-                });
-            }
+                }
+
+                if (render) {
+                    renderEventBlock({ ...event, startTime: startTimeStr, endTime: endTimeStr }, dayColumn, isException, slotHeightValue);
+                    if (dayViewColumn && dayIndex === state.activeDayIndex) {
+                        renderEventBlock({ ...event, startTime: startTimeStr, endTime: endTimeStr }, dayViewColumn, isException, slotHeightValue);
+                    }
+                }
+            });
         }
     }
 
@@ -589,40 +534,21 @@ document.addEventListener('DOMContentLoaded', () => {
             renderAll();
         });
 
-        if (elements.miniCalPrevBtn) {
-            elements.miniCalPrevBtn.addEventListener('click', () => {
-                state.miniCalDate.setMonth(state.miniCalDate.getMonth() - 1);
-                renderMiniCalendar();
-            });
-        }
+        elements.miniCalPrevBtn.addEventListener('click', () => {
+            state.miniCalDate.setMonth(state.miniCalDate.getMonth() - 1);
+            renderMiniCalendar();
+        });
 
-        if (elements.miniCalNextBtn) {
-            elements.miniCalNextBtn.addEventListener('click', () => {
-                state.miniCalDate.setMonth(state.miniCalDate.getMonth() + 1);
-                renderMiniCalendar();
-            });
-        }
-        
-        if (elements.miniCalPrevBtnMobile) {
-            elements.miniCalPrevBtnMobile.addEventListener('click', () => {
-                state.miniCalDate.setMonth(state.miniCalDate.getMonth() - 1);
-                renderMiniCalendar();
-            });
-        }
-        
-        if (elements.miniCalNextBtnMobile) {
-            elements.miniCalNextBtnMobile.addEventListener('click', () => {
-                state.miniCalDate.setMonth(state.miniCalDate.getMonth() + 1);
-                renderMiniCalendar();
-            });
-        }
+        elements.miniCalNextBtn.addEventListener('click', () => {
+            state.miniCalDate.setMonth(state.miniCalDate.getMonth() + 1);
+            renderMiniCalendar();
+        });
 
         elements.mobileDayNav.querySelectorAll('.mobile-day-nav-btn').forEach(btn => {
-            btn.addEventListener('click', async () => {
+            btn.addEventListener('click', () => {
                 const dayIndex = parseInt(btn.dataset.day);
                 state.activeDayIndex = dayIndex;
                 updateActiveDayForMobile();
-                await fetchEvents(); // Re-fetch events for the new week if necessary
                 renderEventsForWeek();
             });
         });
@@ -636,7 +562,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             saveEvent(true);
         });
-
+        
         elements.deleteEventBtn.addEventListener('click', () => {
             if (state.activeEvent) deleteEvent(state.activeEvent._id, false);
         });
@@ -688,8 +614,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
-    }
 
+        if (elements.sidebarToggle) {
+            elements.sidebarToggle.addEventListener('click', () => {
+                elements.calendarSidebar.classList.toggle('expanded');
+            });
+        }
+
+        if (elements.dayViewBtn && elements.weekViewBtn) {
+            elements.dayViewBtn.addEventListener('click', () => {
+                if (state.currentView !== 'day') {
+                    state.currentView = 'day';
+                    updateView();
+                }
+            });
+
+            elements.weekViewBtn.addEventListener('click', () => {
+                if (state.currentView !== 'week') {
+                    state.currentView = 'week';
+                    updateView();
+                }
+            });
+        }
+    }
+    
     // Update the active day for mobile view
     function updateActiveDayForMobile() {
         document.querySelectorAll('.mobile-day-nav-btn').forEach(btn => btn.classList.remove('active'));
@@ -697,34 +645,60 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeBtn) activeBtn.classList.add('active');
 
         document.querySelectorAll('.day-view .day-column-header').forEach(header => {
-            const startOfWeek = getStartOfWeek(state.mainViewDate);
-            const headerDate = new Date(startOfWeek);
-            headerDate.setDate(headerDate.getDate() + state.activeDayIndex);
-            
-            if (header && header.querySelector('.day-name')) {
-                const dayNames = ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'];
-                header.querySelector('.day-name').textContent = dayNames[state.activeDayIndex];
-            }
-            if (header && header.querySelector('.day-number')) {
-                header.querySelector('.day-number').textContent = headerDate.getDate();
+            header.classList.remove('active');
+            if (parseInt(header.dataset.dayHeader) === state.activeDayIndex) {
+                header.classList.add('active');
             }
         });
+
+        document.querySelectorAll('.day-view .day-column').forEach(column => {
+            column.classList.remove('active');
+            if (parseInt(column.dataset.day) === state.activeDayIndex) {
+                column.classList.add('active');
+            }
+        });
+
+        const startOfWeek = getStartOfWeek(state.mainViewDate);
+        const headerDate = new Date(startOfWeek);
+        headerDate.setDate(headerDate.getDate() + state.activeDayIndex);
+        
+        const dayViewHeader = document.querySelector('.day-view .day-column-header.active');
+        if (dayViewHeader && dayViewHeader.querySelector('.day-number')) {
+            dayViewHeader.querySelector('.day-number').textContent = headerDate.getDate();
+        }
     }
 
     // Handle window resize event to toggle mobile view
     function handleResize() {
         state.isMobile = window.innerWidth < 992;
-        updateView();
+        
+        if (state.isMobile) {
+            elements.mobileDayNav.classList.remove('hidden');
+            if (state.currentView === 'week') {
+                state.currentView = 'day';
+                updateView();
+            }
+        } else {
+            elements.mobileDayNav.classList.add('hidden');
+            if (state.currentView === 'day') {
+                state.currentView = 'week';
+                updateView();
+            }
+        }
     }
 
     // Toggle between day and week view
     function updateView() {
-        if (!state.isMobile) {
+        if (state.currentView === 'week') {
             elements.weekViewGrid.classList.remove('hidden');
             elements.dayViewGrid.classList.add('hidden');
+            elements.weekViewBtn.classList.add('active');
+            elements.dayViewBtn.classList.remove('active');
         } else {
             elements.weekViewGrid.classList.add('hidden');
             elements.dayViewGrid.classList.remove('hidden');
+            elements.weekViewBtn.classList.remove('active');
+            elements.dayViewBtn.classList.add('active');
             updateActiveDayForMobile();
         }
         renderEventsForWeek();
@@ -738,7 +712,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (state.isMobile && parseInt(targetSlot.dataset.day) !== 0) { // Mobile view always uses day-column[0]
+        if (state.isMobile && parseInt(targetSlot.dataset.day) !== state.activeDayIndex) {
             clearSelection();
             return;
         }
@@ -754,7 +728,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!state.isDragging || !state.dragStartSlot) return;
 
         const endSlot = e.target.closest('.time-slot');
-        // Dragging is restricted to the same day column
         if (!endSlot || endSlot.dataset.day !== state.dragStartSlot.dataset.day) return;
 
         const allSlots = Array.from(document.querySelectorAll(`.time-slot[data-day="${state.dragStartSlot.dataset.day}"]`));
@@ -808,22 +781,35 @@ document.addEventListener('DOMContentLoaded', () => {
         const startTime = firstSlot.dataset.time;
         const endTimeInMinutes = timeToMinutes(lastSlot.dataset.time) + 30; // End of the last selected slot
         const endTime = minutesToTime(endTimeInMinutes);
-        const dayIndex = state.isMobile ? state.activeDayIndex : parseInt(firstSlot.dataset.day);
-
 
         // Update form inputs
-        elements.eventDaySelect.value = dayIndex;
+        elements.eventDaySelect.value = firstSlot.dataset.day;
         elements.eventStartTime.value = startTime;
         elements.eventEndTime.value = endTime;
-        elements.mobileDaySelect.value = dayIndex;
-        elements.mobileStartTime.value = startTime;
-        elements.mobileEndTime.value = endTime;
 
         // Update selection display panel
         elements.selectionTimeRange.textContent = `${formatTime(startTime)} - ${formatTime(endTime)}`;
 
         updateFormValidity();
-        updateMobileFormValidity();
+    }
+
+    // Toggle selected time slots
+    function toggleSlotSelection(e) {
+        const targetSlot = e.target.closest('.time-slot');
+        if (!targetSlot) return;
+        
+        if (state.isMobile && parseInt(targetSlot.dataset.day) !== state.activeDayIndex) {
+            return;
+        }
+
+        if (targetSlot.classList.contains('selected')) {
+            targetSlot.classList.remove('selected');
+            state.selectedSlots.delete(targetSlot);
+        } else {
+            targetSlot.classList.add('selected');
+            state.selectedSlots.add(targetSlot);
+        }
+        updateFormWithSelection();
     }
 
     // Handle click on an existing event block
@@ -856,17 +842,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 eventData.recurringEndTime :
                 new Date(eventData.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
-            const dayOfWeek = eventData.isRecurring ?
+            const dayOfWeek = eventData.isRecurring ? 
                 ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].indexOf(eventData.dayOfWeek) :
-                (new Date(eventData.startTime).getDay() + 6) % 7;
+                new Date(eventData.startTime).getDay();
 
-            elements.eventDaySelect.value = dayOfWeek;
+            elements.eventDaySelect.value = (dayOfWeek + 6) % 7;
             elements.eventStartTime.value = start;
             elements.eventEndTime.value = end;
             elements.eventTitleInput.value = eventData.title || '';
-
+            
             document.querySelector(`input[name="event-type"][value="${eventData.type}"]`).checked = true;
-
+            
             elements.deleteEventBtn.disabled = false;
             elements.recurringCheckbox.checked = eventData.isRecurring;
             elements.recurringLabelText.textContent = eventData.isRecurring ?
@@ -890,34 +876,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 eventData.recurringEndTime :
                 new Date(eventData.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
-            const dayOfWeek = eventData.isRecurring ?
+            const dayOfWeek = eventData.isRecurring ? 
                 ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].indexOf(eventData.dayOfWeek) :
-                (new Date(eventData.startTime).getDay() + 6) % 7;
+                new Date(eventData.startTime).getDay();
 
-            elements.mobileDaySelect.value = dayOfWeek;
+            elements.mobileDaySelect.value = (dayOfWeek + 6) % 7;
             elements.mobileStartTime.value = start;
             elements.mobileEndTime.value = end;
             elements.mobileEventTitleInput.value = eventData.title || '';
-            elements.mobileEventTypeSelect.value = eventData.type;
-
-            elements.mobileDeleteBtn.disabled = false;
+            mobileEventTypeSelect.value = eventData.type;
+            
+            elements.mobileDeleteBtn.disabled = true; // Changed to disabled since the `deleteEvent` logic requires an active event which the mobile form cannot provide
             elements.mobileRecurringCheckbox.checked = eventData.isRecurring;
         }
     }
     // Validate main form inputs
     function updateFormValidity() {
-        const hasValidInput = elements.eventDaySelect.value !== '' &&
-                             elements.eventStartTime.value !== '' &&
-                             elements.eventEndTime.value !== '' &&
+        const hasValidInput = elements.eventDaySelect.value !== '' && 
+                             elements.eventStartTime.value !== '' && 
+                             elements.eventEndTime.value !== '' && 
                              elements.eventTitleInput.value.trim() !== '';
         elements.saveEventBtn.disabled = !hasValidInput;
     }
 
     // Validate mobile form inputs
     function updateMobileFormValidity() {
-        const hasValidInput = elements.mobileDaySelect.value !== '' &&
-                             elements.mobileStartTime.value !== '' &&
-                             elements.mobileEndTime.value !== '' &&
+        const hasValidInput = elements.mobileDaySelect.value !== '' && 
+                             elements.mobileStartTime.value !== '' && 
+                             elements.mobileEndTime.value !== '' && 
                              elements.mobileEventTitleInput.value.trim() !== '';
         elements.mobileSaveBtn.disabled = !hasValidInput;
     }
@@ -1034,31 +1020,33 @@ document.addEventListener('DOMContentLoaded', () => {
         const slotHeight = getComputedStyle(document.documentElement).getPropertyValue('--calendar-slot-height').trim();
         const slotHeightValue = parseFloat(slotHeight);
 
-        const timeInMinutes = now.getHours() * 60 + now.getMinutes();
-        const top = ((timeInMinutes - 8 * 60) / 30) * slotHeightValue;
-
-        if (now < startOfWeek || now > endOfWeek || timeInMinutes < 8 * 60 || timeInMinutes >= 23 * 60) {
-            if (elements.currentTimeIndicator) elements.currentTimeIndicator.style.display = 'none';
+        if (now < startOfWeek || now > endOfWeek) {
+            elements.currentTimeIndicator.style.display = 'none';
             if (elements.dayViewCurrentTimeIndicator) elements.dayViewCurrentTimeIndicator.style.display = 'none';
             return;
         }
 
-        if (state.isMobile) {
-            // Mobile Day View
-            if (dayOfWeek === state.activeDayIndex && elements.dayViewCurrentTimeIndicator) {
-                elements.dayViewCurrentTimeIndicator.style.top = `${top}px`;
-                elements.dayViewCurrentTimeIndicator.style.display = 'block';
-            } else if (elements.dayViewCurrentTimeIndicator) {
-                 elements.dayViewCurrentTimeIndicator.style.display = 'none';
-            }
-        } else {
-            // Desktop Week View
-            const weekViewDayColumn = document.querySelector(`.week-view .day-column[data-day="${dayOfWeek}"]`);
-            if (weekViewDayColumn && elements.currentTimeIndicator) {
-                elements.currentTimeIndicator.style.top = `${top}px`;
-                elements.currentTimeIndicator.style.left = `${weekViewDayColumn.offsetLeft}px`;
-                elements.currentTimeIndicator.style.display = 'block`;
-            }
+        const timeInMinutes = now.getHours() * 60 + now.getMinutes();
+        if (timeInMinutes < 8 * 60 || timeInMinutes >= 23 * 60) {
+            elements.currentTimeIndicator.style.display = 'none';
+            if (elements.dayViewCurrentTimeIndicator) elements.dayViewCurrentTimeIndicator.style.display = 'none';
+            return;
+        }
+
+        const top = ((timeInMinutes - 8 * 60) / 30) * slotHeightValue;
+        
+        // Update week view indicator
+        const weekViewDayColumn = document.querySelector(`.week-view .day-column[data-day="${dayOfWeek}"]`);
+        if (weekViewDayColumn) {
+            elements.currentTimeIndicator.style.top = `${top}px`;
+            elements.currentTimeIndicator.style.left = `${weekViewDayColumn.offsetLeft}px`;
+            elements.currentTimeIndicator.style.display = 'block';
+        }
+
+        // Update day view indicator if applicable
+        if (elements.dayViewCurrentTimeIndicator && dayOfWeek === state.activeDayIndex) {
+            elements.dayViewCurrentTimeIndicator.style.top = `${top}px`;
+            elements.dayViewCurrentTimeIndicator.style.display = 'block';
         }
     }
 
