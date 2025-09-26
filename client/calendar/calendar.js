@@ -560,21 +560,27 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Open desktop modal from header button
-        if(elements.addEventDesktopBtn) {
-            elements.addEventDesktopBtn.addEventListener('click', () => {
-                elements.calendarSidebar.classList.add('open');
-                elements.pageWrapper.classList.add('sidebar-open');
+        // Unified Sidebar Toggle Functionality
+        const toggleSidebar = () => {
+            const isOpening = !elements.calendarSidebar.classList.contains('open');
+            elements.calendarSidebar.classList.toggle('open');
+            elements.pageWrapper.classList.toggle('sidebar-open');
+            
+            if (isOpening) {
+                // When opening, reset the form for a new event
                 clearForm();
-            });
+            } else {
+                // When closing, clear selection in case user was selecting on calendar grid
+                clearSelection();
+            }
+        };
+
+        if (elements.addEventDesktopBtn) {
+            elements.addEventDesktopBtn.addEventListener('click', toggleSidebar);
         }
         
-        // Close desktop sidebar button
         if (elements.sidebarCloseBtn) {
-            elements.sidebarCloseBtn.addEventListener('click', () => {
-                elements.calendarSidebar.classList.remove('open');
-                elements.pageWrapper.classList.remove('sidebar-open');
-            });
+            elements.sidebarCloseBtn.addEventListener('click', toggleSidebar);
         }
         
         // Open modal with the FAB on mobile
@@ -650,6 +656,7 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.addEventFab.classList.remove('hidden');
             // Ensure sidebar is closed on mobile
             elements.calendarSidebar.classList.remove('open');
+            elements.pageWrapper.classList.remove('sidebar-open');
         } else {
             elements.addEventDesktopBtn.style.display = 'flex';
             elements.addEventFab.classList.add('hidden');
