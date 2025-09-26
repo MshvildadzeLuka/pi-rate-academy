@@ -44,6 +44,10 @@ document.addEventListener('DOMContentLoaded', () => {
         eventStartTime: document.getElementById('event-start-time'),
         eventEndTime: document.getElementById('event-end-time'),
         eventTitleInput: document.getElementById('event-title-input'),
+        mobileMiniCalHeader: document.getElementById('mobile-mini-cal-month-year'),
+        mobileMiniCalDaysGrid: document.getElementById('mobile-mini-calendar-days'),
+        mobileMiniCalPrevBtn: document.getElementById('mobile-mini-cal-prev-month'),
+        mobileMiniCalNextBtn: document.getElementById('mobile-mini-cal-next-month'),
         mobileDaySelect: document.getElementById('mobile-day-select'),
         mobileStartTime: document.getElementById('mobile-start-time'),
         mobileEndTime: document.getElementById('mobile-end-time'),
@@ -126,6 +130,24 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotification('Calendar initialization failed', 'error');
         }
     }
+    
+    // API Service to encapsulate all fetch calls
+    const apiService = {
+        fetchUserGroups: async () => {
+            const token = localStorage.getItem('piRateToken');
+            if (!token) {
+                throw new Error('No authentication token found.');
+            }
+            const response = await fetch(`${API_BASE_URL}/groups/my-groups`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) {
+                throw new Error('Failed to fetch user groups.');
+            }
+            return response.json();
+        }
+    };
+
 
     // Fetch user groups to determine group context
     async function fetchUserGroups() {
@@ -262,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
             state.allEvents = state.allEvents.filter(e => e._id !== eventId);
             clearSelection();
             renderEventsForWeek();
-            showNotification('მოვლენა წარმატებით წაიშალა!', 'success');
+            showNotification('მოვლენა წარმატებით წაშალა!', 'success');
 
             if (isMobile) {
                 elements.eventModalBackdrop.classList.add('hidden');
@@ -359,8 +381,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderMiniCalendar() {
         const month = state.miniCalDate.getMonth();
         const year = state.miniCalDate.getFullYear();
+        
         elements.miniCalHeader.textContent = `${new Date(year, month).toLocaleString('ka-GE', { month: 'long' })} ${year}`;
         elements.miniCalDaysGrid.innerHTML = '';
+        if (elements.mobileMiniCalHeader) elements.mobileMiniCalHeader.textContent = `${new Date(year, month).toLocaleString('ka-GE', { month: 'long' })} ${year}`;
+        if (elements.mobileMiniCalDaysGrid) elements.mobileMiniCalDaysGrid.innerHTML = '';
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -373,6 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const day = document.createElement('div');
             day.className = 'mini-calendar-day other-month';
             elements.miniCalDaysGrid.appendChild(day);
+            if (elements.mobileMiniCalDaysGrid) elements.mobileMiniCalDaysGrid.appendChild(day.cloneNode());
         }
 
         for (let d = 1; d <= daysInMonth; d++) {
@@ -395,6 +421,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             elements.miniCalDaysGrid.appendChild(day);
+            if (elements.mobileMiniCalDaysGrid) {
+                const mobileDay = day.cloneNode(true);
+                mobileDay.addEventListener('click', () => {
+                    state.mainViewDate = new Date(currentDay);
+                    fetchEvents().then(() => renderAll());
+                });
+                elements.mobileMiniCalDaysGrid.appendChild(mobileDay);
+            }
         }
     }
 
@@ -520,6 +554,19 @@ document.addEventListener('DOMContentLoaded', () => {
             state.miniCalDate.setMonth(state.miniCalDate.getMonth() + 1);
             renderMiniCalendar();
         });
+        
+        if (elements.mobileMiniCalPrevBtn) {
+            elements.mobileMiniCalPrevBtn.addEventListener('click', () => {
+                state.miniCalDate.setMonth(state.miniCalDate.getMonth() - 1);
+                renderMiniCalendar();
+            });
+        }
+        if (elements.mobileMiniCalNextBtn) {
+            elements.mobileMiniCalNextBtn.addEventListener('click', () => {
+                state.miniCalDate.setMonth(state.miniCalDate.getMonth() + 1);
+                renderMiniCalendar();
+            });
+        }
 
         elements.eventForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -605,11 +652,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.isMobile) {
             elements.gridWrapperDesktop.classList.add('hidden');
             elements.gridWrapperMobile.classList.remove('hidden');
-            elements.addEventFab.classList.remove('hidden');
+            if (elements.addEventFab) elements.addEventFab.classList.remove('hidden');
         } else {
             elements.gridWrapperDesktop.classList.remove('hidden');
             elements.gridWrapperMobile.classList.add('hidden');
-            elements.addEventFab.classList.add('hidden');
+            if (elements.addEventFab) elements.addEventFab.classList.add('hidden');
         }
         renderEventsForWeek();
     }
