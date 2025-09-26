@@ -1,3 +1,4 @@
+
 // file: client/calendar/calendar.js
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = '/api';
@@ -35,16 +36,45 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('Failed to fetch user groups.');
             }
             return response.json();
+        },
+        fetchEvents: async () => {
+            const startOfWeek = getStartOfWeek(state.mainViewDate);
+            const endOfWeek = getEndOfWeek(startOfWeek);
+            const personalEventsResponse = await apiFetch(
+                `/calendar-events/my-schedule?start=${startOfWeek.toISOString()}&end=${endOfWeek.toISOString()}`
+            );
+            const personalEvents = personalEventsResponse?.data || [];
+            
+            const lecturePromises = state.userGroups.map(group => 
+                apiFetch(`/lectures/group/${group._id}?start=${startOfWeek.toISOString()}&end=${endOfWeek.toISOString()}`)
+            );
+            
+            const lectureResponses = await Promise.all(lecturePromises);
+            const lectures = lectureResponses.flatMap(res => res?.data || []);
+            
+            return [...personalEvents, ...lectures];
+        },
+        saveEvent: async (payload) => {
+            const response = await apiFetch('/calendar-events', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            return response.data;
+        },
+        deleteEvent: async (eventId, payload) => {
+            const response = await apiFetch(`/calendar-events/${eventId}`, {
+                method: 'DELETE',
+                body: JSON.stringify(payload)
+            });
+            return response.data;
         }
     };
 
 
     // DOM Elements: Centralized access to all DOM elements
     const elements = {
-        timeColumnDesktop: document.getElementById('time-column-desktop'),
-        dayColumnsDesktop: document.querySelectorAll('#desktop-calendar-container .day-column'),
-        timeColumnMobile: document.getElementById('time-column'),
-        dayColumnsMobile: document.querySelectorAll('#mobile-calendar-container .day-column'),
+        timeColumnMain: document.getElementById('time-column-main'),
+        dayColumnsMain: document.querySelectorAll('#calendar-main-grid .day-column'),
         weekDisplay: document.getElementById('current-week-display'),
         prevWeekBtn: document.getElementById('prev-week-btn'),
         nextWeekBtn: document.getElementById('next-week-btn'),
@@ -57,31 +87,25 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteEventBtn: document.getElementById('delete-event-btn'),
         recurringCheckbox: document.getElementById('recurring-event-checkbox'),
         recurringLabelText: document.getElementById('recurring-label-text'),
-        gridWrapperDesktop: document.getElementById('desktop-calendar-container'),
-        gridWrapperMobile: document.getElementById('mobile-calendar-container'),
-        currentTimeIndicatorDesktop: document.getElementById('desktop-time-indicator'),
-        currentTimeIndicatorMobile: document.getElementById('current-time-indicator'),
+        gridWrapper: document.getElementById('calendar-main-grid'),
+        currentTimeIndicator: document.getElementById('current-time-indicator'),
         eventForm: document.getElementById('event-form'),
         eventDaySelect: document.getElementById('event-day-select'),
         eventStartTime: document.getElementById('event-start-time'),
         eventEndTime: document.getElementById('event-end-time'),
         eventTitleInput: document.getElementById('event-title-input'),
-        mobileMiniCalHeader: document.getElementById('mobile-mini-cal-month-year'),
-        mobileMiniCalDaysGrid: document.getElementById('mobile-mini-calendar-days'),
-        mobileMiniCalPrevBtn: document.getElementById('mobile-mini-cal-prev-month'),
-        mobileMiniCalNextBtn: document.getElementById('mobile-mini-cal-next-month'),
-        mobileDaySelect: document.getElementById('mobile-day-select'),
-        mobileStartTime: document.getElementById('mobile-start-time'),
-        mobileEndTime: document.getElementById('mobile-end-time'),
-        mobileEventTitleInput: document.getElementById('mobile-event-title-input'),
-        mobileRecurringCheckbox: document.getElementById('mobile-recurring-checkbox'),
-        mobileSaveBtn: document.getElementById('mobile-save-btn'),
-        mobileDeleteBtn: document.getElementById('mobile-delete-btn'),
-        sidebarToggle: document.getElementById('sidebar-toggle'),
+        eventModalDaySelect: document.getElementById('event-modal-day-select'),
+        eventModalStartTime: document.getElementById('event-modal-start-time'),
+        eventModalEndTime: document.getElementById('event-modal-end-time'),
+        eventModalTitleInput: document.getElementById('event-modal-title-input'),
+        eventModalRecurringCheckbox: document.getElementById('event-modal-recurring-checkbox'),
+        eventModalSaveBtn: document.getElementById('event-modal-save-btn'),
+        eventModalDeleteBtn: document.getElementById('event-modal-delete-btn'),
         calendarSidebar: document.querySelector('.calendar-sidebar'),
-        selectionTimeRange: document.getElementById('selection-time-range'),
         addEventFab: document.querySelector('.fab'),
         eventModalBackdrop: document.getElementById('event-modal-backdrop'),
+        addEventDesktopBtn: document.getElementById('add-event-desktop-btn'),
+        mobileCalendarControls: document.getElementById('mobile-calendar-controls')
     };
 
     // Notification toast function
@@ -136,8 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function initializeCalendar() {
         try {
             await fetchUserGroups();
-            generateTimeSlots(elements.timeColumnDesktop, elements.dayColumnsDesktop);
-            generateTimeSlots(elements.timeColumnMobile, elements.dayColumnsMobile);
+            generateTimeSlots(elements.timeColumnMain, elements.dayColumnsMain);
             await fetchEvents();
             renderAll();
             addEventListeners();
@@ -166,28 +189,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Fetch all events for the current week
     async function fetchEvents() {
-        const startOfWeek = getStartOfWeek(state.mainViewDate);
-        const endOfWeek = getEndOfWeek(startOfWeek);
-
         try {
             document.body.classList.add('loading');
-            
-            // Fetch personal events
-            const personalEventsResponse = await apiFetch(
-                `/calendar-events/my-schedule?start=${startOfWeek.toISOString()}&end=${endOfWeek.toISOString()}`
-            );
-            const personalEvents = personalEventsResponse?.data || [];
-            
-            // Fetch lectures for all user's groups
-            const lecturePromises = state.userGroups.map(group => 
-                apiFetch(`/lectures/group/${group._id}?start=${startOfWeek.toISOString()}&end=${endOfWeek.toISOString()}`)
-            );
-            
-            const lectureResponses = await Promise.all(lecturePromises);
-            const lectures = lectureResponses.flatMap(res => res?.data || []);
-            
-            state.allEvents = [...personalEvents, ...lectures];
-
+            state.allEvents = await apiService.fetchEvents();
         } catch (error) {
             console.error('Failed to load events:', error);
             state.allEvents = [];
@@ -201,15 +205,17 @@ document.addEventListener('DOMContentLoaded', () => {
         let type, isRecurring, title, dayIndex, startTimeStr, endTimeStr;
 
         // Use the correct form based on the device
-        const form = isMobile ? elements.eventModalBackdrop.querySelector('#mobile-event-form') : elements.eventForm;
+        const form = isMobile ? document.getElementById('event-modal-form') : document.getElementById('event-form');
         if (!form) return;
 
-        type = form.querySelector('input[name="event-type"]:checked')?.value || form.querySelector('select[name="eventType"]')?.value;
-        isRecurring = form.querySelector('#recurring-event-checkbox')?.checked || form.querySelector('#mobile-recurring-checkbox')?.checked;
-        title = form.querySelector('input[type="text"]').value;
-        dayIndex = form.querySelector('select').value;
-        startTimeStr = form.querySelector('input[type="time"]').value;
-        endTimeStr = form.querySelector('input[type="time"][name$="end-time"]').value;
+        const isBusy = form.querySelector('input[name="event-type"][value="busy"]')?.checked || form.querySelector('select[name="event-type"]')?.value === 'busy';
+        type = isBusy ? 'busy' : 'preferred';
+
+        isRecurring = form.querySelector('[id$="-recurring-checkbox"]')?.checked;
+        title = form.querySelector('[id$="-title-input"]')?.value;
+        dayIndex = form.querySelector('[id$="-day-select"]')?.value;
+        startTimeStr = form.querySelector('[id$="-start-time"]')?.value;
+        endTimeStr = form.querySelector('[id$="-end-time"]')?.value;
 
         if (!title || !dayIndex || !startTimeStr || !endTimeStr) {
             showNotification('გთხოვთ, შეავსოთ ყველა ველი', 'error');
@@ -248,19 +254,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const response = await apiFetch('/calendar-events', {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            });
+            const response = await apiService.saveEvent(payload);
 
             state.allEvents.push(response.data);
             clearSelection();
             renderEventsForWeek();
             showNotification('მოვლენა წარმატებით შეინახა!', 'success');
-
-            if (isMobile) {
-                elements.eventModalBackdrop.classList.add('hidden');
-            }
+            elements.eventModalBackdrop.classList.add('hidden');
         } catch (error) {
             console.error('მოვლენის შენახვა ვერ მოხერხდა:', error);
             showNotification('მოვლენის შენახვა ვერ მოხერხდა: ' + error.message, 'error');
@@ -274,25 +274,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const event = state.allEvents.find(e => e._id === eventId);
         if (!event) return;
 
-        const isRecurring = isMobile ? elements.mobileRecurringCheckbox.checked : elements.recurringCheckbox.checked;
+        const isRecurring = document.getElementById('event-modal-recurring-checkbox').checked;
 
         try {
-            await apiFetch(`/calendar-events/${eventId}`, {
-                method: 'DELETE',
-                body: JSON.stringify({
-                    dateString: event.startTime ? new Date(event.startTime).toISOString().split('T')[0] : null,
-                    deleteAllRecurring: isRecurring
-                })
+            await apiService.deleteEvent(eventId, {
+                dateString: event.startTime ? new Date(event.startTime).toISOString().split('T')[0] : null,
+                deleteAllRecurring: isRecurring
             });
 
             state.allEvents = state.allEvents.filter(e => e._id !== eventId);
             clearSelection();
             renderEventsForWeek();
             showNotification('მოვლენა წარმატებით წაიშალა!', 'success');
-
-            if (isMobile) {
-                elements.eventModalBackdrop.classList.add('hidden');
-            }
+            elements.eventModalBackdrop.classList.add('hidden');
         } catch (error) {
             console.error('Failed to delete event:', error);
             showNotification('მოვლენის წაშლა ვერ მოხერხდა: ' + error.message, 'error');
@@ -335,7 +329,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderDayHeaders();
         renderMiniCalendar();
         renderEventsForWeek();
-        updateSidebarUI('add');
         handleResize();
     }
 
@@ -352,10 +345,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const dayHeadersDesktop = document.querySelectorAll('#desktop-calendar-container .day-column-header');
-        const dayHeadersMobile = document.querySelectorAll('#mobile-calendar-container .day-column-header');
+        const dayHeaders = document.querySelectorAll('.day-column-header');
         
-        dayHeadersDesktop.forEach((header, index) => {
+        dayHeaders.forEach((header, index) => {
             const headerDate = new Date(startOfWeek);
             headerDate.setDate(headerDate.getDate() + index);
             if (header.querySelector('.day-number')) {
@@ -368,18 +360,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        dayHeadersMobile.forEach((header, index) => {
-            const headerDate = new Date(startOfWeek);
-            headerDate.setDate(headerDate.getDate() + index);
-            if (header.querySelector('.day-number')) {
-                header.querySelector('.day-number').textContent = headerDate.getDate();
-            }
-            if (headerDate.toDateString() === today.toDateString()) {
-                header.classList.add('current-day-header');
-            } else {
-                header.classList.remove('current-day-header');
-            }
-        });
+        if (state.isMobile) {
+            if (elements.mobileMiniCalHeader) elements.mobileMiniCalHeader.textContent = `${new Date(state.miniCalDate).toLocaleString('ka-GE', { month: 'long' })} ${state.miniCalDate.getFullYear()}`;
+        }
     }
 
     function renderMiniCalendar() {
@@ -388,8 +371,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         elements.miniCalHeader.textContent = `${new Date(year, month).toLocaleString('ka-GE', { month: 'long' })} ${year}`;
         elements.miniCalDaysGrid.innerHTML = '';
-        if (elements.mobileMiniCalHeader) elements.mobileMiniCalHeader.textContent = `${new Date(year, month).toLocaleString('ka-GE', { month: 'long' })} ${year}`;
-        if (elements.mobileMiniCalDaysGrid) elements.mobileMiniCalDaysGrid.innerHTML = '';
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -402,7 +383,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const day = document.createElement('div');
             day.className = 'mini-calendar-day other-month';
             elements.miniCalDaysGrid.appendChild(day);
-            if (elements.mobileMiniCalDaysGrid) elements.mobileMiniCalDaysGrid.appendChild(day.cloneNode());
         }
 
         for (let d = 1; d <= daysInMonth; d++) {
@@ -425,14 +405,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             elements.miniCalDaysGrid.appendChild(day);
-            if (elements.mobileMiniCalDaysGrid) {
-                const mobileDay = day.cloneNode(true);
-                mobileDay.addEventListener('click', () => {
-                    state.mainViewDate = new Date(currentDay);
-                    fetchEvents().then(() => renderAll());
-                });
-                elements.mobileMiniCalDaysGrid.appendChild(mobileDay);
-            }
         }
     }
 
@@ -447,7 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.querySelectorAll('.event-block').forEach(el => el.remove());
 
-        const dayColumns = state.isMobile ? elements.dayColumnsMobile : elements.dayColumnsDesktop;
+        const dayColumns = document.querySelectorAll('#calendar-main-grid .day-column');
 
         for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
             const currentDayDate = new Date(startOfWeek);
@@ -559,25 +531,12 @@ document.addEventListener('DOMContentLoaded', () => {
             renderMiniCalendar();
         });
         
-        if (elements.mobileMiniCalPrevBtn) {
-            elements.mobileMiniCalPrevBtn.addEventListener('click', () => {
-                state.miniCalDate.setMonth(state.miniCalDate.getMonth() - 1);
-                renderMiniCalendar();
-            });
-        }
-        if (elements.mobileMiniCalNextBtn) {
-            elements.mobileMiniCalNextBtn.addEventListener('click', () => {
-                state.miniCalDate.setMonth(state.miniCalDate.getMonth() + 1);
-                renderMiniCalendar();
-            });
-        }
-
         elements.eventForm.addEventListener('submit', (e) => {
             e.preventDefault();
             saveEvent(false);
         });
 
-        elements.mobileSaveBtn.addEventListener('click', (e) => {
+        elements.eventModalSaveBtn.addEventListener('click', (e) => {
             e.preventDefault();
             saveEvent(true);
         });
@@ -586,7 +545,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (state.activeEvent) deleteEvent(state.activeEvent._id, false);
         });
 
-        elements.mobileDeleteBtn.addEventListener('click', () => {
+        elements.eventModalDeleteBtn.addEventListener('click', () => {
             if (state.activeEvent) deleteEvent(state.activeEvent._id, true);
         });
 
@@ -602,43 +561,30 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Event listeners for desktop drag-and-drop selection
-        if (elements.gridWrapperDesktop) {
-            elements.gridWrapperDesktop.addEventListener('mousedown', handleMouseDown);
-            elements.gridWrapperDesktop.addEventListener('mouseup', handleMouseUp);
-            elements.gridWrapperDesktop.addEventListener('mousemove', handleMouseMove);
+        // Open desktop modal from header button
+        if(elements.addEventDesktopBtn) {
+            elements.addEventDesktopBtn.addEventListener('click', () => {
+                elements.calendarSidebar.classList.remove('hidden');
+                clearForm();
+            });
         }
         
-        // Event listeners for mobile drag-and-drop selection
-        if (elements.gridWrapperMobile) {
-             elements.gridWrapperMobile.addEventListener('mousedown', handleMouseDown);
-             elements.gridWrapperMobile.addEventListener('mouseup', handleMouseUp);
-             elements.gridWrapperMobile.addEventListener('mousemove', handleMouseMove);
+        // Open modal with the FAB on mobile
+        if (elements.addEventFab) {
+             elements.addEventFab.addEventListener('click', (e) => {
+                 if (!e.target.closest('.fab').classList.contains('dragging')) {
+                     elements.eventModalBackdrop.classList.remove('hidden');
+                     clearMobileForm();
+                 }
+             });
         }
 
 
-        elements.eventDaySelect.addEventListener('change', updateFormValidity);
-        elements.eventStartTime.addEventListener('change', updateFormValidity);
-        elements.eventEndTime.addEventListener('change', updateFormValidity);
-        elements.eventTitleInput.addEventListener('input', updateFormValidity);
-
-        elements.mobileDaySelect.addEventListener('change', updateMobileFormValidity);
-        elements.mobileStartTime.addEventListener('change', updateMobileFormValidity);
-        elements.mobileEndTime.addEventListener('change', updateMobileFormValidity);
-        elements.mobileEventTitleInput.addEventListener('input', updateMobileFormValidity);
-
-        if (elements.addEventFab) {
-            elements.addEventFab.addEventListener('click', () => {
-                elements.eventModalBackdrop.classList.remove('hidden');
-                clearMobileForm();
-            });
-            // Draggable FAB for mobile
-            elements.addEventFab.addEventListener('mousedown', startFabDrag);
-            elements.addEventFab.addEventListener('touchstart', startFabDrag, { passive: false });
-            document.addEventListener('mousemove', dragFab);
-            document.addEventListener('touchmove', dragFab, { passive: false });
-            document.addEventListener('mouseup', endFabDrag);
-            document.addEventListener('touchend', endFabDrag);
+        // Event listeners for drag-and-drop selection
+        if (elements.gridWrapper) {
+            elements.gridWrapper.addEventListener('mousedown', handleMouseDown);
+            elements.gridWrapper.addEventListener('mouseup', handleMouseUp);
+            elements.gridWrapper.addEventListener('mousemove', handleMouseMove);
         }
 
         if (elements.eventModalBackdrop) {
@@ -648,21 +594,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
-
-        if (elements.sidebarToggle) {
-            elements.sidebarToggle.addEventListener('click', () => {
-                elements.calendarSidebar.classList.toggle('expanded');
-            });
+        
+        // Draggable FAB for mobile
+        if (elements.addEventFab) {
+            elements.addEventFab.addEventListener('mousedown', startFabDrag);
+            elements.addEventFab.addEventListener('touchstart', startFabDrag, { passive: false });
+            document.addEventListener('mousemove', dragFab);
+            document.addEventListener('touchmove', dragFab, { passive: false });
+            document.addEventListener('mouseup', endFabDrag);
+            document.addEventListener('touchend', endFabDrag);
         }
     }
-    
+
     // Draggable FAB logic
     function startFabDrag(e) {
-        if (!state.isMobile) return;
         state.isFabDragging = true;
         const touch = e.touches ? e.touches[0] : e;
         state.fabOffsetX = touch.clientX - elements.addEventFab.getBoundingClientRect().left;
         state.fabOffsetY = touch.clientY - elements.addEventFab.getBoundingClientRect().top;
+        elements.addEventFab.classList.add('dragging');
         e.preventDefault();
     }
     
@@ -680,32 +630,22 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function endFabDrag() {
         state.isFabDragging = false;
+        elements.addEventFab.classList.remove('dragging');
     }
-
 
     // Handle window resize event to toggle mobile/desktop view
     function handleResize() {
-        state.isMobile = window.innerWidth < 992;
-        
-        // This makes the entire page scrollable on mobile
-        if (state.isMobile) {
-            document.body.style.overflowY = 'auto';
-            document.querySelector('.page-wrapper').style.height = 'auto';
+        const isMobileView = window.innerWidth <= 1200;
+
+        if (isMobileView) {
+            elements.addEventDesktopBtn.style.display = 'none';
+            elements.calendarSidebar.style.display = 'none';
+            elements.addEventFab.classList.remove('hidden');
         } else {
-            document.body.style.overflowY = 'hidden';
-            document.querySelector('.page-wrapper').style.height = `calc(100vh - var(--header-height))`;
+            elements.addEventDesktopBtn.style.display = 'flex';
+            elements.calendarSidebar.style.display = 'flex';
+            elements.addEventFab.classList.add('hidden');
         }
-        
-        if (state.isMobile) {
-            elements.gridWrapperDesktop.classList.add('hidden');
-            elements.gridWrapperMobile.classList.remove('hidden');
-            if (elements.addEventFab) elements.addEventFab.classList.remove('hidden');
-        } else {
-            elements.gridWrapperDesktop.classList.remove('hidden');
-            elements.gridWrapperMobile.classList.add('hidden');
-            if (elements.addEventFab) elements.addEventFab.classList.add('hidden');
-        }
-        renderEventsForWeek();
     }
 
     // New functions for drag-and-drop selection
@@ -729,9 +669,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const endSlot = e.target.closest('.time-slot');
         if (!endSlot || endSlot.dataset.day !== state.dragStartSlot.dataset.day) return;
 
-        const allSlots = Array.from(document.querySelectorAll(`.time-slot[data-day="${state.dragStartSlot.dataset.day}"]`));
-        const startIndex = allSlots.indexOf(state.dragStartSlot);
-        const endIndex = allSlots.indexOf(endSlot);
+        const allSlots = document.querySelectorAll(`.day-column[data-day="${state.dragStartSlot.dataset.day}"] .time-slot`);
+        const startIndex = Array.from(allSlots).indexOf(state.dragStartSlot);
+        const endIndex = Array.from(allSlots).indexOf(endSlot);
 
         if (startIndex === -1 || endIndex === -1) return;
 
@@ -786,22 +726,36 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.eventStartTime.value = startTime;
         elements.eventEndTime.value = endTime;
 
-        if (state.isMobile) {
-            elements.mobileDaySelect.value = firstSlot.dataset.day;
-            elements.mobileStartTime.value = startTime;
-            elements.mobileEndTime.value = endTime;
-            if (elements.selectionTimeRange) {
-                elements.selectionTimeRange.textContent = `${formatTime(startTime)} - ${formatTime(endTime)}`;
-            }
-        }
-        updateFormValidity();
+        elements.eventModalDaySelect.value = firstSlot.dataset.day;
+        elements.eventModalStartTime.value = startTime;
+        elements.eventModalEndTime.value = endTime;
+
+        updateFormValidity(elements.eventForm);
+        updateFormValidity(document.getElementById('event-modal-form'));
     }
+
     // Handle click on an existing event block
     function handleEventClick(eventData) {
         clearSelection(false);
         state.activeEvent = eventData;
-        updateSidebarUI('edit', eventData);
-        updateMobileFormUI('edit', eventData);
+        
+        // Populate the desktop sidebar form
+        elements.eventDaySelect.value = (new Date(eventData.startTime).getDay() + 6) % 7;
+        elements.eventStartTime.value = eventData.startTime.split('T')[1].substring(0, 5);
+        elements.eventEndTime.value = eventData.endTime.split('T')[1].substring(0, 5);
+        elements.eventTitleInput.value = eventData.title || '';
+        document.querySelector(`#event-form input[name="event-type"][value="${eventData.type}"]`).checked = true;
+        elements.recurringCheckbox.checked = eventData.isRecurring;
+        elements.deleteEventBtn.disabled = false;
+        
+        // Populate the modal form
+        elements.eventModalDaySelect.value = (new Date(eventData.startTime).getDay() + 6) % 7;
+        elements.eventModalStartTime.value = eventData.startTime.split('T')[1].substring(0, 5);
+        elements.eventModalEndTime.value = eventData.endTime.split('T')[1].substring(0, 5);
+        elements.eventModalTitleInput.value = eventData.title || '';
+        document.querySelector(`#event-modal-form select[name="event-type"]`).value = eventData.type;
+        elements.eventModalRecurringCheckbox.checked = eventData.isRecurring;
+        elements.eventModalDeleteBtn.disabled = false;
 
         document.querySelectorAll('.event-block').forEach(el => el.classList.remove('active-event'));
         const eventElement = document.querySelector(`[data-event-id="${eventData._id}"]`);
@@ -810,122 +764,52 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Update sidebar form fields based on the selected event
-    function updateSidebarUI(mode = 'add', eventData = null) {
-        if (mode === 'add') {
-            elements.deleteEventBtn.disabled = true;
-            elements.recurringCheckbox.checked = false;
-            elements.recurringLabelText.textContent = 'Apply to all weeks';
-            clearForm();
-        } else if (mode === 'edit') {
-            const start = eventData.isRecurring ?
-                eventData.recurringStartTime :
-                new Date(eventData.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-
-            const end = eventData.isRecurring ?
-                eventData.recurringEndTime :
-                new Date(eventData.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-
-            const dayOfWeek = eventData.isRecurring ? 
-                ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].indexOf(eventData.dayOfWeek) :
-                new Date(eventData.startTime).getDay();
-
-            elements.eventDaySelect.value = (dayOfWeek + 6) % 7;
-            elements.eventStartTime.value = start;
-            elements.eventEndTime.value = end;
-            elements.eventTitleInput.value = eventData.title || '';
-            
-            document.querySelector(`input[name="event-type"][value="${eventData.type}"]`).checked = true;
-            
-            elements.deleteEventBtn.disabled = false;
-            elements.recurringCheckbox.checked = eventData.isRecurring;
-            elements.recurringLabelText.textContent = eventData.isRecurring ?
-                'Change all recurring events' :
-                'Change only this event';
+    // Validate a form
+    function updateFormValidity(form) {
+        const hasValidInput = form.querySelector('[id$="-day-select"]').value !== '' && 
+                             form.querySelector('[id$="-start-time"]').value !== '' && 
+                             form.querySelector('[id$="-end-time"]').value !== '' && 
+                             form.querySelector('[id$="-title-input"]').value.trim() !== '';
+        
+        const saveButton = form.querySelector('[id$="-save-btn"]');
+        if (saveButton) {
+            saveButton.disabled = !hasValidInput;
         }
     }
 
-    // Update mobile form fields based on the selected event
-    function updateMobileFormUI(mode = 'add', eventData = null) {
-        if (mode === 'add') {
-            elements.mobileDeleteBtn.disabled = true;
-            elements.mobileRecurringCheckbox.checked = false;
-            clearMobileForm();
-        } else if (mode === 'edit') {
-            const start = eventData.isRecurring ?
-                eventData.recurringStartTime :
-                new Date(eventData.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-
-            const end = eventData.isRecurring ?
-                eventData.recurringEndTime :
-                new Date(eventData.endTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-
-            const dayOfWeek = eventData.isRecurring ? 
-                ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].indexOf(eventData.dayOfWeek) :
-                new Date(eventData.startTime).getDay();
-
-            elements.mobileDaySelect.value = (dayOfWeek + 6) % 7;
-            elements.mobileStartTime.value = start;
-            elements.mobileEndTime.value = end;
-            elements.mobileEventTitleInput.value = eventData.title || '';
-            mobileEventTypeSelect.value = eventData.type;
-            
-            elements.mobileDeleteBtn.disabled = true; // Changed to disabled since the `deleteEvent` logic requires an active event which the mobile form cannot provide
-            elements.mobileRecurringCheckbox.checked = eventData.isRecurring;
-        }
-    }
-    // Validate main form inputs
-    function updateFormValidity() {
-        const hasValidInput = elements.eventDaySelect.value !== '' && 
-                             elements.eventStartTime.value !== '' && 
-                             elements.eventEndTime.value !== '' && 
-                             elements.eventTitleInput.value.trim() !== '';
-        elements.saveEventBtn.disabled = !hasValidInput;
-    }
-
-    // Validate mobile form inputs
-    function updateMobileFormValidity() {
-        const hasValidInput = elements.mobileDaySelect.value !== '' && 
-                             elements.mobileStartTime.value !== '' && 
-                             elements.mobileEndTime.value !== '' && 
-                             elements.mobileEventTitleInput.value.trim() !== '';
-        elements.mobileSaveBtn.disabled = !hasValidInput;
-    }
-
-    // Reset desktop form
+    // Reset forms
     function clearForm() {
-        elements.eventDaySelect.value = '0';
-        elements.eventStartTime.value = '08:00';
-        elements.eventEndTime.value = '09:00';
-        elements.eventTitleInput.value = '';
-        document.querySelector('input[name="event-type"][value="busy"]').checked = true;
-        elements.recurringCheckbox.checked = false;
-        updateFormValidity();
-    }
-
-    // Reset mobile form
-    function clearMobileForm() {
-        elements.mobileDaySelect.value = '0';
-        elements.mobileStartTime.value = '08:00';
-        elements.mobileEndTime.value = '09:00';
-        elements.mobileEventTitleInput.value = '';
-        mobileEventTypeSelect.value = 'busy';
-        elements.mobileRecurringCheckbox.checked = false;
-        elements.mobileDeleteBtn.disabled = true;
-        updateMobileFormValidity();
+        if(elements.eventForm) {
+            elements.eventDaySelect.value = '0';
+            elements.eventStartTime.value = '08:00';
+            elements.eventEndTime.value = '09:00';
+            elements.eventTitleInput.value = '';
+            document.querySelector('input[name="event-type"][value="busy"]').checked = true;
+            elements.recurringCheckbox.checked = false;
+            elements.deleteEventBtn.disabled = true;
+            updateFormValidity(elements.eventForm);
+        }
+        if(document.getElementById('event-modal-form')) {
+            elements.eventModalDaySelect.value = '0';
+            elements.eventModalStartTime.value = '08:00';
+            elements.eventModalEndTime.value = '09:00';
+            elements.eventModalTitleInput.value = '';
+            document.querySelector('#event-modal-form select[name="event-type"]').value = 'busy';
+            elements.eventModalRecurringCheckbox.checked = false;
+            elements.eventModalDeleteBtn.disabled = true;
+            updateFormValidity(document.getElementById('event-modal-form'));
+        }
     }
 
     // Clear all selected slots and active events
-    function clearSelection(resetSidebar = true) {
+    function clearSelection() {
         document.querySelectorAll('.time-slot.selected').forEach(s => s.classList.remove('selected'));
         state.selectedSlots.clear();
 
         document.querySelectorAll('.event-block.active-event').forEach(el => el.classList.remove('active-event'));
         state.activeEvent = null;
 
-        if (resetSidebar) {
-            updateSidebarUI('add');
-        }
+        clearForm();
     }
 
     // Utility functions for time manipulation and formatting
@@ -1004,34 +888,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const slotHeightValue = parseFloat(slotHeight);
 
         if (now < startOfWeek || now > endOfWeek) {
-            elements.currentTimeIndicatorDesktop.style.display = 'none';
-            elements.currentTimeIndicatorMobile.style.display = 'none';
+            elements.currentTimeIndicator.style.display = 'none';
             return;
         }
 
         const timeInMinutes = now.getHours() * 60 + now.getMinutes();
         if (timeInMinutes < 8 * 60 || timeInMinutes >= 23 * 60) {
-            elements.currentTimeIndicatorDesktop.style.display = 'none';
-            elements.currentTimeIndicatorMobile.style.display = 'none';
+            elements.currentTimeIndicator.style.display = 'none';
             return;
         }
 
         const top = ((timeInMinutes - 8 * 60) / 30) * slotHeightValue;
         
-        if (!state.isMobile) {
-            const desktopDayColumn = elements.dayColumnsDesktop[dayOfWeek];
-            if (desktopDayColumn) {
-                elements.currentTimeIndicatorDesktop.style.top = `${top}px`;
-                elements.currentTimeIndicatorDesktop.style.left = `${desktopDayColumn.offsetLeft}px`;
-                elements.currentTimeIndicatorDesktop.style.display = 'block';
-            }
-        } else {
-            const mobileDayColumn = elements.dayColumnsMobile[dayOfWeek];
-             if (mobileDayColumn) {
-                elements.currentTimeIndicatorMobile.style.top = `${top}px`;
-                elements.currentTimeIndicatorMobile.style.left = `${mobileDayColumn.offsetLeft}px`;
-                elements.currentTimeIndicatorMobile.style.display = 'block';
-            }
+        const dayColumn = document.querySelector(`.day-column[data-day="${dayOfWeek}"]`);
+        if (dayColumn) {
+            elements.currentTimeIndicator.style.top = `${top}px`;
+            elements.currentTimeIndicator.style.left = `${dayColumn.offsetLeft}px`;
+            elements.currentTimeIndicator.style.display = 'block';
         }
     }
 
