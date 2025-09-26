@@ -15,7 +15,29 @@ document.addEventListener('DOMContentLoaded', () => {
         isMobile: window.innerWidth < 992,
         isDragging: false,
         dragStartSlot: null,
+        // Draggable FAB state
+        isFabDragging: false,
+        fabOffsetX: 0,
+        fabOffsetY: 0,
     };
+    
+    // API Service to encapsulate all fetch calls
+    const apiService = {
+        fetchUserGroups: async () => {
+            const token = localStorage.getItem('piRateToken');
+            if (!token) {
+                throw new Error('No authentication token found.');
+            }
+            const response = await fetch(`${API_BASE_URL}/groups/my-groups`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) {
+                throw new Error('Failed to fetch user groups.');
+            }
+            return response.json();
+        }
+    };
+
 
     // DOM Elements: Centralized access to all DOM elements
     const elements = {
@@ -131,24 +153,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // API Service to encapsulate all fetch calls
-    const apiService = {
-        fetchUserGroups: async () => {
-            const token = localStorage.getItem('piRateToken');
-            if (!token) {
-                throw new Error('No authentication token found.');
-            }
-            const response = await fetch(`${API_BASE_URL}/groups/my-groups`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!response.ok) {
-                throw new Error('Failed to fetch user groups.');
-            }
-            return response.json();
-        }
-    };
-
-
     // Fetch user groups to determine group context
     async function fetchUserGroups() {
         try {
@@ -284,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
             state.allEvents = state.allEvents.filter(e => e._id !== eventId);
             clearSelection();
             renderEventsForWeek();
-            showNotification('მოვლენა წარმატებით წაშალა!', 'success');
+            showNotification('მოვლენა წარმატებით წაიშალა!', 'success');
 
             if (isMobile) {
                 elements.eventModalBackdrop.classList.add('hidden');
@@ -628,6 +632,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 elements.eventModalBackdrop.classList.remove('hidden');
                 clearMobileForm();
             });
+            // Draggable FAB for mobile
+            elements.addEventFab.addEventListener('mousedown', startFabDrag);
+            elements.addEventFab.addEventListener('touchstart', startFabDrag, { passive: false });
+            document.addEventListener('mousemove', dragFab);
+            document.addEventListener('touchmove', dragFab, { passive: false });
+            document.addEventListener('mouseup', endFabDrag);
+            document.addEventListener('touchend', endFabDrag);
         }
 
         if (elements.eventModalBackdrop) {
@@ -644,10 +655,46 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     }
+    
+    // Draggable FAB logic
+    function startFabDrag(e) {
+        if (!state.isMobile) return;
+        state.isFabDragging = true;
+        const touch = e.touches ? e.touches[0] : e;
+        state.fabOffsetX = touch.clientX - elements.addEventFab.getBoundingClientRect().left;
+        state.fabOffsetY = touch.clientY - elements.addEventFab.getBoundingClientRect().top;
+        e.preventDefault();
+    }
+    
+    function dragFab(e) {
+        if (!state.isFabDragging) return;
+        const touch = e.touches ? e.touches[0] : e;
+        const newX = touch.clientX - state.fabOffsetX;
+        const newY = touch.clientY - state.fabOffsetY;
+        elements.addEventFab.style.left = `${newX}px`;
+        elements.addEventFab.style.top = `${newY}px`;
+        elements.addEventFab.style.right = 'auto';
+        elements.addEventFab.style.bottom = 'auto';
+        e.preventDefault();
+    }
+    
+    function endFabDrag() {
+        state.isFabDragging = false;
+    }
+
 
     // Handle window resize event to toggle mobile/desktop view
     function handleResize() {
         state.isMobile = window.innerWidth < 992;
+        
+        // This makes the entire page scrollable on mobile
+        if (state.isMobile) {
+            document.body.style.overflowY = 'auto';
+            document.querySelector('.page-wrapper').style.height = 'auto';
+        } else {
+            document.body.style.overflowY = 'hidden';
+            document.querySelector('.page-wrapper').style.height = `calc(100vh - var(--header-height))`;
+        }
         
         if (state.isMobile) {
             elements.gridWrapperDesktop.classList.add('hidden');
