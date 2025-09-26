@@ -1,4 +1,3 @@
-
 // file: client/calendar/calendar.js
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = '/api';
@@ -13,7 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
         userGroups: [],
         isRecurring: false,
         activeDayIndex: (new Date().getDay() + 6) % 7,
-        currentView: 'week',
         isMobile: window.innerWidth < 992,
         isDragging: false,
         dragStartSlot: null,
@@ -21,9 +19,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // DOM Elements: Centralized access to all DOM elements
     const elements = {
-        timeColumn: document.getElementById('time-column'),
-        dayViewTimeColumn: document.getElementById('day-view-time-column'),
-        dayColumns: document.querySelectorAll('.day-column'),
+        timeColumnDesktop: document.getElementById('time-column-desktop'),
+        dayColumnsDesktop: document.querySelectorAll('#desktop-calendar-container .day-column'),
+        timeColumnMobile: document.getElementById('time-column'),
+        dayColumnsMobile: document.querySelectorAll('#mobile-calendar-container .day-column'),
         weekDisplay: document.getElementById('current-week-display'),
         prevWeekBtn: document.getElementById('prev-week-btn'),
         nextWeekBtn: document.getElementById('next-week-btn'),
@@ -36,17 +35,15 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteEventBtn: document.getElementById('delete-event-btn'),
         recurringCheckbox: document.getElementById('recurring-event-checkbox'),
         recurringLabelText: document.getElementById('recurring-label-text'),
-        gridWrapper: document.querySelector('.calendar-grid-wrapper'),
-        currentTimeIndicator: document.getElementById('current-time-indicator'),
-        dayViewCurrentTimeIndicator: document.getElementById('day-view-current-time-indicator'),
+        gridWrapperDesktop: document.getElementById('desktop-calendar-container'),
+        gridWrapperMobile: document.getElementById('mobile-calendar-container'),
+        currentTimeIndicatorDesktop: document.getElementById('desktop-time-indicator'),
+        currentTimeIndicatorMobile: document.getElementById('current-time-indicator'),
         eventForm: document.getElementById('event-form'),
         eventDaySelect: document.getElementById('event-day-select'),
         eventStartTime: document.getElementById('event-start-time'),
         eventEndTime: document.getElementById('event-end-time'),
         eventTitleInput: document.getElementById('event-title-input'),
-        addEventFab: document.getElementById('add-event-fab'),
-        eventModalBackdrop: document.getElementById('event-modal-backdrop'),
-        mobileDayNav: document.getElementById('mobile-day-nav'),
         mobileDaySelect: document.getElementById('mobile-day-select'),
         mobileStartTime: document.getElementById('mobile-start-time'),
         mobileEndTime: document.getElementById('mobile-end-time'),
@@ -55,12 +52,10 @@ document.addEventListener('DOMContentLoaded', () => {
         mobileSaveBtn: document.getElementById('mobile-save-btn'),
         mobileDeleteBtn: document.getElementById('mobile-delete-btn'),
         sidebarToggle: document.getElementById('sidebar-toggle'),
-        dayViewBtn: document.getElementById('day-view-btn'),
-        weekViewBtn: document.getElementById('week-view-btn'),
-        weekViewGrid: document.querySelector('.calendar-grid.week-view'),
-        dayViewGrid: document.querySelector('.calendar-grid.day-view'),
         calendarSidebar: document.querySelector('.calendar-sidebar'),
-        selectionTimeRange: document.getElementById('selection-time-range')
+        selectionTimeRange: document.getElementById('selection-time-range'),
+        addEventFab: document.querySelector('.fab'),
+        eventModalBackdrop: document.getElementById('event-modal-backdrop'),
     };
 
     // Notification toast function
@@ -115,7 +110,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function initializeCalendar() {
         try {
             await fetchUserGroups();
-            generateTimeSlots();
+            generateTimeSlots(elements.timeColumnDesktop, elements.dayColumnsDesktop);
+            generateTimeSlots(elements.timeColumnMobile, elements.dayColumnsMobile);
             await fetchEvents();
             renderAll();
             addEventListeners();
@@ -134,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fetch user groups to determine group context
     async function fetchUserGroups() {
         try {
-            const groupsData = await apiFetch('/groups/my-groups');
+            const groupsData = await apiService.fetchUserGroups();
             state.userGroups = groupsData || [];
         } catch (error) {
             console.error('Failed to load user groups:', error);
@@ -278,15 +274,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Generate time slots for the calendar grid
-    function generateTimeSlots() {
-        const timeColumn = elements.timeColumn;
-        const dayViewTimeColumn = elements.dayViewTimeColumn;
+    function generateTimeSlots(timeColumn, dayColumns) {
+        if (!timeColumn || !dayColumns || dayColumns.length === 0) return;
         
-        // Clear existing time slots
         timeColumn.innerHTML = '';
-        if (dayViewTimeColumn) dayViewTimeColumn.innerHTML = '';
+        dayColumns.forEach(column => column.innerHTML = '');
 
-        // Generate time labels for main view
+        // Generate time labels
         for (let hour = 8; hour < 23; hour++) {
             const timeLabel = document.createElement('div');
             timeLabel.className = 'time-label';
@@ -294,37 +288,8 @@ document.addEventListener('DOMContentLoaded', () => {
             timeColumn.appendChild(timeLabel);
         }
 
-        // Generate time labels for day view
-        if (dayViewTimeColumn) {
-            for (let hour = 8; hour < 23; hour++) {
-                const dayViewTimeLabel = document.createElement('div');
-                dayViewTimeLabel.className = 'time-label';
-                dayViewTimeLabel.textContent = formatTime(`${hour}:00`, false);
-                dayViewTimeColumn.appendChild(dayViewTimeLabel);
-            }
-        }
-
-        // Generate time slots for week view
-        elements.dayColumns.forEach((column, dayIndex) => {
-            column.innerHTML = '';
-            column.dataset.day = dayIndex;
-            for (let hour = 8; hour < 23; hour++) {
-                for (let minute = 0; minute < 60; minute += 30) {
-                    const timeSlot = document.createElement('div');
-                    timeSlot.className = 'time-slot';
-                    const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-                    timeSlot.dataset.time = time;
-                    timeSlot.dataset.day = dayIndex.toString();
-                    column.appendChild(timeSlot);
-                }
-            }
-        });
-
-        // Generate time slots for day view
-        const dayViewColumns = document.querySelectorAll('.day-view .day-column');
-        dayViewColumns.forEach((column, dayIndex) => {
-            column.innerHTML = '';
-            column.dataset.day = dayIndex;
+        // Generate time slots
+        dayColumns.forEach((column, dayIndex) => {
             for (let hour = 8; hour < 23; hour++) {
                 for (let minute = 0; minute < 60; minute += 30) {
                     const timeSlot = document.createElement('div');
@@ -345,9 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderMiniCalendar();
         renderEventsForWeek();
         updateSidebarUI('add');
-        if (state.isMobile) {
-            updateActiveDayForMobile();
-        }
+        handleResize();
     }
 
     function renderWeekDisplay() {
@@ -363,7 +326,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        document.querySelectorAll('.day-column-header').forEach((header, index) => {
+        const dayHeadersDesktop = document.querySelectorAll('#desktop-calendar-container .day-column-header');
+        const dayHeadersMobile = document.querySelectorAll('#mobile-calendar-container .day-column-header');
+        
+        dayHeadersDesktop.forEach((header, index) => {
+            const headerDate = new Date(startOfWeek);
+            headerDate.setDate(headerDate.getDate() + index);
+            if (header.querySelector('.day-number')) {
+                header.querySelector('.day-number').textContent = headerDate.getDate();
+            }
+            if (headerDate.toDateString() === today.toDateString()) {
+                header.classList.add('current-day-header');
+            } else {
+                header.classList.remove('current-day-header');
+            }
+        });
+
+        dayHeadersMobile.forEach((header, index) => {
             const headerDate = new Date(startOfWeek);
             headerDate.setDate(headerDate.getDate() + index);
             if (header.querySelector('.day-number')) {
@@ -430,12 +409,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.querySelectorAll('.event-block').forEach(el => el.remove());
 
+        const dayColumns = state.isMobile ? elements.dayColumnsMobile : elements.dayColumnsDesktop;
+
         for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
             const currentDayDate = new Date(startOfWeek);
             currentDayDate.setDate(currentDayDate.getDate() + dayIndex);
             const dayStr = currentDayDate.toISOString().split('T')[0];
-            const dayColumn = document.querySelector(`.week-view .day-column[data-day="${dayIndex}"]`);
-            const dayViewColumn = document.querySelector(`.day-view .day-column[data-day="${dayIndex}"]`);
+            const dayColumn = dayColumns[dayIndex];
 
             state.allEvents.forEach(event => {
                 if (event.title && event.title.startsWith('DELETED:')) return;
@@ -470,9 +450,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (render) {
                     renderEventBlock({ ...event, startTime: startTimeStr, endTime: endTimeStr }, dayColumn, isException, slotHeightValue);
-                    if (dayViewColumn && dayIndex === state.activeDayIndex) {
-                        renderEventBlock({ ...event, startTime: startTimeStr, endTime: endTimeStr }, dayViewColumn, isException, slotHeightValue);
-                    }
                 }
             });
         }
@@ -544,15 +521,6 @@ document.addEventListener('DOMContentLoaded', () => {
             renderMiniCalendar();
         });
 
-        elements.mobileDayNav.querySelectorAll('.mobile-day-nav-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const dayIndex = parseInt(btn.dataset.day);
-                state.activeDayIndex = dayIndex;
-                updateActiveDayForMobile();
-                renderEventsForWeek();
-            });
-        });
-
         elements.eventForm.addEventListener('submit', (e) => {
             e.preventDefault();
             saveEvent(false);
@@ -583,12 +551,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        const calendarGrid = document.querySelector('.calendar-grid-wrapper');
-        if (calendarGrid) {
-            calendarGrid.addEventListener('mousedown', handleMouseDown);
-            calendarGrid.addEventListener('mouseup', handleMouseUp);
-            calendarGrid.addEventListener('mousemove', handleMouseMove);
+        // Event listeners for desktop drag-and-drop selection
+        if (elements.gridWrapperDesktop) {
+            elements.gridWrapperDesktop.addEventListener('mousedown', handleMouseDown);
+            elements.gridWrapperDesktop.addEventListener('mouseup', handleMouseUp);
+            elements.gridWrapperDesktop.addEventListener('mousemove', handleMouseMove);
         }
+        
+        // Event listeners for mobile drag-and-drop selection
+        if (elements.gridWrapperMobile) {
+             elements.gridWrapperMobile.addEventListener('mousedown', handleMouseDown);
+             elements.gridWrapperMobile.addEventListener('mouseup', handleMouseUp);
+             elements.gridWrapperMobile.addEventListener('mousemove', handleMouseMove);
+        }
+
 
         elements.eventDaySelect.addEventListener('change', updateFormValidity);
         elements.eventStartTime.addEventListener('change', updateFormValidity);
@@ -620,86 +596,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 elements.calendarSidebar.classList.toggle('expanded');
             });
         }
-
-        if (elements.dayViewBtn && elements.weekViewBtn) {
-            elements.dayViewBtn.addEventListener('click', () => {
-                if (state.currentView !== 'day') {
-                    state.currentView = 'day';
-                    updateView();
-                }
-            });
-
-            elements.weekViewBtn.addEventListener('click', () => {
-                if (state.currentView !== 'week') {
-                    state.currentView = 'week';
-                    updateView();
-                }
-            });
-        }
-    }
-    
-    // Update the active day for mobile view
-    function updateActiveDayForMobile() {
-        document.querySelectorAll('.mobile-day-nav-btn').forEach(btn => btn.classList.remove('active'));
-        const activeBtn = document.querySelector(`.mobile-day-nav-btn[data-day="${state.activeDayIndex}"]`);
-        if (activeBtn) activeBtn.classList.add('active');
-
-        document.querySelectorAll('.day-view .day-column-header').forEach(header => {
-            header.classList.remove('active');
-            if (parseInt(header.dataset.dayHeader) === state.activeDayIndex) {
-                header.classList.add('active');
-            }
-        });
-
-        document.querySelectorAll('.day-view .day-column').forEach(column => {
-            column.classList.remove('active');
-            if (parseInt(column.dataset.day) === state.activeDayIndex) {
-                column.classList.add('active');
-            }
-        });
-
-        const startOfWeek = getStartOfWeek(state.mainViewDate);
-        const headerDate = new Date(startOfWeek);
-        headerDate.setDate(headerDate.getDate() + state.activeDayIndex);
-        
-        const dayViewHeader = document.querySelector('.day-view .day-column-header.active');
-        if (dayViewHeader && dayViewHeader.querySelector('.day-number')) {
-            dayViewHeader.querySelector('.day-number').textContent = headerDate.getDate();
-        }
     }
 
-    // Handle window resize event to toggle mobile view
+    // Handle window resize event to toggle mobile/desktop view
     function handleResize() {
         state.isMobile = window.innerWidth < 992;
         
         if (state.isMobile) {
-            elements.mobileDayNav.classList.remove('hidden');
-            if (state.currentView === 'week') {
-                state.currentView = 'day';
-                updateView();
-            }
+            elements.gridWrapperDesktop.classList.add('hidden');
+            elements.gridWrapperMobile.classList.remove('hidden');
+            elements.addEventFab.classList.remove('hidden');
         } else {
-            elements.mobileDayNav.classList.add('hidden');
-            if (state.currentView === 'day') {
-                state.currentView = 'week';
-                updateView();
-            }
-        }
-    }
-
-    // Toggle between day and week view
-    function updateView() {
-        if (state.currentView === 'week') {
-            elements.weekViewGrid.classList.remove('hidden');
-            elements.dayViewGrid.classList.add('hidden');
-            elements.weekViewBtn.classList.add('active');
-            elements.dayViewBtn.classList.remove('active');
-        } else {
-            elements.weekViewGrid.classList.add('hidden');
-            elements.dayViewGrid.classList.remove('hidden');
-            elements.weekViewBtn.classList.remove('active');
-            elements.dayViewBtn.classList.add('active');
-            updateActiveDayForMobile();
+            elements.gridWrapperDesktop.classList.remove('hidden');
+            elements.gridWrapperMobile.classList.add('hidden');
+            elements.addEventFab.classList.add('hidden');
         }
         renderEventsForWeek();
     }
@@ -708,11 +618,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleMouseDown(e) {
         const targetSlot = e.target.closest('.time-slot');
         if (!targetSlot) {
-            clearSelection();
-            return;
-        }
-
-        if (state.isMobile && parseInt(targetSlot.dataset.day) !== state.activeDayIndex) {
             clearSelection();
             return;
         }
@@ -787,31 +692,16 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.eventStartTime.value = startTime;
         elements.eventEndTime.value = endTime;
 
-        // Update selection display panel
-        elements.selectionTimeRange.textContent = `${formatTime(startTime)} - ${formatTime(endTime)}`;
-
+        if (state.isMobile) {
+            elements.mobileDaySelect.value = firstSlot.dataset.day;
+            elements.mobileStartTime.value = startTime;
+            elements.mobileEndTime.value = endTime;
+            if (elements.selectionTimeRange) {
+                elements.selectionTimeRange.textContent = `${formatTime(startTime)} - ${formatTime(endTime)}`;
+            }
+        }
         updateFormValidity();
     }
-
-    // Toggle selected time slots
-    function toggleSlotSelection(e) {
-        const targetSlot = e.target.closest('.time-slot');
-        if (!targetSlot) return;
-        
-        if (state.isMobile && parseInt(targetSlot.dataset.day) !== state.activeDayIndex) {
-            return;
-        }
-
-        if (targetSlot.classList.contains('selected')) {
-            targetSlot.classList.remove('selected');
-            state.selectedSlots.delete(targetSlot);
-        } else {
-            targetSlot.classList.add('selected');
-            state.selectedSlots.add(targetSlot);
-        }
-        updateFormWithSelection();
-    }
-
     // Handle click on an existing event block
     function handleEventClick(eventData) {
         clearSelection(false);
@@ -916,7 +806,6 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.eventTitleInput.value = '';
         document.querySelector('input[name="event-type"][value="busy"]').checked = true;
         elements.recurringCheckbox.checked = false;
-        elements.selectionTimeRange.textContent = 'აირჩიეთ დრო კალენდარზე';
         updateFormValidity();
     }
 
@@ -926,7 +815,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.mobileStartTime.value = '08:00';
         elements.mobileEndTime.value = '09:00';
         elements.mobileEventTitleInput.value = '';
-        elements.mobileEventTypeSelect.value = 'busy';
+        mobileEventTypeSelect.value = 'busy';
         elements.mobileRecurringCheckbox.checked = false;
         elements.mobileDeleteBtn.disabled = true;
         updateMobileFormValidity();
@@ -1021,32 +910,34 @@ document.addEventListener('DOMContentLoaded', () => {
         const slotHeightValue = parseFloat(slotHeight);
 
         if (now < startOfWeek || now > endOfWeek) {
-            elements.currentTimeIndicator.style.display = 'none';
-            if (elements.dayViewCurrentTimeIndicator) elements.dayViewCurrentTimeIndicator.style.display = 'none';
+            elements.currentTimeIndicatorDesktop.style.display = 'none';
+            elements.currentTimeIndicatorMobile.style.display = 'none';
             return;
         }
 
         const timeInMinutes = now.getHours() * 60 + now.getMinutes();
         if (timeInMinutes < 8 * 60 || timeInMinutes >= 23 * 60) {
-            elements.currentTimeIndicator.style.display = 'none';
-            if (elements.dayViewCurrentTimeIndicator) elements.dayViewCurrentTimeIndicator.style.display = 'none';
+            elements.currentTimeIndicatorDesktop.style.display = 'none';
+            elements.currentTimeIndicatorMobile.style.display = 'none';
             return;
         }
 
         const top = ((timeInMinutes - 8 * 60) / 30) * slotHeightValue;
         
-        // Update week view indicator
-        const weekViewDayColumn = document.querySelector(`.week-view .day-column[data-day="${dayOfWeek}"]`);
-        if (weekViewDayColumn) {
-            elements.currentTimeIndicator.style.top = `${top}px`;
-            elements.currentTimeIndicator.style.left = `${weekViewDayColumn.offsetLeft}px`;
-            elements.currentTimeIndicator.style.display = 'block';
-        }
-
-        // Update day view indicator if applicable
-        if (elements.dayViewCurrentTimeIndicator && dayOfWeek === state.activeDayIndex) {
-            elements.dayViewCurrentTimeIndicator.style.top = `${top}px`;
-            elements.dayViewCurrentTimeIndicator.style.display = 'block';
+        if (!state.isMobile) {
+            const desktopDayColumn = elements.dayColumnsDesktop[dayOfWeek];
+            if (desktopDayColumn) {
+                elements.currentTimeIndicatorDesktop.style.top = `${top}px`;
+                elements.currentTimeIndicatorDesktop.style.left = `${desktopDayColumn.offsetLeft}px`;
+                elements.currentTimeIndicatorDesktop.style.display = 'block';
+            }
+        } else {
+            const mobileDayColumn = elements.dayColumnsMobile[dayOfWeek];
+             if (mobileDayColumn) {
+                elements.currentTimeIndicatorMobile.style.top = `${top}px`;
+                elements.currentTimeIndicatorMobile.style.left = `${mobileDayColumn.offsetLeft}px`;
+                elements.currentTimeIndicatorMobile.style.display = 'block';
+            }
         }
     }
 
