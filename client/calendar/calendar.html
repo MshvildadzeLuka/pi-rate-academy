@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ka">
 <head>
@@ -7,12 +6,12 @@
     <title>კალენდარი | Pi-Rate Academy</title>
     <link rel="stylesheet" href="/assets/css/global.css">
     <script src="/assets/js/auth.js" defer></script>
-
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
+    
     <link rel="stylesheet" href="/header/header.css">
     <link rel="stylesheet" href="/calendar/calendar.css">
 </head>
@@ -25,14 +24,14 @@
             <div class="sidebar-toggle" id="sidebar-toggle">
                 <i class="fas fa-chevron-down"></i>
             </div>
-
+            
             <div id="mini-calendar">
                 <div class="mini-calendar-header">
-                    <button id="mini-cal-prev-month-desktop" aria-label="წინა თვე">
+                    <button id="mini-cal-prev-month" aria-label="წინა თვე">
                         <i class="fas fa-chevron-left"></i>
                     </button>
                     <h2 id="mini-cal-month-year"></h2>
-                    <button id="mini-cal-next-month-desktop" aria-label="შემდეგი თვე">
+                    <button id="mini-cal-next-month" aria-label="შემდეგი თვე">
                         <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
@@ -110,29 +109,6 @@
         </aside>
 
         <main class="main-calendar-view">
-            <!-- Mobile-first Calendar Layout -->
-            <div id="mini-calendar-mobile">
-                <div class="mini-calendar-header">
-                    <button id="mini-cal-prev-month-mobile" aria-label="წინა თვე">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    <h2 id="mini-cal-month-year-mobile"></h2>
-                    <button id="mini-cal-next-month-mobile" aria-label="შემდეგი თვე">
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
-                <div class="mini-calendar-weekdays">
-                    <div>ორშ</div>
-                    <div>სამ</div>
-                    <div>ოთხ</div>
-                    <div>ხუთ</div>
-                    <div>პარ</div>
-                    <div>შაბ</div>
-                    <div>კვი</div>
-                </div>
-                <div id="mini-calendar-days-mobile" class="mini-calendar-days"></div>
-            </div>
-
             <div class="calendar-header">
                 <button id="today-btn" class="today-btn">დღეს</button>
                 <div class="week-nav">
@@ -144,9 +120,12 @@
                         <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
+                <div class="view-toggle">
+                    <button id="day-view-btn" class="view-toggle-btn active">დღე</button>
+                    <button id="week-view-btn" class="view-toggle-btn">კვირა</button>
+                </div>
             </div>
-
-            <!-- Mobile Day Navigation -->
+    
             <div id="mobile-day-nav" class="mobile-day-nav">
                 <button class="mobile-day-nav-btn" data-day="0">ორშ</button>
                 <button class="mobile-day-nav-btn" data-day="1">სამ</button>
@@ -156,7 +135,7 @@
                 <button class="mobile-day-nav-btn" data-day="5">შაბ</button>
                 <button class="mobile-day-nav-btn" data-day="6">კვი</button>
             </div>
-
+            
             <div class="calendar-grid-wrapper">
                 <div class="calendar-grid week-view">
                     <div id="current-time-indicator" class="current-time-indicator"></div>
@@ -189,7 +168,7 @@
                         <span class="day-name">კვი</span>
                         <span class="day-number"></span>
                     </div>
-
+                    
                     <div class="time-column" id="time-column"></div>
                     <div class="day-column" data-day="0"></div>
                     <div class="day-column" data-day="1"></div>
@@ -200,14 +179,14 @@
                     <div class="day-column" data-day="6"></div>
                 </div>
 
-                <div class="calendar-grid day-view">
+                <div class="calendar-grid day-view hidden">
                     <div id="day-view-current-time-indicator" class="current-time-indicator"></div>
                     <div class="grid-header time-column-header"></div>
                     <div class="grid-header day-column-header" data-day-header="0">
                         <span class="day-name">ორშ</span>
                         <span class="day-number"></span>
                     </div>
-
+                    
                     <div class="time-column" id="day-view-time-column"></div>
                     <div class="day-column" data-day="0"></div>
                 </div>
@@ -218,7 +197,7 @@
     <button id="add-event-fab" class="fab" aria-label="ახალი მოვლენის დამატება">
         <i class="fas fa-plus"></i>
     </button>
-
+    
     <div id="event-modal-backdrop" class="modal-overlay hidden">
         <div id="mobile-event-modal" class="modal">
             <div class="modal-header">
@@ -226,7 +205,7 @@
                 <div id="selection-panel">
                     <h3>არჩეული დრო</h3>
                     <p id="selection-time-range">აირჩიეთ დრო კალენდარზე</p>
-                </div>
+                </div>   
                 <button class="close-modal-btn" aria-label="დახურვა">
                     <i class="fas fa-times"></i>
                 </button>
@@ -285,7 +264,7 @@
             </div>
         </div>
     </div>
-
+    
     <script src="/header/header.js"></script>
     <script src="/calendar/calendar.js"></script>
 </body>
