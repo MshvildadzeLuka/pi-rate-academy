@@ -94,6 +94,21 @@ body {
   border-bottom: 1.5px solid var(--background-tertiary);
 }
 
+#mobile-header-controls {
+    display: none; /* Hidden on desktop */
+    flex-direction: column;
+    gap: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--background-tertiary);
+    background-color: var(--background-primary);
+}
+
+#mobile-mini-calendar {
+  padding: 0;
+  background-color: var(--background-primary);
+  border-bottom: none;
+}
+
 .mini-calendar-header {
   display: flex;
   justify-content: space-between;
@@ -101,13 +116,13 @@ body {
   margin-bottom: 20px;
   color: var(--text-primary);
 }
-#mini-cal-month-year {
+#mini-cal-month-year, #mobile-mini-cal-month-year {
   font-size: 1.3rem;
   font-weight: 600;
   text-align: center;
   flex: 1;
 }
-#mini-cal-prev-month, #mini-cal-next-month {
+#mini-cal-prev-month, #mini-cal-next-month, #mobile-mini-cal-prev-month, #mobile-mini-cal-next-month {
   background: none;
   border: none;
   color: var(--text-secondary);
@@ -119,11 +134,11 @@ body {
   align-items: center;
   justify-content: center;
 }
-#mini-cal-prev-month:hover, #mini-cal-next-month:hover {
+#mini-cal-prev-month:hover, #mini-cal-next-month:hover, #mobile-mini-cal-prev-month:hover, #mobile-mini-cal-next-month:hover {
   background-color: var(--background-tertiary);
   color: var(--primary-accent);
 }
-#mini-cal-prev-month i, #mini-cal-next-month i {
+#mini-cal-prev-month i, #mini-cal-next-month i, #mobile-mini-cal-prev-month i, #mobile-mini-cal-next-month i {
   font-size: 1.2rem;
   width: 24px;
   height: 24px;
@@ -907,6 +922,10 @@ select:focus {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
+  }
+
+  #mobile-header-controls {
+      display: flex;
   }
   
   .calendar-header {
