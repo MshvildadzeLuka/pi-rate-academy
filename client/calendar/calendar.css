@@ -1,3 +1,4 @@
+
 :root {
   /* Reverted to original global dark theme colors */
   --background-primary: #121212;
@@ -33,55 +34,64 @@ body {
 
 /* Page Layout */
 .page-wrapper {
-  display: flex;
-  height: calc(100vh - var(--header-height));
-  padding: 0;
-  gap: 0;
-  position: relative;
+    display: flex;
+    height: auto;
+    padding: 0;
+    gap: 0;
+    position: relative;
+    min-height: calc(100vh - var(--header-height));
 }
 
 /* Sidebar */
 .calendar-sidebar {
-  width: 380px;
-  flex-shrink: 0;
-  background-color: var(--background-secondary);
-  border-right: 1px solid var(--background-tertiary);
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
-  transition: transform var(--transition-speed) ease;
-  z-index: 20;
-  position: relative;
+    width: 380px;
+    flex-shrink: 0;
+    background-color: var(--background-secondary);
+    border-right: 1px solid var(--background-tertiary);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+    z-index: 20;
+    position: relative;
+    /* Collapsible styles */
+    position: absolute;
+    height: 100%;
+    top: 0;
+    left: 0;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+}
+.calendar-sidebar.open {
+    transform: translateX(0);
+}
+.sidebar-close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    z-index: 25;
 }
 .add-event-btn {
-    display: none;
+    display: flex;
 }
 .sidebar-toggle {
-  display: none;
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background-color: var(--background-tertiary);
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 25;
+    display: none;
 }
 
 /* Main Calendar View */
 .main-calendar-view {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 25px 35px;
-  overflow: hidden;
-  background-color: var(--background-primary);
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 25px 35px;
+    overflow: hidden;
+    background-color: var(--background-primary);
 }
 
 #mobile-calendar-controls {
@@ -374,14 +384,14 @@ select:focus {
 .calendar-grid-wrapper .time-column {
     position: sticky;
     left: 0;
-    z-index: 12;
+    z-index: 12; /* This is the key fix for the z-index issue */
     background-color: var(--background-secondary);
     box-shadow: 1px 0 5px rgba(0, 0, 0, 0.2);
     border-right: 1px solid var(--background-tertiary);
 }
 
 .calendar-grid {
-  grid-template-columns: 80px repeat(7, minmax(100px, 1fr));
+  grid-template-columns: var(--time-column-width) repeat(7, minmax(100px, 1fr));
   min-width: 0;
 }
 
@@ -769,90 +779,67 @@ select:focus {
 /* Mobile Responsive Styles */
 @media (min-width: 1200px) {
   body {
-    overflow-y: auto !important;
-    height: auto;
+    overflow-y: hidden;
   }
   .page-wrapper {
-    flex-direction: column;
-    height: auto;
+    min-height: calc(100vh - var(--header-height));
   }
   .main-calendar-view {
-    height: auto;
-  }
-  .add-event-btn {
-    display: flex;
-  }
-  .calendar-sidebar {
-    display: flex;
+    padding-left: 25px;
   }
 }
 
 @media (max-width: 1200px) {
-  .add-event-btn, .calendar-sidebar {
+    .calendar-sidebar {
+        width: 100%;
+        height: 100%;
+        max-width: 380px;
+        min-height: 100vh;
+        border-right: none;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+    }
+    .add-event-btn, .calendar-sidebar {
       display: none;
-  }
-  .fab {
+    }
+    .fab {
       display: flex;
-  }
-}
-
-
-@media (max-width: 992px) {
-    #calendar-main-grid {
-        height: auto;
     }
-    body {
-        overflow-y: auto;
-        height: auto;
+    .page-wrapper.sidebar-open .calendar-sidebar {
+        z-index: 50;
     }
-    .page-wrapper {
-        height: auto;
+    .page-wrapper.sidebar-open .main-calendar-view {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+    .sidebar-close-btn {
+        display: block;
     }
     .main-calendar-view {
         padding: 15px;
-        height: auto;
     }
-
-    #calendar-main-grid {
-        height: auto;
-    }
-    .calendar-grid {
-        min-width: 900px;
-    }
-    
-    .calendar-grid-wrapper {
-        overflow-x: auto;
-        overflow-y: auto;
-    }
-    
     .calendar-header {
         flex-direction: column;
         align-items: center;
+        gap: 15px;
     }
-    
     .week-nav {
+        flex-direction: row;
         width: 100%;
         justify-content: space-between;
     }
-    .add-event-btn {
-        display: none;
+    #current-week-display {
+        font-size: 1.4rem;
+        min-width: auto;
     }
-
     .calendar-grid {
-        display: grid;
-        background-color: var(--background-secondary);
-        position: relative;
-        height: 100%;
-        grid-template-columns: 80px repeat(7, minmax(100px, 1fr));
+        min-width: 600px;
     }
-    .calendar-grid-wrapper .time-column-header,
-    .calendar-grid-wrapper .time-column {
-        position: sticky;
-        left: 0;
-        z-index: 12; 
-        background-color: var(--background-secondary);
-        box-shadow: 1px 0 5px rgba(0, 0, 0, 0.2);
-        border-right: 1px solid var(--background-tertiary);
+    .time-column-header, .time-column {
+        width: 60px;
+    }
+    .current-time-indicator {
+        width: calc(100% - 60px);
+        left: 60px;
     }
     .day-column-header .day-number {
         font-size: 1.3rem;
@@ -875,40 +862,26 @@ select:focus {
         font-size: 0.75rem;
         padding: 4px 6px;
     }
-    .current-time-indicator {
-        width: calc(100% - 80px);
-        left: 80px;
-    }
-    #mobile-calendar-controls {
-        display: flex;
-    }
 }
 @media (max-width: 768px) {
-    .main-calendar-view {
-        padding: 15px;
-    }
     .week-nav {
         flex-direction: column;
-        width: 100%;
+        align-items: center;
     }
-    #current-week-display {
+    .week-nav h2 {
         order: -1;
-        font-size: 1.4rem;
-    }
-    .calendar-grid {
-        min-width: 600px;
-    }
-    .time-column-header, .time-column {
-        width: 60px;
-    }
-    .current-time-indicator {
-        width: calc(100% - 60px);
-        left: 60px;
+        margin-bottom: 10px;
     }
 }
 @media (max-width: 480px) {
     .calendar-grid {
         grid-template-columns: 60px repeat(7, minmax(60px, 1fr));
         min-width: 500px;
+    }
+    #mini-calendar {
+        display: none;
+    }
+    .calendar-sidebar {
+        top: 0;
     }
 }
