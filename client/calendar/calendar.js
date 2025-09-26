@@ -1,3 +1,4 @@
+
 // file: client/calendar/calendar.js
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = '/api';
@@ -259,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderEventsForWeek();
             showNotification('მოვლენა წარმატებით შეინახა!', 'success');
             elements.eventModalBackdrop.classList.add('hidden');
-            if(!state.isMobile) elements.calendarSidebar.classList.remove('open');
+            elements.calendarSidebar.classList.remove('open');
         } catch (error) {
             console.error('მოვლენის შენახვა ვერ მოხერხდა:', error);
             showNotification('მოვლენის შენახვა ვერ მოხერხდა: ' + error.message, 'error');
@@ -286,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderEventsForWeek();
             showNotification('მოვლენა წარმატებით წაიშალა!', 'success');
             elements.eventModalBackdrop.classList.add('hidden');
-            if(!state.isMobile) elements.calendarSidebar.classList.remove('open');
+            elements.calendarSidebar.classList.remove('open');
         } catch (error) {
             console.error('Failed to delete event:', error);
             showNotification('მოვლენის წაშლა ვერ მოხერხდა: ' + error.message, 'error');
@@ -360,9 +361,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        if (state.isMobile) {
-            if (elements.mobileMiniCalHeader) elements.mobileMiniCalHeader.textContent = `${new Date(state.miniCalDate).toLocaleString('ka-GE', { month: 'long' })} ${state.miniCalDate.getFullYear()}`;
-        }
     }
 
     function renderMiniCalendar() {
@@ -565,6 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(elements.addEventDesktopBtn) {
             elements.addEventDesktopBtn.addEventListener('click', () => {
                 elements.calendarSidebar.classList.add('open');
+                elements.pageWrapper.classList.add('sidebar-open');
                 clearForm();
             });
         }
@@ -573,6 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.sidebarCloseBtn) {
             elements.sidebarCloseBtn.addEventListener('click', () => {
                 elements.calendarSidebar.classList.remove('open');
+                elements.pageWrapper.classList.remove('sidebar-open');
             });
         }
         
@@ -646,13 +646,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (isMobileView) {
             elements.addEventDesktopBtn.style.display = 'none';
-            elements.calendarSidebar.style.display = 'none';
             elements.addEventFab.classList.remove('hidden');
             // Ensure sidebar is closed on mobile
             elements.calendarSidebar.classList.remove('open');
         } else {
             elements.addEventDesktopBtn.style.display = 'flex';
-            elements.calendarSidebar.style.display = 'flex';
             elements.addEventFab.classList.add('hidden');
         }
     }
@@ -702,14 +700,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.selectedSlots.size > 0) {
             updateFormWithSelection();
         } else {
-            clearForm();
+            clearSelection();
         }
     }
 
     // Update form inputs with selected slots
     function updateFormWithSelection() {
         if (state.selectedSlots.size === 0) {
-            clearForm();
+            clearSelection();
             return;
         }
 
@@ -759,6 +757,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Populate the correct form based on screen size
         if (window.innerWidth > 1200) {
             elements.calendarSidebar.classList.add('open');
+            elements.pageWrapper.classList.add('sidebar-open');
             elements.eventDaySelect.value = dayOfWeek;
             elements.eventStartTime.value = startTime;
             elements.eventEndTime.value = endTime;
