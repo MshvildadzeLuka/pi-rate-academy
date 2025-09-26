@@ -1,4 +1,3 @@
-
 // file: client/calendar/calendar.js
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = '/api';
@@ -261,6 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotification('მოვლენა წარმატებით შეინახა!', 'success');
             elements.eventModalBackdrop.classList.add('hidden');
             elements.calendarSidebar.classList.remove('open');
+            elements.pageWrapper.classList.remove('sidebar-open');
         } catch (error) {
             console.error('მოვლენის შენახვა ვერ მოხერხდა:', error);
             showNotification('მოვლენის შენახვა ვერ მოხერხდა: ' + error.message, 'error');
@@ -288,6 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotification('მოვლენა წარმატებით წაიშალა!', 'success');
             elements.eventModalBackdrop.classList.add('hidden');
             elements.calendarSidebar.classList.remove('open');
+            elements.pageWrapper.classList.remove('sidebar-open');
         } catch (error) {
             console.error('Failed to delete event:', error);
             showNotification('მოვლენის წაშლა ვერ მოხერხდა: ' + error.message, 'error');
