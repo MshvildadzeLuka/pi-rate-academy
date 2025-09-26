@@ -28,8 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
         todayBtn: document.getElementById('today-btn'),
         miniCalHeader: document.getElementById('mini-cal-month-year'),
         miniCalDaysGrid: document.getElementById('mini-calendar-days'),
-        miniCalPrevBtn: document.getElementById('mini-cal-prev-month'),
-        miniCalNextBtn: document.getElementById('mini-cal-next-month'),
+        miniCalPrevBtn: document.getElementById('mini-cal-prev-month-desktop'),
+        miniCalNextBtn: document.getElementById('mini-cal-next-month-desktop'),
         saveEventBtn: document.getElementById('save-event-btn'),
         deleteEventBtn: document.getElementById('delete-event-btn'),
         recurringCheckbox: document.getElementById('recurring-event-checkbox'),
@@ -59,6 +59,8 @@ document.addEventListener('DOMContentLoaded', () => {
         dayViewGrid: document.querySelector('.calendar-grid.day-view'),
         miniCalHeaderMobile: document.getElementById('mini-cal-month-year-mobile'),
         miniCalDaysGridMobile: document.getElementById('mini-calendar-days-mobile'),
+        miniCalPrevBtnMobile: document.getElementById('mini-cal-prev-month-mobile'),
+        miniCalNextBtnMobile: document.getElementById('mini-cal-next-month-mobile'),
     };
 
     // Notification toast function
@@ -384,8 +386,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Render for both desktop and mobile mini-calendars
         const miniCalRenderers = [
-            { header: elements.miniCalHeader, days: elements.miniCalDaysGrid },
-            { header: elements.miniCalHeaderMobile, days: elements.miniCalDaysGridMobile },
+            { header: elements.miniCalHeader, days: elements.miniCalDaysGrid, prevBtn: elements.miniCalPrevBtn, nextBtn: elements.miniCalNextBtn },
+            { header: elements.miniCalHeaderMobile, days: elements.miniCalDaysGridMobile, prevBtn: elements.miniCalPrevBtnMobile, nextBtn: elements.miniCalNextBtnMobile },
         ];
 
         miniCalRenderers.forEach(renderer => {
@@ -426,10 +428,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     await fetchEvents();
                     if (state.isMobile) {
                         state.activeDayIndex = (currentDay.getDay() + 6) % 7;
-                        renderAll();
-                    } else {
-                        renderAll();
+                        updateActiveDayForMobile();
                     }
+                    renderAll();
                 });
 
                 renderer.days.appendChild(day);
@@ -588,15 +589,33 @@ document.addEventListener('DOMContentLoaded', () => {
             renderAll();
         });
 
-        elements.miniCalPrevBtn.addEventListener('click', () => {
-            state.miniCalDate.setMonth(state.miniCalDate.getMonth() - 1);
-            renderMiniCalendar();
-        });
+        if (elements.miniCalPrevBtn) {
+            elements.miniCalPrevBtn.addEventListener('click', () => {
+                state.miniCalDate.setMonth(state.miniCalDate.getMonth() - 1);
+                renderMiniCalendar();
+            });
+        }
 
-        elements.miniCalNextBtn.addEventListener('click', () => {
-            state.miniCalDate.setMonth(state.miniCalDate.getMonth() + 1);
-            renderMiniCalendar();
-        });
+        if (elements.miniCalNextBtn) {
+            elements.miniCalNextBtn.addEventListener('click', () => {
+                state.miniCalDate.setMonth(state.miniCalDate.getMonth() + 1);
+                renderMiniCalendar();
+            });
+        }
+        
+        if (elements.miniCalPrevBtnMobile) {
+            elements.miniCalPrevBtnMobile.addEventListener('click', () => {
+                state.miniCalDate.setMonth(state.miniCalDate.getMonth() - 1);
+                renderMiniCalendar();
+            });
+        }
+        
+        if (elements.miniCalNextBtnMobile) {
+            elements.miniCalNextBtnMobile.addEventListener('click', () => {
+                state.miniCalDate.setMonth(state.miniCalDate.getMonth() + 1);
+                renderMiniCalendar();
+            });
+        }
 
         elements.mobileDayNav.querySelectorAll('.mobile-day-nav-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
@@ -1038,7 +1057,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (weekViewDayColumn && elements.currentTimeIndicator) {
                 elements.currentTimeIndicator.style.top = `${top}px`;
                 elements.currentTimeIndicator.style.left = `${weekViewDayColumn.offsetLeft}px`;
-                elements.currentTimeIndicator.style.display = 'block';
+                elements.currentTimeIndicator.style.display = 'block`;
             }
         }
     }
