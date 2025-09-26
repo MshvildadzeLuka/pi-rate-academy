@@ -36,7 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         fetchEvents: async () => {
             const startOfWeek = getStartOfWeek(state.mainViewDate);
-            const endOfWeek = getEndOfWeek(startOfWeek);
+            const endOfWeek = getStartOfWeek(state.mainViewDate);
+            endOfWeek.setDate(endOfWeek.getDate() + 6);
+            
             const personalEventsResponse = await apiFetch(
                 `/calendar-events/my-schedule?start=${startOfWeek.toISOString()}&end=${endOfWeek.toISOString()}`
             );
@@ -411,7 +413,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderEventsForWeek() {
         const startOfWeek = getStartOfWeek(state.mainViewDate);
         const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-        const exceptions = state.allEvents.filter(e => e.exceptionDate);
+        
+        // Filter out event exceptions
+        const eventsToRender = state.allEvents.filter(event => 
+            !(event.title && event.title.startsWith('DELETED:'))
+        );
         
         const slotHeight = getComputedStyle(document.documentElement).getPropertyValue('--calendar-slot-height').trim();
         const slotHeightValue = parseFloat(slotHeight);
@@ -426,39 +432,40 @@ document.addEventListener('DOMContentLoaded', () => {
             const dayStr = currentDayDate.toISOString().split('T')[0];
             const dayColumn = dayColumns[dayIndex];
 
-            state.allEvents.forEach(event => {
-                if (event.title && event.title.startsWith('DELETED:')) return;
-
+            eventsToRender.forEach(event => {
                 let render = false;
-                let isException = false;
                 let startTimeStr, endTimeStr;
+                
+                // Check if the current day is an exception for a recurring event
+                const isException = state.allEvents.some(exc => 
+                    exc.exceptionDate === dayStr && exc.title === `DELETED: ${event._id}`
+                );
+                
+                if (isException) {
+                    return;
+                }
 
                 if (event.isRecurring) {
-                    if (event.dayOfWeek) {
-                        if (event.dayOfWeek === dayNames[dayIndex]) {
-                            isException = exceptions.some(exc =>
-                                exc.exceptionDate === dayStr && exc.title === `DELETED: ${event._id}`
-                            );
-                            if (!isException) {
-                                render = true;
-                                startTimeStr = ensureTimeFormat(event.recurringStartTime);
-                                endTimeStr = ensureTimeFormat(event.recurringEndTime);
-                            }
-                        }
+                    if (event.dayOfWeek === dayNames[dayIndex]) {
+                        render = true;
+                        startTimeStr = ensureTimeFormat(event.recurringStartTime);
+                        endTimeStr = ensureTimeFormat(event.recurringEndTime);
                     }
                 } else {
                     const eventStartDate = new Date(event.startTime);
-                    const eventEndDate = new Date(event.endTime);
-
-                    if (eventStartDate.toDateString() === currentDayDate.toDateString()) {
+                    
+                    // Correctly compare dates without time to render events on the right day
+                    const eventDateStr = eventStartDate.toISOString().split('T')[0];
+                    if (eventDateStr === dayStr) {
                         render = true;
                         startTimeStr = `${String(eventStartDate.getHours()).padStart(2, '0')}:${String(eventStartDate.getMinutes()).padStart(2, '0')}`;
+                        const eventEndDate = new Date(event.endTime);
                         endTimeStr = `${String(eventEndDate.getHours()).padStart(2, '0')}:${String(eventEndDate.getMinutes()).padStart(2, '0')}`;
                     }
                 }
 
                 if (render) {
-                    renderEventBlock({ ...event, startTime: startTimeStr, endTime: endTimeStr }, dayColumn, isException, slotHeightValue);
+                    renderEventBlock({ ...event, startTime: startTimeStr, endTime: endTimeStr }, dayColumn, false, slotHeightValue);
                 }
             });
         }
@@ -795,6 +802,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Validate a form
     function updateFormValidity(form) {
+        if (!form) return;
         const hasValidInput = form.querySelector('[id$="-day-select"]').value !== '' && 
                              form.querySelector('[id$="-start-time"]').value !== '' && 
                              form.querySelector('[id$="-end-time"]').value !== '' && 
@@ -813,23 +821,26 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.eventStartTime.value = '08:00';
             elements.eventEndTime.value = '09:00';
             elements.eventTitleInput.value = '';
-            document.querySelector('input[name="event-type"][value="busy"]').checked = true;
-            elements.recurringCheckbox.checked = false;
-            elements.deleteEventBtn.disabled = true;
+            const busyRadio = document.querySelector('input[name="event-type"][value="busy"]');
+            if(busyRadio) busyRadio.checked = true;
+            if(elements.recurringCheckbox) elements.recurringCheckbox.checked = false;
+            if(elements.deleteEventBtn) elements.deleteEventBtn.disabled = true;
             updateFormValidity(elements.eventForm);
         }
     }
     
     function clearMobileForm() {
-        if(document.getElementById('event-modal-form')) {
+        const form = document.getElementById('event-modal-form');
+        if(form) {
             elements.eventModalDaySelect.value = '0';
             elements.eventModalStartTime.value = '08:00';
             elements.eventModalEndTime.value = '09:00';
             elements.eventModalTitleInput.value = '';
-            document.querySelector('#event-modal-form select[name="event-type"]').value = 'busy';
-            elements.eventModalRecurringCheckbox.checked = false;
-            elements.eventModalDeleteBtn.disabled = true;
-            updateFormValidity(document.getElementById('event-modal-form'));
+            const typeSelect = form.querySelector('select[name="event-type"]');
+            if (typeSelect) typeSelect.value = 'busy';
+            if (elements.eventModalRecurringCheckbox) elements.eventModalRecurringCheckbox.checked = false;
+            if (elements.eventModalDeleteBtn) elements.eventModalDeleteBtn.disabled = true;
+            updateFormValidity(form);
         }
     }
 
