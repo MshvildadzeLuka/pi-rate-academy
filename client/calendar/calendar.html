@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ka">
 <head>
@@ -21,13 +22,17 @@
 
     <div class="page-wrapper">
         <aside class="calendar-sidebar">
+            <div class="sidebar-toggle" id="sidebar-toggle">
+                <i class="fas fa-chevron-down"></i>
+            </div>
+
             <div id="mini-calendar">
                 <div class="mini-calendar-header">
-                    <button id="mini-cal-prev-month" aria-label="წინა თვე">
+                    <button id="mini-cal-prev-month-desktop" aria-label="წინა თვე">
                         <i class="fas fa-chevron-left"></i>
                     </button>
                     <h2 id="mini-cal-month-year"></h2>
-                    <button id="mini-cal-next-month" aria-label="შემდეგი თვე">
+                    <button id="mini-cal-next-month-desktop" aria-label="შემდეგი თვე">
                         <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
@@ -108,11 +113,11 @@
             <!-- Mobile-first Calendar Layout -->
             <div id="mini-calendar-mobile">
                 <div class="mini-calendar-header">
-                    <button id="mini-cal-prev-month" aria-label="წინა თვე">
+                    <button id="mini-cal-prev-month-mobile" aria-label="წინა თვე">
                         <i class="fas fa-chevron-left"></i>
                     </button>
                     <h2 id="mini-cal-month-year-mobile"></h2>
-                    <button id="mini-cal-next-month" aria-label="შემდეგი თვე">
+                    <button id="mini-cal-next-month-mobile" aria-label="შემდეგი თვე">
                         <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
@@ -153,8 +158,7 @@
             </div>
 
             <div class="calendar-grid-wrapper">
-                <!-- This grid will be used for desktop view -->
-                <div class="calendar-grid week-view hidden">
+                <div class="calendar-grid week-view">
                     <div id="current-time-indicator" class="current-time-indicator"></div>
                     <div class="grid-header time-column-header"></div>
                     <div class="grid-header day-column-header" data-day-header="0">
@@ -196,7 +200,6 @@
                     <div class="day-column" data-day="6"></div>
                 </div>
 
-                <!-- This grid will be used for mobile view -->
                 <div class="calendar-grid day-view">
                     <div id="day-view-current-time-indicator" class="current-time-indicator"></div>
                     <div class="grid-header time-column-header"></div>
@@ -287,4 +290,3 @@
     <script src="/calendar/calendar.js"></script>
 </body>
 </html>
-
