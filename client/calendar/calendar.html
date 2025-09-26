@@ -100,7 +100,7 @@
                              <i class="fas fa-trash"></i>
                              წაშლა
                          </button>
-                         <button type="submit" id="save-event-btn" class="btn btn-primary">
+                         <button type="submit" id="save-event-btn" class="btn btn-primary" disabled>
                              <i class="fas fa-save"></i>
                              შენახვა
                          </button>
@@ -110,7 +110,32 @@
         </aside>
 
         <main class="main-calendar-view">
-            <!-- New Calendar Header (Universal for Desktop and Mobile) -->
+            <!-- Mobile-only header with mini-calendar -->
+            <div id="mobile-header-controls">
+                <div id="mini-calendar-mobile">
+                    <div class="mini-calendar-header">
+                        <button id="mobile-mini-cal-prev-month" aria-label="წინა თვე">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <h2 id="mobile-mini-cal-month-year"></h2>
+                        <button id="mobile-mini-cal-next-month" aria-label="შემდეგი თვე">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                    <div class="mini-calendar-weekdays">
+                        <div>ორშ</div>
+                        <div>სამ</div>
+                        <div>ოთხ</div>
+                        <div>ხუთ</div>
+                        <div>პარ</div>
+                        <div>შაბ</div>
+                        <div>კვი</div>
+                    </div>
+                    <div id="mobile-mini-calendar-days" class="mini-calendar-days"></div>
+                </div>
+            </div>
+
+            <!-- Calendar Header (Universal for Desktop and Mobile) -->
             <div class="calendar-header">
                 <button id="today-btn" class="today-btn">დღეს</button>
                 <div class="week-nav">
@@ -128,7 +153,7 @@
             <div id="mobile-calendar-container">
                 <div class="calendar-grid-wrapper mobile-wrapper">
                     <div class="calendar-grid mobile-grid">
-                        <div id="current-time-indicator" class="current-time-indicator" aria-hidden="true"></div>
+                        <div class="current-time-indicator" aria-hidden="true" id="current-time-indicator"></div>
                         <div class="grid-header time-column-header" aria-hidden="true"></div>
                         <div class="grid-header day-column-header" data-day-header="0">
                             <div class="day-header-content">
@@ -288,7 +313,7 @@
                             <i class="fas fa-trash"></i>
                             წაშლა
                         </button>
-                        <button type="submit" id="mobile-save-btn" class="btn btn-primary">
+                        <button type="submit" id="mobile-save-btn" class="btn btn-primary" disabled>
                             <i class="fas fa-save"></i>
                             შენახვა
                         </button>
@@ -297,6 +322,11 @@
             </div>
         </div>
     </div>
+    
+    <button id="add-event-fab" class="fab" aria-label="ახალი მოვლენის დამატება">
+        <i class="fas fa-plus"></i>
+    </button>
+    
     <script src="/header/header.js"></script>
     <script src="/calendar/calendar.js"></script>
 </body>
