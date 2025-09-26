@@ -1,4 +1,3 @@
-
 // file: client/calendar/calendar.js
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = '/api';
@@ -12,8 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
         activeEvent: null,
         userGroups: [],
         isRecurring: false,
-        activeDayIndex: (new Date().getDay() + 6) % 7,
-        isMobile: window.innerWidth < 992,
         isDragging: false,
         dragStartSlot: null,
         // Draggable FAB state
@@ -73,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // DOM Elements: Centralized access to all DOM elements
     const elements = {
+        pageWrapper: document.querySelector('.page-wrapper'),
         timeColumnMain: document.getElementById('time-column-main'),
         dayColumnsMain: document.querySelectorAll('#calendar-main-grid .day-column'),
         weekDisplay: document.getElementById('current-week-display'),
@@ -105,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         addEventFab: document.querySelector('.fab'),
         eventModalBackdrop: document.getElementById('event-modal-backdrop'),
         addEventDesktopBtn: document.getElementById('add-event-desktop-btn'),
-        mobileCalendarControls: document.getElementById('mobile-calendar-controls')
+        sidebarCloseBtn: document.getElementById('sidebar-close-btn')
     };
 
     // Notification toast function
@@ -261,6 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderEventsForWeek();
             showNotification('მოვლენა წარმატებით შეინახა!', 'success');
             elements.eventModalBackdrop.classList.add('hidden');
+            if(!state.isMobile) elements.calendarSidebar.classList.remove('open');
         } catch (error) {
             console.error('მოვლენის შენახვა ვერ მოხერხდა:', error);
             showNotification('მოვლენის შენახვა ვერ მოხერხდა: ' + error.message, 'error');
@@ -287,6 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderEventsForWeek();
             showNotification('მოვლენა წარმატებით წაიშალა!', 'success');
             elements.eventModalBackdrop.classList.add('hidden');
+            if(!state.isMobile) elements.calendarSidebar.classList.remove('open');
         } catch (error) {
             console.error('Failed to delete event:', error);
             showNotification('მოვლენის წაშლა ვერ მოხერხდა: ' + error.message, 'error');
@@ -564,8 +564,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // Open desktop modal from header button
         if(elements.addEventDesktopBtn) {
             elements.addEventDesktopBtn.addEventListener('click', () => {
-                elements.calendarSidebar.classList.remove('hidden');
+                elements.calendarSidebar.classList.add('open');
                 clearForm();
+            });
+        }
+        
+        // Close desktop sidebar button
+        if (elements.sidebarCloseBtn) {
+            elements.sidebarCloseBtn.addEventListener('click', () => {
+                elements.calendarSidebar.classList.remove('open');
             });
         }
         
@@ -641,6 +648,8 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.addEventDesktopBtn.style.display = 'none';
             elements.calendarSidebar.style.display = 'none';
             elements.addEventFab.classList.remove('hidden');
+            // Ensure sidebar is closed on mobile
+            elements.calendarSidebar.classList.remove('open');
         } else {
             elements.addEventDesktopBtn.style.display = 'flex';
             elements.calendarSidebar.style.display = 'flex';
@@ -722,16 +731,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const endTime = minutesToTime(endTimeInMinutes);
 
         // Update form inputs
-        elements.eventDaySelect.value = firstSlot.dataset.day;
-        elements.eventStartTime.value = startTime;
-        elements.eventEndTime.value = endTime;
-
-        elements.eventModalDaySelect.value = firstSlot.dataset.day;
-        elements.eventModalStartTime.value = startTime;
-        elements.eventModalEndTime.value = endTime;
-
-        updateFormValidity(elements.eventForm);
-        updateFormValidity(document.getElementById('event-modal-form'));
+        if(elements.calendarSidebar.classList.contains('open')) {
+            elements.eventDaySelect.value = firstSlot.dataset.day;
+            elements.eventStartTime.value = startTime;
+            elements.eventEndTime.value = endTime;
+            updateFormValidity(elements.eventForm);
+        } else {
+            elements.eventModalDaySelect.value = firstSlot.dataset.day;
+            elements.eventModalStartTime.value = startTime;
+            elements.eventModalEndTime.value = endTime;
+            updateFormValidity(document.getElementById('event-modal-form'));
+        }
     }
 
     // Handle click on an existing event block
@@ -739,24 +749,36 @@ document.addEventListener('DOMContentLoaded', () => {
         clearSelection(false);
         state.activeEvent = eventData;
         
-        // Populate the desktop sidebar form
-        elements.eventDaySelect.value = (new Date(eventData.startTime).getDay() + 6) % 7;
-        elements.eventStartTime.value = eventData.startTime.split('T')[1].substring(0, 5);
-        elements.eventEndTime.value = eventData.endTime.split('T')[1].substring(0, 5);
-        elements.eventTitleInput.value = eventData.title || '';
-        document.querySelector(`#event-form input[name="event-type"][value="${eventData.type}"]`).checked = true;
-        elements.recurringCheckbox.checked = eventData.isRecurring;
-        elements.deleteEventBtn.disabled = false;
+        const dayOfWeek = (new Date(eventData.startTime).getDay() + 6) % 7;
+        const startTime = eventData.startTime.split('T')[1].substring(0, 5);
+        const endTime = eventData.endTime.split('T')[1].substring(0, 5);
+        const eventTitle = eventData.title || '';
+        const eventType = eventData.type;
+        const isRecurring = eventData.isRecurring;
         
-        // Populate the modal form
-        elements.eventModalDaySelect.value = (new Date(eventData.startTime).getDay() + 6) % 7;
-        elements.eventModalStartTime.value = eventData.startTime.split('T')[1].substring(0, 5);
-        elements.eventModalEndTime.value = eventData.endTime.split('T')[1].substring(0, 5);
-        elements.eventModalTitleInput.value = eventData.title || '';
-        document.querySelector(`#event-modal-form select[name="event-type"]`).value = eventData.type;
-        elements.eventModalRecurringCheckbox.checked = eventData.isRecurring;
-        elements.eventModalDeleteBtn.disabled = false;
-
+        // Populate the correct form based on screen size
+        if (window.innerWidth > 1200) {
+            elements.calendarSidebar.classList.add('open');
+            elements.eventDaySelect.value = dayOfWeek;
+            elements.eventStartTime.value = startTime;
+            elements.eventEndTime.value = endTime;
+            elements.eventTitleInput.value = eventTitle;
+            document.querySelector(`#event-form input[name="event-type"][value="${eventType}"]`).checked = true;
+            elements.recurringCheckbox.checked = isRecurring;
+            elements.deleteEventBtn.disabled = false;
+            updateFormValidity(elements.eventForm);
+        } else {
+             elements.eventModalBackdrop.classList.remove('hidden');
+             elements.eventModalDaySelect.value = dayOfWeek;
+             elements.eventModalStartTime.value = startTime;
+             elements.eventModalEndTime.value = endTime;
+             elements.eventModalTitleInput.value = eventTitle;
+             document.querySelector(`#event-modal-form select[name="event-type"]`).value = eventType;
+             elements.eventModalRecurringCheckbox.checked = isRecurring;
+             elements.eventModalDeleteBtn.disabled = false;
+             updateFormValidity(document.getElementById('event-modal-form'));
+        }
+        
         document.querySelectorAll('.event-block').forEach(el => el.classList.remove('active-event'));
         const eventElement = document.querySelector(`[data-event-id="${eventData._id}"]`);
         if (eventElement) {
@@ -789,6 +811,9 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.deleteEventBtn.disabled = true;
             updateFormValidity(elements.eventForm);
         }
+    }
+    
+    function clearMobileForm() {
         if(document.getElementById('event-modal-form')) {
             elements.eventModalDaySelect.value = '0';
             elements.eventModalStartTime.value = '08:00';
@@ -810,6 +835,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.activeEvent = null;
 
         clearForm();
+        clearMobileForm();
     }
 
     // Utility functions for time manipulation and formatting
