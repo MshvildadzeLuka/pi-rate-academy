@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
         isRecurring: false,
         isDragging: false,
         dragStartSlot: null,
+        // Active Day Index (0 = Monday, 6 = Sunday)
+        activeDayIndex: (new Date().getDay() + 6) % 7, 
         // Draggable FAB state
         isFabDragging: false,
         fabOffsetX: 0,
@@ -105,7 +107,9 @@ document.addEventListener('DOMContentLoaded', () => {
         addEventFab: document.querySelector('.fab'),
         eventModalBackdrop: document.getElementById('event-modal-backdrop'),
         addEventDesktopBtn: document.getElementById('add-event-desktop-btn'),
-        sidebarCloseBtn: document.getElementById('sidebar-close-btn')
+        sidebarCloseBtn: document.getElementById('sidebar-close-btn'),
+        calendarGrid: document.querySelector('.calendar-grid'),
+        dayHeaders: document.querySelectorAll('.day-column-header'),
     };
 
     // Notification toast function
