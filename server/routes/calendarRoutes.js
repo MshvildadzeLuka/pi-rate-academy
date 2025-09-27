@@ -1,3 +1,4 @@
+// server/routes/calendarRoutes.js
 
 const express = require('express');
 const router = express.Router();
@@ -36,6 +37,7 @@ router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
             $or: [
                 {
                     isRecurring: false,
+                    // Use standard ISO format for query, the server handles the conversion.
                     startTime: { $gte: new Date(start) },
                     endTime: { $lte: new Date(end) }
                 },
@@ -48,6 +50,8 @@ router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
         _id: lecture._id,
         title: lecture.title,
         type: 'lecture',
+        // The server stores the client's local time components in these Date fields.
+        // The client must use UTC getters to read back the local time components.
         startTime: lecture.startTime,
         endTime: lecture.endTime,
         groupId: lecture.assignedGroup._id,
@@ -95,6 +99,18 @@ router.post('/', protect, asyncHandler(async (req, res, next) => {
     if (!['busy', 'preferred'].includes(type)) {
         return next(new ErrorResponse('Invalid event type', 400));
     }
+    
+    // Server-side validation for time consistency (non-recurring)
+    if (!isRecurring && startTime && endTime && (new Date(startTime) >= new Date(endTime))) {
+        return next(new ErrorResponse('End time must be after start time', 400));
+    }
+    
+    // Server-side validation for time consistency (recurring)
+    if (isRecurring && recurringStartTime && recurringEndTime && 
+        (ensureTimeFormat(recurringStartTime) >= ensureTimeFormat(recurringEndTime))) {
+        return next(new ErrorResponse('Recurring end time must be after recurring start time', 400));
+    }
+    
     const newEvent = await CalendarEvent.create({
         userId: req.user._id,
         creatorId: req.user._id,
@@ -104,6 +120,8 @@ router.post('/', protect, asyncHandler(async (req, res, next) => {
         dayOfWeek,
         recurringStartTime: isRecurring ? ensureTimeFormat(recurringStartTime) : null,
         recurringEndTime: isRecurring ? ensureTimeFormat(recurringEndTime) : null,
+        // The server stores the client's timezone-less string here, which is fine
+        // as long as the client reads it back using UTC getters.
         startTime: startTime ? new Date(startTime) : null,
         endTime: endTime ? new Date(endTime) : null,
     });
