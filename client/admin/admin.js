@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. CONFIGURATION & API HELPER
     // =================================================================
     const API_BASE_URL = '/api';
-
+    
     // FIX: Rewritten to correctly preserve local date and time components 
     // without UTC offset logic when sending to the server.
     function toLocalISOString(date) {
@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${YYYY}-${MM}-${DD}T${HH}:${mm}`;
     }
 
+    // Toast notification function
     function showToast(message, type = 'info') {
       const toastContainer = document.getElementById('toast-container') || (() => {
         const container = document.createElement('div');
