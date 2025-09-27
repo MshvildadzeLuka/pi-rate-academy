@@ -1,10 +1,25 @@
+// client/admin/admin.js
+
 document.addEventListener('DOMContentLoaded', () => {
     // =================================================================
     // 1. CONFIGURATION & API HELPER
     // =================================================================
     const API_BASE_URL = '/api';
 
-    // Toast notification function
+    // FIX: Rewritten to correctly preserve local date and time components 
+    // without UTC offset logic when sending to the server.
+    function toLocalISOString(date) {
+        if (!date) return null;
+        const pad = (num) => num.toString().padStart(2, '0');
+        const YYYY = date.getFullYear();
+        const MM = pad(date.getMonth() + 1);
+        const DD = pad(date.getDate());
+        const HH = pad(date.getHours());
+        const mm = pad(date.getMinutes());
+        // Return ISO-like string without Z or offset
+        return `${YYYY}-${MM}-${DD}T${HH}:${mm}`;
+    }
+
     function showToast(message, type = 'info') {
       const toastContainer = document.getElementById('toast-container') || (() => {
         const container = document.createElement('div');
@@ -1048,7 +1063,6 @@ document.addEventListener('DOMContentLoaded', () => {
         state.selectedGroupMembers = group.users || [];
 
         // Fetch both the personal availability of all group members and the official lectures
-        // for the selected group in parallel for maximum efficiency.
         const [availabilityRes, lecturesRes] = await Promise.all([
           apiFetch(`/calendar-events/group/${groupId}`),
           apiFetch(`/lectures/group/${groupId}`),
@@ -1082,8 +1096,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // 1. Initialize the entire week's grid as 'free'
       for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
         availabilityMap[dayIndex] = {};
-        // 48 slots per day (24 hours * 2 slots/hour) from 00:00 to 23:30
-        for (let slot = 0; slot < 48; slot++) {
+        // 30 slots per day (8am to 11pm)
+        for (let slot = 0; slot < 30; slot++) {
           availabilityMap[dayIndex][slot] = { busy: 0, preferred: 0 };
         }
       }
@@ -1118,32 +1132,34 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (event.startTime) {
           // FIX: Use UTC methods for consistent calculations.
           const eventDate = new Date(event.startTime);
+          const eventEndDate = new Date(event.endTime);
 
           // Get the UTC day of the week (Monday=1...Sunday=0). Convert to our 0=Mon, 6=Sun index.
           const dayIndex = (eventDate.getUTCDay() + 6) % 7;
           
-          const eventStartUtcHours = eventDate.getUTCHours();
-          const eventStartUtcMinutes = eventDate.getUTCMinutes();
-          const eventEndUtcHours = new Date(event.endTime).getUTCHours();
-          const eventEndUtcMinutes = new Date(event.endTime).getUTCMinutes();
+          // Check if the event date matches the date of the current calendar column
+          const currentColumnDate = new Date(startOfWeek);
+          currentColumnDate.setDate(startOfWeek.getDate() + dayIndex);
 
-          // Only process events that fall within the current week's local date range.
-          const weekEndDateLocal = new Date(startOfWeek);
-          weekEndDateLocal.setDate(weekEndDateLocal.getDate() + 7);
-          
-          if (eventDateToLocalDayString(eventDate) === eventDateToLocalDayString(new Date(startOfWeek.getTime() + dayIndex * 24 * 60 * 60 * 1000))) {
+          if (eventDateToLocalDayString(eventDate) === eventDateToLocalDayString(currentColumnDate)) {
               eventDays.push(dayIndex);
-              eventStartMin = eventStartUtcHours * 60 + eventStartUtcMinutes;
-              eventEndMin = eventEndUtcHours * 60 + eventEndUtcMinutes;
+              eventStartMin = eventDate.getUTCHours() * 60 + eventDate.getUTCMinutes();
+              eventEndMin = eventEndDate.getUTCHours() * 60 + eventEndDate.getUTCMinutes();
           }
         }
 
-        // 3. Mark the slots in the availability map
+        // 3. Mark the slots in the availability map (8:00 AM grid start)
         for (const day of eventDays) {
-          const startSlot = Math.floor((eventStartMin - 8 * 60) / 30);
-          const endSlot = Math.ceil((eventEndMin - 8 * 60) / 30);
+          const START_OF_GRID_MINUTES = 8 * 60;
+          
+          const startSlot = Math.floor((eventStartMin - START_OF_GRID_MINUTES) / 30);
+          const endSlot = Math.ceil((eventEndMin - START_OF_GRID_MINUTES) / 30);
+          
+          // Constrain slots to the visible grid (0 to 29 for 8:00 AM to 10:30 PM)
+          const start = Math.max(0, startSlot);
+          const end = Math.min(30, endSlot);
 
-          for (let slot = startSlot; slot < endSlot; slot++) {
+          for (let slot = start; slot < end; slot++) {
             if (availabilityMap[day] && availabilityMap[day][slot]) {
               if (event.type === 'busy') {
                 availabilityMap[day][slot].busy++;
@@ -1157,13 +1173,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // 4. Classify each slot based on the counts
       for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-        for (let slot = 0; slot < 48; slot++) {
-          const counts = availabilityMap[dayIndex][slot];
+        for (let slot = 0; slot < 30; slot++) {
+          const counts = availabilityMap[dayIndex][slot] || { busy: 0, preferred: 0 };
+          const requiredMembers = state.selectedGroupMembers.filter(u => u.role !== 'Admin').length || 1;
 
           if (counts.busy > 0) {
             // If anyone is busy, mark as busy
             availabilityMap[dayIndex][slot] = 'busy';
-          } else if (counts.preferred === memberCount) {
+          } else if (counts.preferred === requiredMembers) {
             // If all members prefer this time
             availabilityMap[dayIndex][slot] = 'preferred-all';
           } else if (counts.preferred > 0) {
@@ -1200,7 +1217,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // FIX: This function has been rewritten to consistently use UTC for rendering.
     function renderLectures() {
       const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
       const endOfWeek = getEndOfWeek(startOfWeek);
@@ -1219,6 +1235,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentDate.setDate(startOfWeek.getDate() + dayIndex);
             
             let render = false;
+            let formattedStart, formattedEnd;
             
             if (lecture.isRecurring) {
                 const rruleWeekdays = lecture.recurrenceRule?.byweekday || [];
@@ -1226,32 +1243,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (rruleWeekdays.includes(dayName)) {
                     const dtstart = lecture.recurrenceRule.dtstart ? new Date(lecture.recurrenceRule.dtstart) : lectureDate;
-                    const until = lecture.recurrenceRule.until ? new Date(lecture.recurrenceRule.until) : null;
                     
-                    // Check if current column's date is within the recurring range
+                    // FIX: Check if current column's date is within the recurring range (using simple ISO date string comparison)
                     const currentDayStr = currentDate.toISOString().split('T')[0];
                     const startDayStr = dtstart.toISOString().split('T')[0];
                     
-                    if (currentDayStr >= startDayStr && (!until || currentDate <= getEndOfDay(until))) { 
+                    if (currentDayStr >= startDayStr) { 
                         render = true;
+                        // FIX: Extract HH:MM from the saved Date object using UTC getters
+                        formattedStart = `${String(lectureDate.getUTCHours()).padStart(2, '0')}:${String(lectureDate.getUTCMinutes()).padStart(2, '0')}`;
+                        formattedEnd = `${String(lectureEndDate.getUTCHours()).padStart(2, '0')}:${String(lectureEndDate.getUTCMinutes()).padStart(2, '0')}`;
                     }
                 }
             } else {
                 // Single events: Check if the event's local date matches the current column's date
-                // We compare the date parts as strings (YYYY-MM-DD) to check for equality ignoring time.
                 const eventDayStr = lectureDate.toISOString().split('T')[0];
                 const currentDayStr = currentDate.toISOString().split('T')[0];
                 
                 if (eventDayStr === currentDayStr) {
                     render = true;
+                    // FIX: Extract HH:MM from the saved Date object using UTC getters
+                    formattedStart = `${String(lectureDate.getUTCHours()).padStart(2, '0')}:${String(lectureDate.getUTCMinutes()).padStart(2, '0')}`;
+                    formattedEnd = `${String(lectureEndDate.getUTCHours()).padStart(2, '0')}:${String(lectureEndDate.getUTCMinutes()).padStart(2, '0')}`;
                 }
             }
 
             if (render) {
-                // FIX: Extract HH:MM from the saved Date object using UTC getters
-                const formattedStart = `${String(lectureDate.getUTCHours()).padStart(2, '0')}:${String(lectureDate.getUTCMinutes()).padStart(2, '0')}`;
-                const formattedEnd = `${String(lectureEndDate.getUTCHours()).padStart(2, '0')}:${String(lectureEndDate.getUTCMinutes()).padStart(2, '0')}`;
-
                 createEventBlock({
                     _id: lecture._id,
                     title: lecture.title,
@@ -1265,7 +1282,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-
     function createEventBlock(event, dayIndex) {
             const dayColumn = document.querySelector(`.day-column[data-day="${dayIndex}"]`);
             if (!dayColumn) {
@@ -1277,14 +1293,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const end = timeToMinutes(event.end);
             
             // Correctly calculate top position and height based on a 40px slot height
-            const START_OF_DAY_MINUTES = 8 * 60; // 480 minutes
+            const START_OF_GRID_MINUTES = 8 * 60; // 480 minutes (Calendar starts at 8 AM)
             const slotHeight = 40; // Hardcoded slot height from CSS var
 
-            // Calculate based on the 8:00 AM start of the visual grid
-            const top = ((start - START_OF_DAY_MINUTES) / 30) * slotHeight;
+            // Calculate position relative to the 8:00 AM start of the visual grid
+            const top = ((start - START_OF_GRID_MINUTES) / 30) * slotHeight;
             const height = ((end - start) / 30) * slotHeight;
 
-            if (top < 0 || height <= 0) return; // Skip events outside the 8 AM - 11 PM range or zero duration
+            // Skip events outside the 8 AM - 11 PM range
+            if (top < 0 || height <= 0 || start >= 23 * 60) return; 
 
             const eventBlock = document.createElement('div');
             eventBlock.className = `event-block event-${event.type}`;
@@ -1640,20 +1657,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function suggestLectures() {
       clearSuggestions();
+      const SUGGESTED_SLOT_DURATION = 4; // 2 hours = 4 * 30min slots
+
       const suggestions = [];
-      const SLOT_DURATION = 4; // 2 hours = 4 * 30min
 
       for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
         const dayAvail = calendarState.aggregatedAvailability[dayIndex] || {};
         const numSlots = Object.keys(dayAvail).length;
 
-        for (let startIdx = 0; startIdx <= numSlots - SLOT_DURATION; startIdx++) {
+        for (let startIdx = 0; startIdx <= numSlots - SUGGESTED_SLOT_DURATION; startIdx++) {
           const block = Array.from(
-            { length: SLOT_DURATION },
+            { length: SUGGESTED_SLOT_DURATION },
             (_, i) => dayAvail[startIdx + i]
           );
 
           if (!block.includes('busy')) {
+            // Scoring preference: preferred-all (3) > preferred-some (2) > free (1)
             let score = block.filter(s => s === 'preferred-all').length * 3 +
               block.filter(s => s === 'preferred-some').length * 2 +
               block.filter(s => s === 'free').length * 1;
@@ -1676,7 +1695,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!dayColumn) return;
 
         const slots = Array.from(dayColumn.querySelectorAll('.time-slot'));
-        for (let i = 0; i < SLOT_DURATION; i++) {
+        for (let i = 0; i < SUGGESTED_SLOT_DURATION; i++) {
           if (slots[sug.startIdx + i]) {
             slots[sug.startIdx + i].classList.add('slot-suggested');
           }
@@ -1775,21 +1794,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // FIX: New Helper for consistent date string comparison (local date from UTC components)
     function eventDateToLocalDayString(date) {
         const pad = (num) => num.toString().padStart(2, '0');
+        // Use UTC getters because the server stores the local time components in the UTC fields
         return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
-    }
-    
-    // FIX: Rewritten to correctly preserve local date and time components 
-    // without UTC offset logic when sending to the server.
-    function toLocalISOString(date) {
-        if (!date) return null;
-        const pad = (num) => num.toString().padStart(2, '0');
-        const YYYY = date.getFullYear();
-        const MM = pad(date.getMonth() + 1);
-        const DD = pad(date.getDate());
-        const HH = pad(date.getHours());
-        const mm = pad(date.getMinutes());
-        // Return ISO-like string without Z or offset
-        return `${YYYY}-${MM}-${DD}T${HH}:${mm}`;
     }
 
     function ensureTimeFormat(timeStr) {
