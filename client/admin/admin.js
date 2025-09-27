@@ -263,6 +263,14 @@ document.addEventListener('DOMContentLoaded', () => {
       `).join('');
     }
 
+    function toLocalISOString(date) {
+        if (!date) return null;
+        const offset = date.getTimezoneOffset() * 60000;
+        const localTime = new Date(date.getTime() - offset);
+        return localTime.toISOString().slice(0, -1).split('.')[0];
+    }
+
+    
     function renderUsersTable() {
       const container = document.getElementById('users-table-container');
       if (!container) return;
@@ -1429,7 +1437,10 @@ document.addEventListener('DOMContentLoaded', () => {
       lectureDate.setDate(lectureDate.getDate() + parseInt(startSlot.dataset.day));
 
       const [startH, startM] = startSlot.dataset.time.split(':');
-      const startTime = new Date(lectureDate.setHours(parseInt(startH), parseInt(startM)));
+      
+      // Create a Date object representing the LOCAL start time and end time
+      const startTime = new Date(lectureDate);
+      startTime.setHours(parseInt(startH), parseInt(startM));
 
       // Calculate end time based on the number of 30-minute slots selected
       const endTime = new Date(startTime.getTime() + slots.length * 30 * 60000);
@@ -1438,9 +1449,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const payload = {
         title: elements.lectureTitleInput.value.trim(),
-        // FIX: Correctly pass ISO strings using UTC methods
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
+        // FIX: Use toLocalISOString to preserve local time intent without a 'Z' offset.
+        startTime: toLocalISOString(startTime),
+        endTime: toLocalISOString(endTime),
         groupId: elements.groupSelect.value,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         isRecurring
@@ -1450,7 +1461,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const dayOfWeek = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'][parseInt(startSlot.dataset.day)];
         payload.recurrenceRule = {
           freq: 'WEEKLY',
-          dtstart: startTime.toISOString(),
+          // FIX: Use toLocalISOString for dtstart as well
+          dtstart: toLocalISOString(startTime),
           byweekday: [dayOfWeek]
         };
       }
