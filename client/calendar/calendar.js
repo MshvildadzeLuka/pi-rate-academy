@@ -47,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // FIX: New Helper for consistent date string comparison (local date from UTC components)
     const eventDateToLocalDayString = (date) => {
         const pad = (num) => num.toString().padStart(2, '0');
+        // Use UTC getters because the server stores the local time components in the UTC fields
         return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
     };
     
@@ -67,10 +68,11 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         fetchEvents: async () => {
             const startOfWeek = getStartOfWeek(state.mainViewDate);
-            const endOfWeek = getStartOfWeek(state.mainViewDate);
+            const endOfWeek = getEndOfWeek(state.mainViewDate);
             endOfWeek.setDate(endOfWeek.getDate() + 6);
             
             const personalEventsResponse = await apiFetch(
+                // Use ISOString here because the server expects standard time query
                 `/calendar-events/my-schedule?start=${startOfWeek.toISOString()}&end=${endOfWeek.toISOString()}`
             );
             const personalEvents = personalEventsResponse?.data || [];
@@ -268,22 +270,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle saving a new event or updating an existing one
     async function saveEvent(isMobile = false) {
-        let type, isRecurring, title, dayIndex, startTimeStr, endTimeStr;
+        let type, isRecurring, title, dayIndex, startTimeStr, endTimeStr, form;
 
         // Use the correct form based on the device
-        const form = isMobile ? document.getElementById('event-mobile-form') : document.getElementById('event-form');
-        if (!form) return;
-
-        const isBusy = form.querySelector('input[name="event-type"][value="busy"]')?.checked || form.querySelector('select[name="event-type"]')?.value === 'busy';
-        type = isBusy ? 'busy' : 'preferred';
-
-        isRecurring = form.querySelector('[id$="-recurring-checkbox"]')?.checked;
-        title = form.querySelector('[id$="-title-input"]')?.value;
-        dayIndex = form.querySelector('[id$="-day-select"]')?.value;
-        startTimeStr = form.querySelector('[id$="-start-time"]')?.value;
-        endTimeStr = form.querySelector('[id$="-end-time"]')?.value;
-
-        if (!title || !dayIndex || !startTimeStr || !endTimeStr) {
+        if (isMobile) {
+            form = document.getElementById('event-mobile-form');
+            type = form.querySelector('input[name="event-type"]:checked')?.value;
+            isRecurring = form.querySelector('#event-mobile-recurring-checkbox')?.checked;
+            title = form.querySelector('#event-mobile-title-input')?.value;
+            dayIndex = form.querySelector('#event-mobile-day-select')?.value;
+            startTimeStr = form.querySelector('#event-mobile-start-time')?.value;
+            endTimeStr = form.querySelector('#event-mobile-end-time')?.value;
+        } else {
+            // Check which form is active (sidebar or modal)
+            if (elements.calendarSidebar.classList.contains('open')) {
+                 form = document.getElementById('event-form');
+            } else if (!elements.eventModalBackdrop.classList.contains('hidden')) {
+                 form = document.getElementById('event-modal-form');
+            } else {
+                 showNotification('Form context error. Try again.', 'error');
+                 return;
+            }
+            
+            // Extract values using general IDs which should match the active form's inputs
+            type = form.querySelector('input[name="event-type"]:checked')?.value;
+            isRecurring = form.querySelector('[id$="-recurring-checkbox"]')?.checked;
+            title = form.querySelector('[id$="-title-input"]')?.value;
+            dayIndex = form.querySelector('[id$="-day-select"]')?.value;
+            startTimeStr = form.querySelector('[id$="-start-time"]')?.value;
+            endTimeStr = form.querySelector('[id$="-end-time"]')?.value;
+        }
+        
+        if (!title || !dayIndex || !startTimeStr || !endTimeStr || !type) {
             showNotification('გთხოვთ, შეავსოთ ყველა ველი', 'error');
             return;
         }
@@ -308,23 +326,33 @@ document.addEventListener('DOMContentLoaded', () => {
             type,
             title,
             isRecurring,
-            groupId: state.userGroups.length > 0 ? state.userGroups[0]._id : null
+            groupId: state.userGroups.length > 0 ? state.userGroups[0]._id : null 
         };
 
         if (isRecurring) {
             payload.dayOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'][parseInt(dayIndex)];
             payload.recurringStartTime = startTimeStr;
             payload.recurringEndTime = endTimeStr;
+            payload.startTime = null; 
+            payload.endTime = null; 
         } else {
             // FIX: Use the fixed toLocalISOString to ensure the time components are preserved
             payload.startTime = toLocalISOString(startDate); 
             payload.endTime = toLocalISOString(endDate);
+            payload.dayOfWeek = null;
+            payload.recurringStartTime = null;
+            payload.recurringEndTime = null;
         }
 
         try {
-            const response = await apiService.saveEvent(payload);
+            const saveButton = form.querySelector('[id$="-save-btn"]');
+            saveButton.disabled = true;
+            saveButton.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
 
-            state.allEvents.push(response.data);
+            await apiService.saveEvent(payload);
+
+            // Fetch all events again to get the server-processed version
+            await fetchEvents(); 
             clearSelection();
             renderEventsForWeek();
             
@@ -348,6 +376,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('მოვლენის შენახვა ვერ მოხერხდა:', error);
             showNotification('მოვლენის შენახვა ვერ მოხერხდა: ' + error.message, 'error');
+        } finally {
+             const saveButton = form.querySelector('[id$="-save-btn"]');
+             saveButton.disabled = false;
+             saveButton.innerHTML = `<i class="fas fa-save"></i> შენახვა`;
         }
     }
 
@@ -517,7 +549,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderEventsForWeek() {
         const startOfWeek = getStartOfWeek(state.mainViewDate);
         const endOfWeek = getEndOfWeek(startOfWeek);
-        endOfWeek.setHours(23, 59, 59, 999); // Ensure it includes the last minute of Sunday
+        endOfWeek.setHours(23, 59, 59, 999); 
         
         const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
         
@@ -537,7 +569,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const currentDayDate = new Date(startOfWeek);
             currentDayDate.setDate(currentDayDate.getDate() + dayIndex);
             
-            const dayStr = currentDayDate.toISOString().split('T')[0];
+            // FIX: Use simple ISO date string comparison for accurate date matching
+            const currentDayDateStr = currentDayDate.toISOString().split('T')[0];
             const dayName = dayNames[dayIndex];
             const dayColumnsArray = Array.from(dayColumns);
             const dayColumn = dayColumnsArray[dayIndex];
@@ -548,7 +581,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Check if the current day is an exception for a recurring event
                 const isException = state.allEvents.some(exc => 
-                    exc.exceptionDate === dayStr && exc.title === `DELETED: ${event._id}`
+                    exc.exceptionDate === currentDayDateStr && exc.title === `DELETED: ${event._id}`
                 );
                 
                 if (isException) {
@@ -566,10 +599,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (event.startTime) {
                     const eventStartDate = new Date(event.startTime);
                     
-                    // The core logic fix: check if the event date falls exactly on the current day's date.
-                    // We compare the date parts as strings (YYYY-MM-DD) which effectively checks for equality ignoring time.
+                    // FIX: Use simple ISO date string comparison for accurate date matching
                     const eventDayStr = eventStartDate.toISOString().split('T')[0];
-                    const currentDayDateStr = currentDayDate.toISOString().split('T')[0];
 
                     if (eventDayStr === currentDayDateStr) {
                         render = true;
@@ -585,52 +616,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
-    }
-
-
-    // Helper function to create and position an event block
-    function renderEventBlock(eventData, dayColumn, isException = false, slotHeight) {
-        if (isException || !dayColumn) return;
-
-        const startMinutes = timeToMinutes(eventData.startTime);
-        const endMinutes = timeToMinutes(eventData.endTime);
-        const durationMinutes = endMinutes - startMinutes;
-
-        // Visual grid starts at 8 AM (480 minutes)
-        const START_OF_GRID_MINUTES = 8 * 60; 
-
-        // Correct calculation relative to the grid start
-        const top = ((startMinutes - START_OF_GRID_MINUTES) / 30) * slotHeight;
-        const height = (durationMinutes / 30) * slotHeight - 2;
-
-        // Skip events outside the 8 AM - 11 PM visual range
-        if (top < 0 || (startMinutes > 23 * 60)) return;
-
-
-        const eventBlock = document.createElement('div');
-        eventBlock.className = `event-block event-${eventData.type}`;
-        if (eventData.type === 'lecture') {
-            eventBlock.classList.add('read-only');
-        }
-        eventBlock.style.top = `${top}px`;
-        eventBlock.style.height = `${height}px`;
-        eventBlock.dataset.eventId = eventData._id;
-
-        let titleContent = eventData.title || eventData.type.toUpperCase();
-        if (eventData.type === 'lecture' && eventData.groupName) {
-            titleContent += ` (${eventData.groupName})`;
-        }
-
-        eventBlock.innerHTML = `
-            <div class="event-title">${titleContent}</div>
-            <div class="event-time">${formatTime(eventData.startTime)} - ${formatTime(eventData.endTime)}</div>
-        `;
-
-        if (eventData.type !== 'lecture') {
-            eventBlock.addEventListener('click', () => handleEventClick(eventData));
-        }
-
-        dayColumn.appendChild(eventBlock);
     }
 
 
@@ -657,16 +642,15 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (event.isRecurring) {
                 return event.dayOfWeek === dayName;
-            } else {
+            } else if (event.startTime) {
                 const eventDate = new Date(event.startTime);
-                // FIX: Use UTC day for mobile event filtering as well
-                const eventDayIndex = (eventDate.getUTCDay() + 6) % 7;
                 // FIX: Now compare the intended local date string
                 const eventDayStr = eventDateToLocalDayString(eventDate);
                 const currentDayStr = eventDateToLocalDayString(currentDate);
 
                 return eventDayStr === currentDayStr;
             }
+            return false;
         }).sort((a, b) => {
             const aTime = eventIsRecurring(a) ? timeToMinutes(a.recurringStartTime) : new Date(a.startTime).getUTCHours() * 60 + new Date(a.startTime).getUTCMinutes();
             const bTime = eventIsRecurring(b) ? timeToMinutes(b.recurringStartTime) : new Date(b.startTime).getUTCHours() * 60 + new Date(b.startTime).getUTCMinutes();
@@ -686,7 +670,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         dayEvents.forEach(event => {
             const eventElement = document.createElement('div');
-            eventElement.className = `mobile-event-card ${event.type}`;
+            eventElement.className = `mobile-event-card event-${event.type}`;
             eventElement.dataset.eventId = event._id;
             
             const startTime = eventIsRecurring(event) ? 
@@ -766,12 +750,14 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (event.isRecurring) {
                 return event.dayOfWeek === dayName;
-            } else {
+            } else if (event.startTime) {
                 const eventDate = new Date(event.startTime);
-                // FIX: Use UTC day for mobile event filtering as well
-                const eventDayIndex = (eventDate.getUTCDay() + 6) % 7;
-                return eventDayIndex === state.activeDayIndex;
+                const eventDayStr = eventDateToLocalDayString(eventDate);
+                const activeDayStr = eventDateToLocalDayString(activeDayDate);
+                
+                return eventDayStr === activeDayStr;
             }
+            return false;
         }).sort((a, b) => {
             const aTime = eventIsRecurring(a) ? timeToMinutes(a.recurringStartTime) : new Date(a.startTime).getUTCHours() * 60 + new Date(a.startTime).getUTCMinutes();
             const bTime = eventIsRecurring(b) ? timeToMinutes(b.recurringStartTime) : new Date(b.startTime).getUTCHours() * 60 + new Date(b.startTime).getUTCMinutes();
@@ -790,7 +776,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         dayEvents.forEach(event => {
             const eventElement = document.createElement('div');
-            eventElement.className = `mobile-event-card ${event.type}`;
+            eventElement.className = `mobile-event-card event-${event.type}`;
             eventElement.dataset.eventId = event._id;
             
             const startTime = eventIsRecurring(event) ? 
@@ -840,11 +826,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (event.isRecurring) {
                         eventStart = timeToMinutes(event.recurringStartTime);
                         eventEnd = timeToMinutes(event.recurringEndTime);
-                    } else {
+                    } else if (event.startTime) {
                         const startDate = new Date(event.startTime);
                         const endDate = new Date(event.endTime);
                         eventStart = startDate.getUTCHours() * 60 + startDate.getUTCMinutes();
                         eventEnd = endDate.getUTCHours() * 60 + endDate.getUTCMinutes();
+                    } else {
+                        return false;
                     }
                     
                     const slotTime = hour * 60 + minute;
@@ -930,6 +918,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Store the event being edited
             state.activeEvent = event;
+            updateFormValidity(elements.mobileForm);
         } else {
             // Creating new event
             elements.mobileFormTitle.textContent = 'ახალი მოვლენა';
@@ -947,6 +936,7 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.mobileRecurringCheckbox.checked = false;
             
             state.activeEvent = null;
+            updateFormValidity(elements.mobileForm);
         }
     }
     
@@ -1058,7 +1048,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     'Apply to all weeks' :
                     'Apply only to this week';
             }
+            updateFormValidity(elements.eventForm);
         });
+        
+        elements.eventForm.addEventListener('change', () => updateFormValidity(elements.eventForm));
+        
+        if (document.getElementById('event-modal-form')) {
+            document.getElementById('event-modal-form').addEventListener('change', () => updateFormValidity(document.getElementById('event-modal-form')));
+        }
+
 
         // Unified Sidebar Toggle Functionality
         const toggleSidebar = () => {
@@ -1113,6 +1111,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 saveEvent(true);
             });
+            elements.mobileForm.addEventListener('change', () => updateFormValidity(elements.mobileForm));
         }
         
         if (elements.mobileDeleteBtn) {
@@ -1129,9 +1128,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         if (elements.mobileNextDayBtn) {
+            elements.mobileActiveDate.setDate(state.mobileActiveDate.getDate() + 1);
+            renderMobileDayView();
             elements.mobileNextDayBtn.addEventListener('click', () => {
-                state.mobileActiveDate.setDate(state.mobileActiveDate.getDate() + 1);
-                renderMobileDayView();
             });
         }
 
@@ -1303,6 +1302,10 @@ document.addEventListener('DOMContentLoaded', () => {
         state.isDragging = false;
         if (state.selectedSlots.size > 0) {
             updateFormWithSelection();
+            // Open modal if it's not already open and not in sidebar view
+            if (!elements.calendarSidebar.classList.contains('open')) {
+                elements.eventModalBackdrop.classList.remove('hidden');
+            }
         } else {
             clearSelection();
         }
@@ -1332,21 +1335,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const endTimeInMinutes = timeToMinutes(lastSlot.dataset.time) + 30; // End of the last selected slot
         const endTime = minutesToTime(endTimeInMinutes);
 
-        // Update form inputs
-        if(elements.calendarSidebar.classList.contains('open')) {
-            if(elements.eventDaySelect) elements.eventDaySelect.value = firstSlot.dataset.day;
-            if(elements.eventStartTime) elements.eventStartTime.value = startTime;
-            if(elements.eventEndTime) elements.eventEndTime.value = endTime;
-            updateFormValidity(elements.eventForm);
-        } else {
-            const form = document.getElementById('event-modal-form');
-            if(form) {
-                if(elements.eventModalDaySelect) elements.eventModalDaySelect.value = firstSlot.dataset.day;
-                if(elements.eventModalStartTime) elements.eventModalStartTime.value = startTime;
-                if(elements.eventModalEndTime) elements.eventModalEndTime.value = endTime;
-                updateFormValidity(form);
-            }
-        }
+        // Update both sidebar and modal form inputs
+        if(elements.eventDaySelect) elements.eventDaySelect.value = firstSlot.dataset.day;
+        if(elements.eventStartTime) elements.eventStartTime.value = startTime;
+        if(elements.eventEndTime) elements.eventEndTime.value = endTime;
+        updateFormValidity(elements.eventForm);
+
+        if(elements.eventModalDaySelect) elements.eventModalDaySelect.value = firstSlot.dataset.day;
+        if(elements.eventModalStartTime) elements.eventModalStartTime.value = startTime;
+        if(elements.eventModalEndTime) elements.eventModalEndTime.value = endTime;
+        updateFormValidity(document.getElementById('event-modal-form'));
     }
 
     // Handle click on an existing event block
@@ -1375,15 +1373,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.innerWidth > 1199) {
             elements.calendarSidebar.classList.add('open');
             elements.pageWrapper.classList.add('sidebar-open');
-            if(elements.eventDaySelect) elements.eventDaySelect.value = dayOfWeek;
-            if(elements.eventStartTime) elements.eventStartTime.value = startTime;
-            if(elements.eventEndTime) elements.eventEndTime.value = endTime;
-            if(elements.eventTitleInput) elements.eventTitleInput.value = eventTitle;
-            const busyRadio = document.querySelector(`#event-form input[name="event-type"][value="${eventType}"]`);
+            
+            // Populate sidebar form
+            const form = elements.eventForm;
+            if(form.querySelector('[id$="-day-select"]')) form.querySelector('[id$="-day-select"]').value = dayOfWeek;
+            if(form.querySelector('[id$="-start-time"]')) form.querySelector('[id$="-start-time"]').value = startTime;
+            if(form.querySelector('[id$="-end-time"]')) form.querySelector('[id$="-end-time"]').value = endTime;
+            if(form.querySelector('[id$="-title-input"]')) form.querySelector('[id$="-title-input"]').value = eventTitle;
+            const busyRadio = form.querySelector(`input[name="event-type"][value="${eventType}"]`);
             if(busyRadio) busyRadio.checked = true;
             if(elements.recurringCheckbox) elements.recurringCheckbox.checked = isRecurring;
             if(elements.deleteEventBtn) elements.deleteEventBtn.disabled = false;
-            updateFormValidity(elements.eventForm);
+            updateFormValidity(form);
+
         } else {
              openMobileEventForm(eventData);
         }
@@ -1398,12 +1400,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Validate a form
     function updateFormValidity(form) {
         if (!form) return;
-        const hasValidInput = form.querySelector('[id$="-day-select"]').value !== '' && 
-                             form.querySelector('[id$="-start-time"]').value !== '' && 
-                             form.querySelector('[id$="-end-time"]').value !== '' && 
-                             form.querySelector('[id$="-title-input"]').value.trim() !== '';
         
+        const titleInput = form.querySelector('[id$="-title-input"]');
+        const daySelect = form.querySelector('[id$="-day-select"]');
+        const startTimeInput = form.querySelector('[id$="-start-time"]');
+        const endTimeInput = form.querySelector('[id$="-end-time"]');
         const saveButton = form.querySelector('[id$="-save-btn"]');
+        
+        const hasValidInput = titleInput?.value.trim() !== '' && 
+                             daySelect?.value !== '' && 
+                             startTimeInput?.value !== '' && 
+                             endTimeInput?.value !== '';
+        
         if (saveButton) {
             saveButton.disabled = !hasValidInput;
         }
@@ -1411,16 +1419,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Reset forms
     function clearForm() {
+        // Reset Sidebar Form
         if(elements.eventForm) {
             if(elements.eventDaySelect) elements.eventDaySelect.value = '0';
             if(elements.eventStartTime) elements.eventStartTime.value = '08:00';
             if(elements.eventEndTime) elements.eventEndTime.value = '09:00';
             if(elements.eventTitleInput) elements.eventTitleInput.value = '';
-            const busyRadio = document.querySelector('input[name="event-type"][value="busy"]');
+            const busyRadio = elements.eventForm.querySelector('input[name="event-type"][value="busy"]');
             if(busyRadio) busyRadio.checked = true;
             if(elements.recurringCheckbox) elements.recurringCheckbox.checked = false;
             if(elements.deleteEventBtn) elements.deleteEventBtn.disabled = true;
             updateFormValidity(elements.eventForm);
+        }
+        
+        // Reset Modal Form
+        const modalForm = document.getElementById('event-modal-form');
+        if(modalForm) {
+            if(elements.eventModalDaySelect) elements.eventModalDaySelect.value = '0';
+            if(elements.eventModalStartTime) elements.eventModalStartTime.value = '08:00';
+            if(elements.eventModalEndTime) elements.eventModalEndTime.value = '09:00';
+            if(elements.eventModalTitleInput) elements.eventModalTitleInput.value = '';
+            const busyRadio = modalForm.querySelector('input[name="event-type"][value="busy"]');
+            if(busyRadio) busyRadio.checked = true;
+            if(elements.eventModalRecurringCheckbox) elements.eventModalRecurringCheckbox.checked = false;
+            if(elements.eventModalDeleteBtn) elements.eventModalDeleteBtn.disabled = true;
+            updateFormValidity(modalForm);
         }
     }
     
