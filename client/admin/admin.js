@@ -6,8 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // =================================================================
     const API_BASE_URL = '/api';
     
-    // FIX: Rewritten to correctly preserve local date and time components 
-    // without UTC offset logic when sending to the server.
+    // FIX: Correctly preserve local date and time components
     function toLocalISOString(date) {
         if (!date) return null;
         const pad = (num) => num.toString().padStart(2, '0');
@@ -16,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const DD = pad(date.getDate());
         const HH = pad(date.getHours());
         const mm = pad(date.getMinutes());
-        // Return ISO-like string without Z or offset
         return `${YYYY}-${MM}-${DD}T${HH}:${mm}`;
     }
 
@@ -43,7 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       toastContainer.appendChild(toast);
 
-      // Auto remove after 5 seconds
       setTimeout(() => {
         toast.style.animation = 'slideIn 0.3s ease reverse forwards';
         setTimeout(() => toast.remove(), 300);
@@ -58,7 +55,6 @@ document.addEventListener('DOMContentLoaded', () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      // Only set Content-Type if not FormData and not already set
       if (!(options.body instanceof FormData) && !headers['Content-Type']) {
         headers['Content-Type'] = 'application/json';
       }
@@ -69,7 +65,6 @@ document.addEventListener('DOMContentLoaded', () => {
           headers,
         });
 
-        // Handle authentication errors
         if (response.status === 401 || response.status === 403) {
           localStorage.removeItem('piRateToken');
           window.location.href = '../login/login.html';
@@ -84,7 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return response.status === 204 ? null : response.json();
       } catch (error) {
         console.error('API Request Failed:', error);
-        // Don't redirect on network errors, only on auth errors
         if (error.message !== 'Authentication required') {
           showToast(`API Error: ${error.message}`, 'error');
           throw error;
@@ -123,15 +117,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const elements = {
       sidebarLinks: document.querySelectorAll('.sidebar-link'),
       adminPanels: document.querySelectorAll('.admin-panel'),
-      // Modals
       userModal: document.getElementById('user-form-modal'),
       videoModal: document.getElementById('video-form-modal'),
       groupModal: document.getElementById('group-form-modal'),
-      // Forms
       userForm: document.getElementById('user-form'),
       videoForm: document.getElementById('video-form'),
       groupForm: document.getElementById('group-form'),
-      // Calendar
       calendarControlPanel: document.getElementById('calendar-control-panel'),
       timeColumn: document.getElementById('time-column'),
       dayColumns: document.querySelectorAll('.day-column'),
@@ -146,12 +137,9 @@ document.addEventListener('DOMContentLoaded', () => {
       lectureTitleInput: document.getElementById('lecture-title-input'),
       currentTimeIndicator: document.getElementById('current-time-indicator'),
       suggestLecturesBtn: document.getElementById('suggest-schedule-btn'),
-      // New Calendar Controls
       recurringCheckbox: document.getElementById('recurring-event-checkbox'),
-      // Mobile sidebar toggle
       sidebarToggle: document.getElementById('sidebar-toggle'),
       adminSidebar: document.querySelector('.admin-sidebar'),
-      // Student Points View
       studentListView: document.getElementById('student-list-view'),
       studentDetailView: document.getElementById('student-points-detail-view'),
     };
@@ -160,7 +148,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3. INITIALIZATION
     // =================================================================
     async function initializeApp() {
-      // Check if user is authenticated
       const token = localStorage.getItem('piRateToken');
       if (!token) {
         window.location.href = '../login/login.html';
@@ -168,7 +155,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       try {
-        // Create sidebar toggle for mobile
         createSidebarToggle();
 
         const [currentUserRes, usersRes, groupsRes, videosRes] = await Promise.all([
@@ -178,12 +164,10 @@ document.addEventListener('DOMContentLoaded', () => {
           apiFetch('/videos'),
         ]);
 
-        // Handle API responses with proper data extraction
         const currentUser = currentUserRes;
         const users = Array.isArray(usersRes?.data) ? usersRes.data : usersRes || [];
         const groups = Array.isArray(groupsRes?.data) ? groupsRes.data : groupsRes || [];
 
-        // FIXED: Handle videos response with the correct structure
         let videos = [];
         if (videosRes && videosRes.success) {
           videos = Array.isArray(videosRes.data?.videos) ? videosRes.data.videos :
@@ -198,17 +182,15 @@ document.addEventListener('DOMContentLoaded', () => {
         setupAllEventListeners();
         initializeCalendar();
 
-        // Start time indicator update
         updateCurrentTimeIndicator();
         setInterval(updateCurrentTimeIndicator, 60000);
       } catch (error) {
         console.error('Initialization Error:', error);
-        showErrorPage('წვდომა აკრძალულია', 'ადმინისტრაციული მონაცემების ჩატვირთვა ვერ მოხერხდა. გთხოვთ შეამოწმოთ კავშირი და სცადოთ თავიდან.');
+        showErrorPage('წვდომა აკრძალულია', 'ადმინისტრაციული მონაცემების ჩატვირთვა ვერ მოხერხდა.');
       }
     }
 
     function createSidebarToggle() {
-      // Only create on mobile
       if (window.innerWidth > 768) return;
 
       const toggleBtn = document.createElement('button');
@@ -221,7 +203,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       document.body.appendChild(toggleBtn);
 
-      // Close sidebar when clicking outside
       document.addEventListener('click', (e) => {
         if (elements.adminSidebar.classList.contains('active') &&
           !elements.adminSidebar.contains(e.target) &&
@@ -251,7 +232,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (groupsStat) groupsStat.textContent = state.groups.length;
       if (videosStat) videosStat.textContent = state.videos.length;
 
-      // Render recent activity
       renderRecentActivity();
     }
 
@@ -259,7 +239,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const activityList = document.getElementById('recent-activity-list');
       if (!activityList) return;
 
-      // Sample recent activity - in a real app, this would come from an API
       const activities = [
         { icon: 'user-plus', title: 'ახალი მომხმარებელი', details: 'გიორგი ქართველიშვილი დაემატა სისტემას', time: '2 საათის წინ' },
         { icon: 'video', title: 'ვიდეო დაემატა', details: 'კალკულუსის შესავალი დაემატა', time: '5 საათის წინ' },
@@ -322,7 +301,6 @@ document.addEventListener('DOMContentLoaded', () => {
         </table>
       `;
 
-      // Add event listeners to the buttons
       container.querySelectorAll('.btn-edit').forEach(btn => {
         btn.addEventListener('click', () => {
           const userId = btn.getAttribute('data-id');
@@ -363,7 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <tr class="student-row" data-id="${student._id}">
                 <td>${escapeHTML(student.firstName)} ${escapeHTML(student.lastName)}</td>
                 <td>${escapeHTML(student.email)}</td>
-                <td>${student.groups.map(g => escapeHTML(g.name)).join(', ')}</td>
+                <td>${student.groups?.map(g => escapeHTML(g.name)).join(', ') || ''}</td>
                 <td class="action-btns">
                   <button class="btn-view-points" data-id="${student._id}">
                     <i class="fa-solid fa-medal"></i>
@@ -415,12 +393,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       try {
-        // Log the API endpoint to ensure it's being called correctly
-        console.log('Fetching points for student ID:', student._id);
         const response = await apiFetch(`/users/profile/points?userId=${student._id}`);
-
-        // Log the full API response to the console for debugging
-        console.log('API Response for student points:', response);
 
         if (response && response.success && Array.isArray(response.data)) {
           state.studentPoints = response.data;
@@ -428,7 +401,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           throw new Error(response?.message || 'API-დან მიღებული მონაცემები არასწორია');
         }
-
       } catch (error) {
         console.error('Failed to fetch student points:', error);
         document.getElementById('student-points-content').innerHTML = `
@@ -441,7 +413,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const container = document.getElementById('student-points-content');
       if (!container) return;
 
-      // Correctly calculate total earned and possible points by summing up weekly data
       const totalEarned = state.studentPoints.reduce((sum, week) => sum + week.totalPointsEarned, 0);
       const totalPossible = state.studentPoints.reduce((sum, week) => sum + week.totalPointsPossible, 0);
       const percentage = totalPossible > 0 ? ((totalEarned / totalPossible) * 100).toFixed(0) : 0;
@@ -482,6 +453,11 @@ document.addEventListener('DOMContentLoaded', () => {
           if (weekData) renderWeeklyDetails(weekData);
         });
       });
+    }
+
+    function renderWeeklyDetails(weekData) {
+      // Implementation for weekly details modal
+      console.log('Weekly details:', weekData);
     }
 
     function renderGroupsTable() {
@@ -529,7 +505,6 @@ document.addEventListener('DOMContentLoaded', () => {
         </table>
       `;
 
-      // Add event listeners to the buttons
       container.querySelectorAll('.btn-edit').forEach(btn => {
         btn.addEventListener('click', () => {
           const groupId = btn.getAttribute('data-id');
@@ -589,7 +564,6 @@ document.addEventListener('DOMContentLoaded', () => {
         </table>
       `;
 
-      // Add event listeners to the buttons
       container.querySelectorAll('.btn-edit').forEach(btn => {
         btn.addEventListener('click', () => {
           const videoId = btn.getAttribute('data-id');
@@ -712,7 +686,6 @@ document.addEventListener('DOMContentLoaded', () => {
           </option>`
         ).join('');
 
-      // Create a container for multi-select options
       studentMultiSelect.innerHTML = '';
       const container = document.createElement('div');
       container.className = 'multi-select-container';
@@ -786,7 +759,6 @@ document.addEventListener('DOMContentLoaded', () => {
           url: formData.get('url'),
         };
 
-        // Validate YouTube URL with more flexible regex
         const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
         if (!youtubeRegex.test(data.url)) {
           showToast('გთხოვთ მიუთითოთ სწორი YouTube ბმული', 'error');
@@ -796,15 +768,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const endpoint = state.editingId ? `/videos/${state.editingId}` : '/videos';
         const method = state.editingId ? 'PUT' : 'POST';
 
-        const response = await apiFetch(endpoint, {
+        await apiFetch(endpoint, {
           method,
           body: JSON.stringify(data),
           headers: { 'Content-Type': 'application/json' }
         });
 
-        // Refresh videos list
         const videosRes = await apiFetch('/videos');
-        state.videos = (videosRes && videosRes.data && videosRes.data.videos) || []; // CORRECTED LINE
+        state.videos = (videosRes && videosRes.data && videosRes.data.videos) || [];
 
         renderAllComponents();
         closeModal(elements.videoModal);
@@ -891,7 +862,7 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         await apiFetch(`/videos/${id}`, { method: 'DELETE' });
         const videosRes = await apiFetch('/videos');
-        state.videos = (videosRes && videosRes.data && videosRes.data.videos) || []; // CORRECTED LINE
+        state.videos = (videosRes && videosRes.data && videosRes.data.videos) || [];
         renderAllComponents();
         showToast('ვიდეო წაიშლა', 'success');
       } catch (error) {
@@ -903,7 +874,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // 8. EVENT LISTENERS & PUBLIC API
     // =================================================================
     function setupAllEventListeners() {
-      // Sidebar navigation
       if (elements.sidebarLinks) {
         elements.sidebarLinks.forEach(link => {
           link.addEventListener('click', e => {
@@ -920,7 +890,6 @@ document.addEventListener('DOMContentLoaded', () => {
               elements.calendarControlPanel.classList.toggle('hidden', targetId !== 'calendar-panel');
             }
 
-            // Close sidebar on mobile after selection
             if (window.innerWidth <= 768) {
               elements.adminSidebar.classList.remove('active');
             }
@@ -928,7 +897,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
 
-      // Modal Triggers
       document.getElementById('create-user-btn')?.addEventListener('click', () => setupUserModal());
       document.getElementById('quick-create-user-btn')?.addEventListener('click', () => setupUserModal());
       document.getElementById('upload-video-btn')?.addEventListener('click', () => setupVideoModal());
@@ -936,7 +904,6 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('create-group-btn')?.addEventListener('click', () => setupGroupModal());
       document.getElementById('quick-create-group-btn')?.addEventListener('click', () => setupGroupModal());
 
-      // Modal Close Triggers
       document.querySelectorAll('.modal-overlay').forEach(modal => {
         modal.addEventListener('click', e => {
           if (e.target === modal) closeModal(modal);
@@ -945,12 +912,10 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.querySelector('.close-modal')?.addEventListener('click', () => closeModal(modal));
       });
 
-      // Form Submissions
       elements.userForm?.addEventListener('submit', handleUserFormSubmit);
       elements.videoForm?.addEventListener('submit', handleVideoFormSubmit);
       elements.groupForm?.addEventListener('submit', handleGroupFormSubmit);
 
-      // Dynamic UI Listeners
       elements.userForm?.querySelector('#user-role')?.addEventListener('change', e => {
         const teacherFields = document.getElementById('teacher-fields');
         if (teacherFields) {
@@ -960,7 +925,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // =================================================================
-    // 9. CALENDAR LOGIC - FIXED AND ENHANCED
+    // 9. CALENDAR LOGIC - FIXED LECTURE RENDERING
     // =================================================================
     function initializeCalendar() {
       if (!elements.timeColumn || !elements.dayColumns.length) return;
@@ -986,11 +951,11 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.saveLectureBtn?.addEventListener('click', saveLecture);
       elements.deleteLectureBtn?.addEventListener('click', deleteLecture);
 
-      // Add listener for new recurring checkbox
       elements.recurringCheckbox?.addEventListener('change', () => {
         const panelTitle = document.getElementById('calendar-panel-title');
         if (panelTitle && calendarState.activeLecture) {
-          panelTitle.textContent = elements.recurringCheckbox.checked ? 'ლექციის რედაქტირება' : 'ლექციის ასლის რედაქტირება';
+          panelTitle.textContent = elements.recurringCheckbox.checked ? 
+            'ლექციის რედაქტირება' : 'ლექციის ასლის რედაქტირება';
         }
       });
     }
@@ -1034,54 +999,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      // Only load group data if a group is already selected
       if (state.selectedGroup) {
         handleGroupSelection();
       }
     }
 
-    // UPDATED: Handle group selection with corrected time handling
     async function handleGroupSelection() {
-      // Clear any existing calendar data from the grid
       clearAllCalendarEvents();
       clearSlotClasses();
-      elements.suggestLecturesBtn.disabled = true;
+      if (elements.suggestLecturesBtn) elements.suggestLecturesBtn.disabled = true;
 
       const groupId = elements.groupSelect.value;
-      if (!groupId) {
-        // If no group is selected, do nothing.
-        return;
-      }
+      if (!groupId) return;
 
       try {
-        // Store the selected group
         state.selectedGroup = groupId;
-
-        // Get the group details to find members
         const group = state.groups.find(g => g._id === groupId);
         if (!group) return;
 
         state.selectedGroupMembers = group.users || [];
 
-        // Fetch both the personal availability of all group members and the official lectures
         const [availabilityRes, lecturesRes] = await Promise.all([
           apiFetch(`/calendar-events/group/${groupId}`),
-          apiFetch(`/lectures/group/${groupId}`),
+          apiFetch(`/lectures/group/${groupId}?start=${getStartOfWeek(calendarState.mainViewDate).toISOString()}&end=${getEndOfWeek(calendarState.mainViewDate).toISOString()}`),
         ]);
 
-        // Process the raw event data into a structured availability map
-        calendarState.memberEvents = availabilityRes.data || [];
+        calendarState.memberEvents = availabilityRes?.data || [];
+        calendarState.lectures = lecturesRes?.data || [];
+
         calendarState.aggregatedAvailability = aggregateAvailability(calendarState.memberEvents, state.selectedGroupMembers.length);
 
-        // Store the official lectures in the calendar's state
-        calendarState.lectures = lecturesRes.data || [];
-
-        // Render the visual layers onto the calendar grid
         renderAggregatedAvailability();
         renderLectures();
 
-        // Enable the suggestion button now that we have availability data
-        elements.suggestLecturesBtn.disabled = false;
+        if (elements.suggestLecturesBtn) elements.suggestLecturesBtn.disabled = false;
 
       } catch (error) {
         console.error('Error loading group calendars:', error);
@@ -1089,74 +1040,57 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // FIX: This function has been completely rewritten to handle UTC for consistent calculations.
     function aggregateAvailability(memberEvents, memberCount) {
       const availabilityMap = {};
       const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
 
-      // 1. Initialize the entire week's grid as 'free'
       for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
         availabilityMap[dayIndex] = {};
-        // 30 slots per day (8am to 11pm)
         for (let slot = 0; slot < 30; slot++) {
           availabilityMap[dayIndex][slot] = { busy: 0, preferred: 0 };
         }
       }
 
-      // 2. Process each event and mark the corresponding slots
       memberEvents.forEach(event => {
-        // Skip events that are not 'busy' or 'preferred'
-        if (!['busy', 'preferred'].includes(event.type)) {
-          return;
-        }
+        if (!['busy', 'preferred'].includes(event.type)) return;
 
         const eventDays = [];
         let eventStartMin, eventEndMin;
 
         if (event.isRecurring) {
-          // For recurring events, we apply them to the correct day of the current week
           const dayIndex = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].indexOf(event.dayOfWeek);
           if (dayIndex !== -1) {
             const currentDate = new Date(startOfWeek);
             currentDate.setDate(startOfWeek.getDate() + dayIndex);
             const dateString = currentDate.toISOString().split('T')[0];
 
-            // Check if this instance was deleted by an exception
             const isException = memberEvents.some(ex => ex.exceptionDate === dateString && ex.title === `DELETED: ${event._id}`);
             if (!isException) {
               eventDays.push(dayIndex);
-              // Ensure time is in HH:MM format
               eventStartMin = timeToMinutes(ensureTimeFormat(event.recurringStartTime));
               eventEndMin = timeToMinutes(ensureTimeFormat(event.recurringEndTime));
             }
           }
         } else if (event.startTime) {
-          // FIX: Use UTC methods for consistent calculations.
           const eventDate = new Date(event.startTime);
-          const eventEndDate = new Date(event.endTime);
-
-          // Get the UTC day of the week (Monday=1...Sunday=0). Convert to our 0=Mon, 6=Sun index.
-          const dayIndex = (eventDate.getUTCDay() + 6) % 7;
+          const dayIndex = (eventDate.getDay() + 6) % 7;
           
-          // Check if the event date matches the date of the current calendar column
           const currentColumnDate = new Date(startOfWeek);
           currentColumnDate.setDate(startOfWeek.getDate() + dayIndex);
 
           if (eventDateToLocalDayString(eventDate) === eventDateToLocalDayString(currentColumnDate)) {
               eventDays.push(dayIndex);
               eventStartMin = eventDate.getUTCHours() * 60 + eventDate.getUTCMinutes();
+              const eventEndDate = new Date(event.endTime);
               eventEndMin = eventEndDate.getUTCHours() * 60 + eventEndDate.getUTCMinutes();
           }
         }
 
-        // 3. Mark the slots in the availability map (8:00 AM grid start)
         for (const day of eventDays) {
           const START_OF_GRID_MINUTES = 8 * 60;
-          
           const startSlot = Math.floor((eventStartMin - START_OF_GRID_MINUTES) / 30);
           const endSlot = Math.ceil((eventEndMin - START_OF_GRID_MINUTES) / 30);
           
-          // Constrain slots to the visible grid (0 to 29 for 8:00 AM to 10:30 PM)
           const start = Math.max(0, startSlot);
           const end = Math.min(30, endSlot);
 
@@ -1172,23 +1106,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
-      // 4. Classify each slot based on the counts
       for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
         for (let slot = 0; slot < 30; slot++) {
           const counts = availabilityMap[dayIndex][slot] || { busy: 0, preferred: 0 };
           const requiredMembers = state.selectedGroupMembers.filter(u => u.role !== 'Admin').length || 1;
 
           if (counts.busy > 0) {
-            // If anyone is busy, mark as busy
             availabilityMap[dayIndex][slot] = 'busy';
           } else if (counts.preferred === requiredMembers) {
-            // If all members prefer this time
             availabilityMap[dayIndex][slot] = 'preferred-all';
           } else if (counts.preferred > 0) {
-            // If some members prefer this time
             availabilityMap[dayIndex][slot] = 'preferred-some';
           } else {
-            // Free time slot
             availabilityMap[dayIndex][slot] = 'free';
           }
         }
@@ -1200,133 +1129,129 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderAggregatedAvailability() {
       clearSlotClasses();
 
-      // Get all time slots in the calendar
       const timeSlots = document.querySelectorAll('.time-slot');
-
       timeSlots.forEach(slot => {
         const dayIndex = parseInt(slot.dataset.day);
         const time = slot.dataset.time;
         const slotIndex = timeToSlotIndex(time);
 
-        // Get the availability status for this slot
         const status = calendarState.aggregatedAvailability[dayIndex]?.[slotIndex] || 'free';
-
-        // Add the appropriate CSS class
         if (status !== 'free') {
           slot.classList.add(`slot-${status}`);
         }
       });
     }
 
+    // FIXED: Corrected lecture rendering function
     function renderLectures() {
       const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
-      const endOfWeek = getEndOfWeek(startOfWeek);
-      endOfWeek.setHours(23, 59, 59, 999);
-      const dayNames = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
-
-      // Clear existing events first
+      
+      // Clear existing lecture events
       document.querySelectorAll('.event-block[data-lecture-id]').forEach(el => el.remove());
 
       calendarState.lectures.forEach(lecture => {
-        const lectureDate = new Date(lecture.startTime);
-        const lectureEndDate = new Date(lecture.endTime);
-        
-        for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-            const currentDate = new Date(startOfWeek);
-            currentDate.setDate(startOfWeek.getDate() + dayIndex);
-            
-            let render = false;
-            let formattedStart, formattedEnd;
-            
-            if (lecture.isRecurring) {
-                const rruleWeekdays = lecture.recurrenceRule?.byweekday || [];
-                const dayName = dayNames[dayIndex];
-
-                if (rruleWeekdays.includes(dayName)) {
-                    const dtstart = lecture.recurrenceRule.dtstart ? new Date(lecture.recurrenceRule.dtstart) : lectureDate;
-                    
-                    // FIX: Check if current column's date is within the recurring range (using simple ISO date string comparison)
-                    const currentDayStr = currentDate.toISOString().split('T')[0];
-                    const startDayStr = dtstart.toISOString().split('T')[0];
-                    
-                    if (currentDayStr >= startDayStr) { 
-                        render = true;
-                        // FIX: Extract HH:MM from the saved Date object using UTC getters
-                        formattedStart = `${String(lectureDate.getUTCHours()).padStart(2, '0')}:${String(lectureDate.getUTCMinutes()).padStart(2, '0')}`;
-                        formattedEnd = `${String(lectureEndDate.getUTCHours()).padStart(2, '0')}:${String(lectureEndDate.getUTCMinutes()).padStart(2, '0')}`;
-                    }
-                }
-            } else {
-                // Single events: Check if the event's local date matches the current column's date
-                const eventDayStr = lectureDate.toISOString().split('T')[0];
-                const currentDayStr = currentDate.toISOString().split('T')[0];
-                
-                if (eventDayStr === currentDayStr) {
-                    render = true;
-                    // FIX: Extract HH:MM from the saved Date object using UTC getters
-                    formattedStart = `${String(lectureDate.getUTCHours()).padStart(2, '0')}:${String(lectureDate.getUTCMinutes()).padStart(2, '0')}`;
-                    formattedEnd = `${String(lectureEndDate.getUTCHours()).padStart(2, '0')}:${String(lectureEndDate.getUTCMinutes()).padStart(2, '0')}`;
-                }
-            }
-
-            if (render) {
-                createEventBlock({
-                    _id: lecture._id,
-                    title: lecture.title,
-                    start: formattedStart,
-                    end: formattedEnd,
-                    type: 'lecture',
-                    isRecurring: lecture.isRecurring
-                }, dayIndex);
-            }
+        if (lecture.isRecurring) {
+          // Handle recurring lectures
+          renderRecurringLecture(lecture, startOfWeek);
+        } else {
+          // Handle single lectures
+          renderSingleLecture(lecture, startOfWeek);
         }
       });
     }
 
-    function createEventBlock(event, dayIndex) {
-            const dayColumn = document.querySelector(`.day-column[data-day="${dayIndex}"]`);
-            if (!dayColumn) {
-                return;
-            }
+    function renderRecurringLecture(lecture, startOfWeek) {
+      const dayNames = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+      const rruleWeekdays = lecture.recurrenceRule?.byweekday || [];
+      
+      // Get time from the original lecture
+      const startTime = new Date(lecture.startTime);
+      const endTime = new Date(lecture.endTime);
+      
+      const startHours = startTime.getUTCHours();
+      const startMinutes = startTime.getUTCMinutes();
+      const endHours = endTime.getUTCHours();
+      const endMinutes = endTime.getUTCMinutes();
+      
+      const startTimeStr = `${String(startHours).padStart(2, '0')}:${String(startMinutes).padStart(2, '0')}`;
+      const endTimeStr = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
 
-            // Convert HH:MM time string to minutes past midnight
-            const start = timeToMinutes(event.start);
-            const end = timeToMinutes(event.end);
-            
-            // Correctly calculate top position and height based on a 40px slot height
-            const START_OF_GRID_MINUTES = 8 * 60; // 480 minutes (Calendar starts at 8 AM)
-            const slotHeight = 40; // Hardcoded slot height from CSS var
+      // Render for each day in the recurrence pattern
+      rruleWeekdays.forEach(weekday => {
+        const dayIndex = dayNames.indexOf(weekday);
+        if (dayIndex !== -1) {
+          createLectureBlock({
+            _id: lecture._id,
+            title: lecture.title,
+            start: startTimeStr,
+            end: endTimeStr,
+            type: 'lecture',
+            isRecurring: true
+          }, dayIndex);
+        }
+      });
+    }
 
-            // Calculate position relative to the 8:00 AM start of the visual grid
-            const top = ((start - START_OF_GRID_MINUTES) / 30) * slotHeight;
-            const height = ((end - start) / 30) * slotHeight;
+    function renderSingleLecture(lecture, startOfWeek) {
+      const lectureDate = new Date(lecture.startTime);
+      const lectureEndDate = new Date(lecture.endTime);
+      
+      // Calculate which day of the week this lecture falls on
+      const lectureDayOfWeek = (lectureDate.getDay() + 6) % 7; // Convert to 0=Monday, 6=Sunday
+      
+      const startHours = lectureDate.getUTCHours();
+      const startMinutes = lectureDate.getUTCMinutes();
+      const endHours = lectureEndDate.getUTCHours();
+      const endMinutes = lectureEndDate.getUTCMinutes();
+      
+      const startTimeStr = `${String(startHours).padStart(2, '0')}:${String(startMinutes).padStart(2, '0')}`;
+      const endTimeStr = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
 
-            // Skip events outside the 8 AM - 11 PM range
-            if (top < 0 || height <= 0 || start >= 23 * 60) return; 
+      createLectureBlock({
+        _id: lecture._id,
+        title: lecture.title,
+        start: startTimeStr,
+        end: endTimeStr,
+        type: 'lecture',
+        isRecurring: false
+      }, lectureDayOfWeek);
+    }
 
-            const eventBlock = document.createElement('div');
-            eventBlock.className = `event-block event-${event.type}`;
-            eventBlock.style.top = `${top}px`;
-            eventBlock.style.height = `${height - 2}px`; // -2px for visual padding
-            eventBlock.dataset.lectureId = event._id;
+    function createLectureBlock(lectureData, dayIndex) {
+      const dayColumn = document.querySelector(`.day-column[data-day="${dayIndex}"]`);
+      if (!dayColumn) return;
 
-            if (event.title) {
-                eventBlock.innerHTML = `
-                  <div class="event-title">${escapeHTML(event.title)}</div>
-                  <div class="event-time">${formatTime(event.start, false)} - ${formatTime(event.end, false)}</div>
-                `;
-            }
+      const startMinutes = timeToMinutes(lectureData.start);
+      const endMinutes = timeToMinutes(lectureData.end);
+      const durationMinutes = endMinutes - startMinutes;
 
-            if (event.type === 'lecture') {
-                eventBlock.addEventListener('click', e => {
-                    e.stopPropagation();
-                    const lectureFromState = calendarState.lectures.find(l => l._id === event._id);
-                    // Pass the dayIndex to the click handler
-                    handleLectureClick(lectureFromState, dayIndex);
-                });
-            }
+      const START_OF_GRID_MINUTES = 8 * 60;
+      const slotHeight = 40;
 
-            dayColumn.appendChild(eventBlock);
+      const top = ((startMinutes - START_OF_GRID_MINUTES) / 30) * slotHeight;
+      const height = (durationMinutes / 30) * slotHeight;
+
+      // Skip events outside the visible grid
+      if (top < 0 || (startMinutes > 23 * 60)) return;
+
+      const eventBlock = document.createElement('div');
+      eventBlock.className = `event-block event-${lectureData.type}`;
+      eventBlock.style.top = `${top}px`;
+      eventBlock.style.height = `${height - 2}px`;
+      eventBlock.dataset.lectureId = lectureData._id;
+
+      eventBlock.innerHTML = `
+        <div class="event-title">${escapeHTML(lectureData.title)}</div>
+        <div class="event-time">${formatTime(lectureData.start, false)} - ${formatTime(lectureData.end, false)}</div>
+      `;
+
+      eventBlock.addEventListener('click', e => {
+        e.stopPropagation();
+        const lectureFromState = calendarState.lectures.find(l => l._id === lectureData._id);
+        handleLectureClick(lectureFromState, dayIndex);
+      });
+
+      dayColumn.appendChild(eventBlock);
     }
 
     function startDragSelection(e) {
@@ -1382,7 +1307,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const lectureDate = new Date(lecture.startTime);
       const lectureEndDate = new Date(lecture.endTime);
       
-      // FIX: Use UTC components for correct time display and calculation
       const startMinutes = lectureDate.getUTCHours() * 60 + lectureDate.getUTCMinutes();
       const endMinutes = lectureEndDate.getUTCHours() * 60 + lectureEndDate.getUTCMinutes();
       
@@ -1391,18 +1315,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (elements.lectureTitleInput) elements.lectureTitleInput.value = lecture.title;
       if (elements.sidebarTimeRange) {
-        // FIX: Use the new formatTimeUTC helper for display
         elements.sidebarTimeRange.textContent = `${formatTimeUTC(lecture.startTime)} - ${formatTimeUTC(lecture.endTime)}`;
       }
 
       const panelTitle = document.getElementById('calendar-panel-title');
       if (panelTitle) panelTitle.textContent = 'ლექციის რედაქტირება';
 
-      // Set selection for UI consistency if it's a single event
       if (!lecture.isRecurring) {
         const startSlotIndex = timeToSlotIndex(startTimeStr);
-        // End slot index is exclusive of the slot itself.
-        const endSlotIndex = timeToSlotIndex(endTimeStr); 
+        const endSlotIndex = timeToSlotIndex(endTimeStr);
         
         const dayColumn = document.querySelector(`.day-column[data-day="${dayIndex}"]`);
         if (dayColumn) {
@@ -1425,7 +1346,6 @@ document.addEventListener('DOMContentLoaded', () => {
       calendarState.activeLecture = null;
 
       if (elements.lectureTitleInput) elements.lectureTitleInput.value = '';
-      // Reset recurring checkbox
       if (elements.recurringCheckbox) elements.recurringCheckbox.checked = false;
       updateSidebarWithSelection();
 
@@ -1441,26 +1361,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!hasSelection && !calendarState.activeLecture) {
         if (elements.sidebarTimeRange) elements.sidebarTimeRange.textContent = 'აირჩიეთ დრო კალენდარზე';
-        // Hide recurring checkbox for new events
         if (elements.recurringCheckbox) elements.recurringCheckbox.parentElement.classList.add('hidden');
         return;
       }
 
       if (calendarState.activeLecture) {
-        // Show recurring checkbox for editing an existing lecture
         if (elements.recurringCheckbox) {
           elements.recurringCheckbox.checked = calendarState.activeLecture.isRecurring;
           elements.recurringCheckbox.parentElement.classList.remove('hidden');
         }
       } else {
-        // Show recurring checkbox for new events
         if (elements.recurringCheckbox) {
           elements.recurringCheckbox.checked = false;
           elements.recurringCheckbox.parentElement.classList.remove('hidden');
         }
       }
 
-      // Don't override edit view
       if (calendarState.activeLecture && !hasSelection) return;
 
       const times = Array.from(calendarState.selectedSlots)
@@ -1476,13 +1392,11 @@ document.addEventListener('DOMContentLoaded', () => {
     async function saveLecture() {
       const slots = Array.from(calendarState.selectedSlots);
 
-      // Guard against saving without a selection or title
       if (slots.length === 0 || !elements.lectureTitleInput.value.trim()) {
         showToast("გთხოვთ აირჩიოთ დროის სლოტი კალენდარზე და მიუთითოთ სათაური.", "error");
         return;
       }
 
-      // Find the start date and time from the first selected slot
       const startSlot = slots[0];
       const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
       const lectureDate = new Date(startOfWeek);
@@ -1490,19 +1404,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const [startH, startM] = startSlot.dataset.time.split(':');
       
-      // Create a Date object representing the LOCAL start time and end time
       const startTimeLocal = new Date(lectureDate);
       startTimeLocal.setHours(parseInt(startH), parseInt(startM));
 
-      // Calculate end time based on the number of 30-minute slots selected
       const endTimeLocal = new Date(startTimeLocal.getTime() + slots.length * 30 * 60000);
 
       const isRecurring = elements.recurringCheckbox.checked;
 
       const payload = {
         title: elements.lectureTitleInput.value.trim(),
-        // FIX: Use the fixed toLocalISOString to preserve local time intent.
-        startTime: toLocalISOString(startTimeLocal), 
+        startTime: toLocalISOString(startTimeLocal),
         endTime: toLocalISOString(endTimeLocal),
         groupId: elements.groupSelect.value,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -1513,13 +1424,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const dayOfWeek = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'][parseInt(startSlot.dataset.day)];
         payload.recurrenceRule = {
           freq: 'WEEKLY',
-          // FIX: Use toLocalISOString for dtstart as well
-          dtstart: toLocalISOString(startTimeLocal), 
+          dtstart: toLocalISOString(startTimeLocal),
           byweekday: [dayOfWeek]
         };
       }
 
-      // Determine if we are creating a new lecture or updating an existing one
       const isUpdating = !!calendarState.activeLecture;
       const endpoint = isUpdating ? `/lectures/${calendarState.activeLecture._id}` : '/lectures';
       const method = isUpdating ? 'PUT' : 'POST';
@@ -1528,10 +1437,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.saveLectureBtn.classList.add('loading');
         await apiFetch(endpoint, { method, body: JSON.stringify(payload) });
 
-        // After successfully saving, refresh the entire calendar view for the group
         await handleGroupSelection();
-
-        // Reset the selection and sidebar form
         clearSelection();
         showToast(isUpdating ? 'ლექცია განახლებულია' : 'ლექცია დაემატა', 'success');
       } catch (error) {
@@ -1563,26 +1469,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const lectureDate = new Date(calendarState.activeLecture.startTime);
 
         if (isRecurring && !deleteAllRecurring) {
-          // For a specific instance of a recurring event, calculate the date
           const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
           const dayIndex = parseInt(Array.from(calendarState.selectedSlots)[0]?.dataset.day || '0');
           const instanceDate = new Date(startOfWeek);
           instanceDate.setDate(startOfWeek.getDate() + dayIndex);
           dateString = instanceDate.toISOString().split('T')[0];
         } else {
-          // For single events or all recurring events, use the original start time
           dateString = lectureDate.toISOString().split('T')[0];
         }
         
         await apiFetch(`/lectures/${calendarState.activeLecture._id}`, {
           method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            deleteAllRecurring,
-            dateString: dateString
-          }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deleteAllRecurring, dateString }),
         });
         
         await handleGroupSelection();
@@ -1595,6 +1494,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.deleteLectureBtn.classList.remove('loading');
       }
     }
+
     function generateTimeSlots() {
       if (!elements.timeColumn || !elements.dayColumns) return;
 
@@ -1605,11 +1505,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const timeLabel = document.createElement('div');
         timeLabel.className = 'time-label';
         timeLabel.textContent = formatTime(`${hour}:00`);
-        timeLabel.style.gridRow = `${(hour - 8) * 2 + 1} / span 2`;
         elements.timeColumn.appendChild(timeLabel);
       }
 
-      let slotIndex = 0;
       for (let hour = 8; hour <= 22; hour++) {
         for (let minute = 0; minute < 60; minute += 30) {
           const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
@@ -1619,11 +1517,8 @@ document.addEventListener('DOMContentLoaded', () => {
             slot.className = 'time-slot';
             slot.dataset.time = time;
             slot.dataset.day = dayIndex;
-            slot.dataset.slotIndex = slotIndex;
             col.appendChild(slot);
           });
-
-          slotIndex++;
         }
       }
     }
@@ -1658,7 +1553,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function suggestLectures() {
       clearSuggestions();
-      const SUGGESTED_SLOT_DURATION = 4; // 2 hours = 4 * 30min slots
+      const SUGGESTED_SLOT_DURATION = 4;
 
       const suggestions = [];
 
@@ -1673,7 +1568,6 @@ document.addEventListener('DOMContentLoaded', () => {
           );
 
           if (!block.includes('busy')) {
-            // Scoring preference: preferred-all (3) > preferred-some (2) > free (1)
             let score = block.filter(s => s === 'preferred-all').length * 3 +
               block.filter(s => s === 'preferred-some').length * 2 +
               block.filter(s => s === 'free').length * 1;
@@ -1687,7 +1581,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // Sort by score (highest first), pick top 3
       suggestions.sort((a, b) => b.score - a.score);
       const topSuggestions = suggestions.slice(0, 3);
 
@@ -1704,6 +1597,20 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       showToast('ნაპოვნია რეკომენდირებული დროის სლოტები', 'success');
+    }
+
+    function clearSuggestions() {
+      document.querySelectorAll('.slot-suggested').forEach(s => s.classList.remove('slot-suggested'));
+    }
+
+    function clearAllCalendarEvents() {
+      document.querySelectorAll('.event-block').forEach(el => el.remove());
+    }
+
+    function clearSlotClasses() {
+      document.querySelectorAll('.time-slot').forEach(slot => {
+        slot.classList.remove('slot-busy', 'slot-preferred-all', 'slot-preferred-some', 'slot-free', 'slot-suggested');
+      });
     }
 
     // =================================================================
@@ -1723,19 +1630,6 @@ document.addEventListener('DOMContentLoaded', () => {
       end.setDate(start.getDate() + 6);
       return end;
     }
-    
-    function getStartOfDay(date) {
-      const d = new Date(date);
-      d.setHours(0, 0, 0, 0);
-      return d;
-    }
-
-    function getEndOfDay(date) {
-      const d = new Date(date);
-      d.setHours(23, 59, 59, 999);
-      return d;
-    }
-
 
     function getStartOfWeekFromYearAndWeek(year, week) {
       const date = new Date(year, 0, 1 + (week - 1) * 7);
@@ -1743,7 +1637,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const diff = date.getDate() - day + (day === 0 ? -6 : 1);
       return new Date(date.setDate(diff));
     }
-
 
     function timeToMinutes(timeStr) {
       if (!timeStr) return 0;
@@ -1780,8 +1673,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const hour12 = h % 12 || 12;
       return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
     }
-    
-    // FIX: Helper function to consistently get local time from UTC-stored Date objects
+
     function formatTimeUTC(date) {
         if (!date) return '';
         const d = new Date(date);
@@ -1791,11 +1683,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const hour12 = h % 12 || 12;
         return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
     }
-    
-    // FIX: New Helper for consistent date string comparison (local date from UTC components)
+
     function eventDateToLocalDayString(date) {
         const pad = (num) => num.toString().padStart(2, '0');
-        // Use UTC getters because the server stores the local time components in the UTC fields
         return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
     }
 
@@ -1830,29 +1720,6 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     }
 
-    function clearAllCalendarEvents() {
-      document.querySelectorAll('.event-block').forEach(el => el.remove());
-    }
-
-    function clearSlotClasses() {
-      document.querySelectorAll('.time-slot').forEach(slot => {
-        slot.classList.remove(
-          'slot-busy',
-          'slot-preferred-all',
-          'slot-preferred-some',
-          'slot-suggested'
-        );
-      });
-    }
-
-    function clearSuggestions() {
-      document.querySelectorAll('.slot-suggested').forEach(slot =>
-        slot.classList.remove('slot-suggested')
-      );
-    }
-
-    // =================================================================
-    // 11. START THE APPLICATION
-    // =================================================================
+    // Start the application
     initializeApp();
-  });
+});
