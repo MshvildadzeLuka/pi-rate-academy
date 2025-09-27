@@ -1226,6 +1226,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const rruleWeekdays = lecture.recurrenceRule?.byweekday || [];
           
           for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+              // FIX: Use the recurrence rule's local time components
               if (rruleWeekdays.some(wd => weekdayMap[wd] === dayIndex)) {
                   const currentDate = new Date(startOfWeek);
                   currentDate.setDate(startOfWeek.getDate() + dayIndex);
@@ -1234,9 +1235,9 @@ document.addEventListener('DOMContentLoaded', () => {
                   const until = lecture.recurrenceRule.until ? new Date(lecture.recurrenceRule.until) : null;
 
                   if (currentDate >= dtstart && (!until || currentDate <= until)) {
-                      // FIX: Use UTC times for rendering
-                      const formattedStart = `${String(lectureDate.getUTCHours()).padStart(2, '0')}:${String(lectureDate.getUTCMinutes()).padStart(2, '0')}`;
-                      const formattedEnd = `${String(new Date(lecture.endTime).getUTCHours()).padStart(2, '0')}:${String(new Date(lecture.endTime).getUTCMinutes()).padStart(2, '0')}`;
+                      // Extract HH:MM from the saved UTC date object using LOCAL methods
+                      const formattedStart = `${String(lectureDate.getHours()).padStart(2, '0')}:${String(lectureDate.getMinutes()).padStart(2, '0')}`;
+                      const formattedEnd = `${String(new Date(lecture.endTime).getHours()).padStart(2, '0')}:${String(new Date(lecture.endTime).getMinutes()).padStart(2, '0')}`;
                       
                       createEventBlock({
                           _id: lecture._id,
@@ -1249,11 +1250,14 @@ document.addEventListener('DOMContentLoaded', () => {
               }
           }
         } else {
-          // FIX: Use UTC methods for calculating start and end times for single events
+          // FIX: Use LOCAL time getter methods for single events
           if (lectureDate >= startOfWeek && lectureDate <= endOfWeek) {
-            const dayIndex = (lectureDate.getDay() + 6) % 7;
-            const formattedStart = `${String(lectureDate.getUTCHours()).padStart(2, '0')}:${String(lectureDate.getUTCMinutes()).padStart(2, '0')}`;
-            const formattedEnd = `${String(new Date(lecture.endTime).getUTCHours()).padStart(2, '0')}:${String(new Date(lecture.endTime).getUTCMinutes()).padStart(2, '0')}`;
+            // Get the local day of the week (0=Monday, 6=Sunday)
+            const dayIndex = (lectureDate.getDay() + 6) % 7; 
+
+            // Extract HH:MM from the saved UTC date object using LOCAL methods
+            const formattedStart = `${String(lectureDate.getHours()).padStart(2, '0')}:${String(lectureDate.getMinutes()).padStart(2, '0')}`;
+            const formattedEnd = `${String(new Date(lecture.endTime).getHours()).padStart(2, '0')}:${String(new Date(lecture.endTime).getMinutes()).padStart(2, '0')}`;
 
             createEventBlock({
               _id: lecture._id,
@@ -1274,17 +1278,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            // Convert HH:MM time string to minutes past midnight
             const start = timeToMinutes(event.start);
             const end = timeToMinutes(event.end);
             
             // Correctly calculate top position and height based on a 40px slot height
-            const top = ((start - 8 * 60) / 30) * 40;
-            const height = ((end - start) / 30) * 40;
+            // We only care about times from 8:00 AM (480 minutes) to 11:00 PM (1380 minutes)
+            const START_OF_DAY_MINUTES = 8 * 60; // 480 minutes
+            const slotHeight = 40; // Hardcoded slot height from CSS var
+
+            const top = ((start - START_OF_DAY_MINUTES) / 30) * slotHeight;
+            const height = ((end - start) / 30) * slotHeight;
 
             const eventBlock = document.createElement('div');
             eventBlock.className = `event-block event-${event.type}`;
             eventBlock.style.top = `${top}px`;
-            eventBlock.style.height = `${height - 2}px`;
+            eventBlock.style.height = `${height - 2}px`; // -2px for visual padding
 
             if (event.title) {
                 eventBlock.innerHTML = `
@@ -1304,7 +1313,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             dayColumn.appendChild(eventBlock);
-          }
+    }
 
     function startDragSelection(e) {
       if (e.target.classList.contains('time-slot')) {
