@@ -1161,7 +1161,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const end = Math.min(30, endSlot);
 
           for (let slot = start; slot < end; slot++) {
-            if (availabilityMap[day] && availabilityMap[day][slot]) {
+            if (availabilityMap[day] && availabilityMap[day][slot] && slot >= 0 && slot < 30) {
               if (event.type === 'busy') {
                 availabilityMap[day][slot].busy++;
               } else if (event.type === 'preferred') {
