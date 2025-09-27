@@ -534,13 +534,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     const eventStartDate = new Date(event.startTime);
                     
-                    // FIX: Check if the event's local day matches the current day being rendered.
-                    // (getDay returns 0=Sunday, 1=Monday... We convert to 0=Monday, 6=Sunday)
+                    // FIX: Use getDay() to get the local day of the week (0=Sun, 1=Mon...).
+                    // Convert to our 0=Mon, 6=Sun index.
                     const eventLocalDay = (eventStartDate.getDay() + 6) % 7;
 
                     if (eventLocalDay === dayIndex) {
                         render = true;
-                        // FIX: Extract local time components from the saved Date object for rendering on the local calendar.
+                        // FIX: Extract local time components from the saved Date object.
                         startTimeStr = `${String(eventStartDate.getHours()).padStart(2, '0')}:${String(eventStartDate.getMinutes()).padStart(2, '0')}`;
                         const eventEndDate = new Date(event.endTime);
                         endTimeStr = `${String(eventEndDate.getHours()).padStart(2, '0')}:${String(eventEndDate.getMinutes()).padStart(2, '0')}`;
