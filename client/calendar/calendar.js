@@ -1,8 +1,8 @@
-// file: client/calendar/calendar.js
+// client/calendar/calendar.js
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = '/api';
 
-    // Enhanced state management for mobile
+    // Enhanced state management
     const state = {
         mainViewDate: new Date(),
         miniCalDate: new Date(),
@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Mobile-specific state
         activeDayIndex: (new Date().getDay() + 6) % 7,
         mobileView: 'day', // 'day', 'week', 'time'
-        mobileActiveDate: new Date(), // FIX: Ensure this is always a Date object
+        mobileActiveDate: new Date(),
         // Draggable FAB state
         isFabDragging: false,
         fabOffsetX: 0,
@@ -26,8 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
         touchStartY: 0,
     };
     
-    // FIX: New utility function to correctly preserve local date and time components 
-    // without UTC offset logic when sending to the server.
+    // FIX: Utility function to correctly preserve local date and time components 
     const toLocalISOString = (date) => {
         if (!date) return null;
         const pad = (num) => num.toString().padStart(2, '0');
@@ -36,18 +35,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const DD = pad(date.getDate());
         const HH = pad(date.getHours());
         const mm = pad(date.getMinutes());
+        // Returns a string without 'Z', telling Mongoose to store these components directly.
         return `${YYYY}-${MM}-${DD}T${HH}:${mm}`;
     };
 
-    // Helper function to check if an event is recurring (re-used logic)
     const eventIsRecurring = (event) => {
         return event.isRecurring && event.dayOfWeek && event.recurringStartTime && event.recurringEndTime;
     };
     
-    // FIX: New Helper for consistent date string comparison (local date from UTC components)
+    // FIX: Helper for consistent date string comparison (reads components via UTC getters)
     const eventDateToLocalDayString = (date) => {
         const pad = (num) => num.toString().padStart(2, '0');
-        // Use UTC getters because the server stores the local time components in the UTC fields
         return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
     };
     
@@ -72,7 +70,6 @@ document.addEventListener('DOMContentLoaded', () => {
             endOfWeek.setDate(endOfWeek.getDate() + 6);
             
             const personalEventsResponse = await apiFetch(
-                // Use ISOString here because the server expects standard time query
                 `/calendar-events/my-schedule?start=${startOfWeek.toISOString()}&end=${endOfWeek.toISOString()}`
             );
             const personalEvents = personalEventsResponse?.data || [];
@@ -304,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const startDate = new Date(dateFromForm);
         startDate.setHours(startH, startM);
 
-        const [endH, endM] = endTimeStr.split(':').map(Number);
+        const [endH, endM] = endTimeStr.split(':).map(Number);
         const endDate = new Date(dateFromForm);
         endDate.setHours(endH, endM);
 
@@ -549,8 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
             !(event.title && event.title.startsWith('DELETED:')) && event.type
         );
         
-        const slotHeight = getComputedStyle(document.documentElement).getPropertyValue('--calendar-slot-height').trim();
-        const slotHeightValue = parseFloat(slotHeight);
+        const slotHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--calendar-slot-height').trim() || '40');
 
         document.querySelectorAll('.event-block').forEach(el => el.remove());
 
@@ -563,8 +559,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // FIX: Use simple ISO date string comparison for accurate date matching
             const currentDayDateStr = currentDayDate.toISOString().split('T')[0];
             const dayName = dayNames[dayIndex];
-            const dayColumnsArray = Array.from(dayColumns);
-            const dayColumn = dayColumnsArray[dayIndex];
+            const dayColumn = dayColumns[dayIndex];
+
+            if (!dayColumn) continue;
 
             eventsToRender.forEach(event => {
                 let render = false;
@@ -603,7 +600,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (render) {
-                    renderEventBlock({ ...event, startTime: startTimeStr, endTime: endTimeStr }, dayColumn, false, slotHeightValue);
+                    renderEventBlock({ ...event, startTime: startTimeStr, endTime: endTimeStr }, dayColumn, slotHeight);
                 }
             });
         }
@@ -936,9 +933,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Helper function to create and position an event block
-    function renderEventBlock(eventData, dayColumn, isException = false, slotHeight) {
-        if (isException || !dayColumn) return;
-
+    function renderEventBlock(eventData, dayColumn, slotHeight) {
         const startMinutes = timeToMinutes(eventData.startTime);
         const endMinutes = timeToMinutes(eventData.endTime);
         const durationMinutes = endMinutes - startMinutes;
@@ -1113,7 +1108,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         if (elements.mobilePrevDayBtn) {
-            elements.mobilePrevDayBtn.addEventListener('click', () => {
+            elements.mobilePrevDayBtn.addEventListener('click', async () => {
                 // FIX: Use the state object directly to manipulate the date
                 state.mobileActiveDate.setDate(state.mobileActiveDate.getDate() - 1);
                 renderMobileDayView();
@@ -1121,7 +1116,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         if (elements.mobileNextDayBtn) {
-            elements.mobileNextDayBtn.addEventListener('click', () => {
+            elements.mobileNextDayBtn.addEventListener('click', async () => {
                 // FIX: Use the state object directly to manipulate the date
                 state.mobileActiveDate.setDate(state.mobileActiveDate.getDate() + 1);
                 renderMobileDayView();
@@ -1551,8 +1546,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const startOfWeek = getStartOfWeek(state.mainViewDate);
         const endOfWeek = getEndOfWeek(startOfWeek);
         
-        const slotHeight = getComputedStyle(document.documentElement).getPropertyValue('--calendar-slot-height').trim();
-        const slotHeightValue = parseFloat(slotHeight);
+        const slotHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--calendar-slot-height').trim() || '40');
 
         if (now < startOfWeek || now > endOfWeek) {
             elements.currentTimeIndicator.style.display = 'none';
@@ -1565,7 +1559,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const top = ((timeInMinutes - 8 * 60) / 30) * slotHeightValue;
+        const top = ((timeInMinutes - 8 * 60) / 30) * slotHeight;
         
         const dayColumn = document.querySelector(`.day-column[data-day="${dayOfWeek}"]`);
         if (dayColumn) {
