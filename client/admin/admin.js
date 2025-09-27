@@ -263,9 +263,6 @@ document.addEventListener('DOMContentLoaded', () => {
       `).join('');
     }
 
-    // FIX: toLocalISOString implementation is moved to UTILS part (line 1073)
-
-    
     function renderUsersTable() {
       const container = document.getElementById('users-table-container');
       if (!container) return;
@@ -1134,7 +1131,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const weekEndDateLocal = new Date(startOfWeek);
           weekEndDateLocal.setDate(weekEndDateLocal.getDate() + 7);
           
-          if (eventDate >= startOfWeek && eventDate < weekEndDateLocal) {
+          if (eventDateToLocalDayString(eventDate) === eventDateToLocalDayString(new Date(startOfWeek.getTime() + dayIndex * 24 * 60 * 60 * 1000))) {
               eventDays.push(dayIndex);
               eventStartMin = eventStartUtcHours * 60 + eventStartUtcMinutes;
               eventEndMin = eventEndUtcHours * 60 + eventEndUtcMinutes;
@@ -1206,8 +1203,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // FIX: This function has been rewritten to consistently use UTC for rendering.
     function renderLectures() {
       const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
-      const endOfWeek = getEndOfWeek(calendarState.mainViewDate);
-      endOfWeek.setHours(23, 59, 59, 999);
 
       // Clear existing events first
       document.querySelectorAll('.event-block[data-lecture-id]').forEach(el => el.remove());
@@ -1227,8 +1222,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                   const dtstart = lecture.recurrenceRule.dtstart ? new Date(lecture.recurrenceRule.dtstart) : lectureDate;
                   const until = lecture.recurrenceRule.until ? new Date(lecture.recurrenceRule.until) : null;
-
-                  if (currentDate >= getStartOfDay(dtstart) && (!until || currentDate <= getEndOfDay(until))) {
+                  
+                  // FIX: Use the new helper for consistent local date string comparison
+                  const currentDayStr = eventDateToLocalDayString(currentDate);
+                  const startDayStr = eventDateToLocalDayString(dtstart);
+                  
+                  // Check if the current column's local date is on or after the dtstart date
+                  if (currentDayStr >= startDayStr && (!until || currentDate <= getEndOfDay(until))) { 
                       // FIX: Extract HH:MM from the saved Date object using UTC getters
                       const formattedStart = `${String(lectureDate.getUTCHours()).padStart(2, '0')}:${String(lectureDate.getUTCMinutes()).padStart(2, '0')}`;
                       const formattedEnd = `${String(lectureEndDate.getUTCHours()).padStart(2, '0')}:${String(lectureEndDate.getUTCMinutes()).padStart(2, '0')}`;
@@ -1244,22 +1244,32 @@ document.addEventListener('DOMContentLoaded', () => {
               }
           }
         } else {
-          if (lectureDate >= getStartOfDay(startOfWeek) && lectureDate <= getEndOfDay(endOfWeek)) {
-            // FIX: Get the day of the week using UTC time
+            // Single events
+            
+            // Get the day index based on the intended local time (which is stored in UTC components)
             const dayIndex = (lectureDate.getUTCDay() + 6) % 7; 
+            const targetDayDate = new Date(startOfWeek);
+            targetDayDate.setDate(targetDayDate.getDate() + dayIndex);
+            
+            // FIX: Use the new helper for single event date comparison
+            const eventDayStr = eventDateToLocalDayString(lectureDate);
+            const targetDayStr = eventDateToLocalDayString(targetDayDate);
+            
+            // The single event should only be rendered on the column corresponding to its actual date
+            if (eventDayStr === targetDayStr) {
 
-            // FIX: Extract HH:MM from the saved Date object using UTC getters
-            const formattedStart = `${String(lectureDate.getUTCHours()).padStart(2, '0')}:${String(lectureDate.getUTCMinutes()).padStart(2, '0')}`;
-            const formattedEnd = `${String(lectureEndDate.getUTCHours()).padStart(2, '0')}:${String(lectureEndDate.getUTCMinutes()).padStart(2, '0')}`;
+                // FIX: Extract HH:MM from the saved Date object using UTC getters
+                const formattedStart = `${String(lectureDate.getUTCHours()).padStart(2, '0')}:${String(lectureDate.getUTCMinutes()).padStart(2, '0')}`;
+                const formattedEnd = `${String(lectureEndDate.getUTCHours()).padStart(2, '0')}:${String(lectureEndDate.getUTCMinutes()).padStart(2, '0')}`;
 
-            createEventBlock({
-              _id: lecture._id,
-              title: lecture.title,
-              start: formattedStart,
-              end: formattedEnd,
-              type: 'lecture',
-            }, dayIndex);
-          }
+                createEventBlock({
+                    _id: lecture._id,
+                    title: lecture.title,
+                    start: formattedStart,
+                    end: formattedEnd,
+                    type: 'lecture',
+                }, dayIndex);
+            }
         }
       });
     }
@@ -1760,7 +1770,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
     }
     
-    // FIX: New helper function to consistently get local time from UTC-stored Date objects
+    // FIX: Helper function to consistently get local time from UTC-stored Date objects
     function formatTimeUTC(date) {
         if (!date) return '';
         const d = new Date(date);
@@ -1769,6 +1779,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const period = h >= 12 ? 'PM' : 'AM';
         const hour12 = h % 12 || 12;
         return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
+    }
+    
+    // FIX: New Helper for consistent date string comparison (local date from UTC components)
+    function eventDateToLocalDayString(date) {
+        const pad = (num) => num.toString().padStart(2, '0');
+        return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
     }
     
     // FIX: Rewritten to correctly preserve local date and time components 
@@ -1781,8 +1797,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const DD = pad(date.getDate());
         const HH = pad(date.getHours());
         const mm = pad(date.getMinutes());
-        // Return ISO-like string without Z or offset, forcing server to 
-        // interpret the components as-is.
+        // Return ISO-like string without Z or offset
         return `${YYYY}-${MM}-${DD}T${HH}:${mm}`;
     }
 
