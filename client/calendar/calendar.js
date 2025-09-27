@@ -516,6 +516,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Render events on the main calendar grid
     function renderEventsForWeek() {
         const startOfWeek = getStartOfWeek(state.mainViewDate);
+        const endOfWeek = getEndOfWeek(startOfWeek);
+        endOfWeek.setHours(23, 59, 59, 999); // Ensure it includes the last minute of Sunday
+        
         const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
         
         // Filter out event exceptions
@@ -533,6 +536,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
             const currentDayDate = new Date(startOfWeek);
             currentDayDate.setDate(currentDayDate.getDate() + dayIndex);
+            
             const dayStr = currentDayDate.toISOString().split('T')[0];
             const dayName = dayNames[dayIndex];
             const dayColumnsArray = Array.from(dayColumns);
@@ -551,8 +555,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
                 
-                // FIX: Consolidated and corrected logic for both personal events and lectures
+                // Consolidated and corrected logic for both personal events and lectures
                 if (event.isRecurring) {
+                    // Recurring events must match the day of week
                     if (event.dayOfWeek === dayName) {
                         render = true;
                         startTimeStr = ensureTimeFormat(event.recurringStartTime);
@@ -561,18 +566,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (event.startTime) {
                     const eventStartDate = new Date(event.startTime);
                     
-                    // FIX: Use UTC day for comparison, as date objects sent without 'Z' 
-                    // are incorrectly interpreted as UTC by the client browser.
-                    const eventDayIndex = (eventStartDate.getUTCDay() + 6) % 7;
-                    const targetDayDate = new Date(startOfWeek);
-                    targetDayDate.setDate(targetDayDate.getDate() + eventDayIndex);
-                    
-                    const eventDayStr = eventDateToLocalDayString(eventStartDate);
-                    const targetDayStr = eventDateToLocalDayString(targetDayDate);
+                    // The core logic fix: check if the event date falls exactly on the current day's date.
+                    // We compare the date parts as strings (YYYY-MM-DD) which effectively checks for equality ignoring time.
+                    const eventDayStr = eventStartDate.toISOString().split('T')[0];
+                    const currentDayDateStr = currentDayDate.toISOString().split('T')[0];
 
-                    if (eventDayStr === targetDayStr) {
+                    if (eventDayStr === currentDayDateStr) {
                         render = true;
-                        // FIX: Extract local time components from the saved Date object using UTC getters.
+                        // FIX: Extract time components using UTC getters, as server saved local time components as UTC.
                         startTimeStr = `${String(eventStartDate.getUTCHours()).padStart(2, '0')}:${String(eventStartDate.getUTCMinutes()).padStart(2, '0')}`;
                         const eventEndDate = new Date(event.endTime);
                         endTimeStr = `${String(eventEndDate.getUTCHours()).padStart(2, '0')}:${String(eventEndDate.getUTCMinutes()).padStart(2, '0')}`;
@@ -584,6 +585,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
+    }
+
+
+    // Helper function to create and position an event block
+    function renderEventBlock(eventData, dayColumn, isException = false, slotHeight) {
+        if (isException || !dayColumn) return;
+
+        const startMinutes = timeToMinutes(eventData.startTime);
+        const endMinutes = timeToMinutes(eventData.endTime);
+        const durationMinutes = endMinutes - startMinutes;
+
+        // Visual grid starts at 8 AM (480 minutes)
+        const START_OF_GRID_MINUTES = 8 * 60; 
+
+        // Correct calculation relative to the grid start
+        const top = ((startMinutes - START_OF_GRID_MINUTES) / 30) * slotHeight;
+        const height = (durationMinutes / 30) * slotHeight - 2;
+
+        // Skip events outside the 8 AM - 11 PM visual range
+        if (top < 0 || (startMinutes > 23 * 60)) return;
+
+
+        const eventBlock = document.createElement('div');
+        eventBlock.className = `event-block event-${eventData.type}`;
+        if (eventData.type === 'lecture') {
+            eventBlock.classList.add('read-only');
+        }
+        eventBlock.style.top = `${top}px`;
+        eventBlock.style.height = `${height}px`;
+        eventBlock.dataset.eventId = eventData._id;
+
+        let titleContent = eventData.title || eventData.type.toUpperCase();
+        if (eventData.type === 'lecture' && eventData.groupName) {
+            titleContent += ` (${eventData.groupName})`;
+        }
+
+        eventBlock.innerHTML = `
+            <div class="event-title">${titleContent}</div>
+            <div class="event-time">${formatTime(eventData.startTime)} - ${formatTime(eventData.endTime)}</div>
+        `;
+
+        if (eventData.type !== 'lecture') {
+            eventBlock.addEventListener('click', () => handleEventClick(eventData));
+        }
+
+        dayColumn.appendChild(eventBlock);
     }
 
 
