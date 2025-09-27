@@ -1203,6 +1203,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // FIX: This function has been rewritten to consistently use UTC for rendering.
     function renderLectures() {
       const startOfWeek = getStartOfWeek(calendarState.mainViewDate);
+      const endOfWeek = getEndOfWeek(startOfWeek);
+      endOfWeek.setHours(23, 59, 59, 999);
+      const dayNames = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
 
       // Clear existing events first
       document.querySelectorAll('.event-block[data-lecture-id]').forEach(el => el.remove());
@@ -1211,53 +1214,40 @@ document.addEventListener('DOMContentLoaded', () => {
         const lectureDate = new Date(lecture.startTime);
         const lectureEndDate = new Date(lecture.endTime);
         
-        if (lecture.isRecurring) {
-          const weekdayMap = { MO: 0, TU: 1, WE: 2, TH: 3, FR: 4, SA: 5, SU: 6 };
-          const rruleWeekdays = lecture.recurrenceRule?.byweekday || [];
-          
-          for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-              if (rruleWeekdays.some(wd => weekdayMap[wd] === dayIndex)) {
-                  const currentDate = new Date(startOfWeek);
-                  currentDate.setDate(startOfWeek.getDate() + dayIndex);
+        for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+            const currentDate = new Date(startOfWeek);
+            currentDate.setDate(startOfWeek.getDate() + dayIndex);
+            
+            let render = false;
+            
+            if (lecture.isRecurring) {
+                const rruleWeekdays = lecture.recurrenceRule?.byweekday || [];
+                const dayName = dayNames[dayIndex];
 
-                  const dtstart = lecture.recurrenceRule.dtstart ? new Date(lecture.recurrenceRule.dtstart) : lectureDate;
-                  const until = lecture.recurrenceRule.until ? new Date(lecture.recurrenceRule.until) : null;
-                  
-                  // FIX: Use the new helper for consistent local date string comparison
-                  const currentDayStr = eventDateToLocalDayString(currentDate);
-                  const startDayStr = eventDateToLocalDayString(dtstart);
-                  
-                  // Check if the current column's local date is on or after the dtstart date
-                  if (currentDayStr >= startDayStr && (!until || currentDate <= getEndOfDay(until))) { 
-                      // FIX: Extract HH:MM from the saved Date object using UTC getters
-                      const formattedStart = `${String(lectureDate.getUTCHours()).padStart(2, '0')}:${String(lectureDate.getUTCMinutes()).padStart(2, '0')}`;
-                      const formattedEnd = `${String(lectureEndDate.getUTCHours()).padStart(2, '0')}:${String(lectureEndDate.getUTCMinutes()).padStart(2, '0')}`;
-                      
-                      createEventBlock({
-                          _id: lecture._id,
-                          title: lecture.title,
-                          start: formattedStart,
-                          end: formattedEnd,
-                          type: 'lecture',
-                      }, dayIndex);
-                  }
-              }
-          }
-        } else {
-            // Single events
-            
-            // Get the day index based on the intended local time (which is stored in UTC components)
-            const dayIndex = (lectureDate.getUTCDay() + 6) % 7; 
-            const targetDayDate = new Date(startOfWeek);
-            targetDayDate.setDate(targetDayDate.getDate() + dayIndex);
-            
-            // FIX: Use the new helper for single event date comparison
-            const eventDayStr = eventDateToLocalDayString(lectureDate);
-            const targetDayStr = eventDateToLocalDayString(targetDayDate);
-            
-            // The single event should only be rendered on the column corresponding to its actual date
-            if (eventDayStr === targetDayStr) {
+                if (rruleWeekdays.includes(dayName)) {
+                    const dtstart = lecture.recurrenceRule.dtstart ? new Date(lecture.recurrenceRule.dtstart) : lectureDate;
+                    const until = lecture.recurrenceRule.until ? new Date(lecture.recurrenceRule.until) : null;
+                    
+                    // Check if current column's date is within the recurring range
+                    const currentDayStr = currentDate.toISOString().split('T')[0];
+                    const startDayStr = dtstart.toISOString().split('T')[0];
+                    
+                    if (currentDayStr >= startDayStr && (!until || currentDate <= getEndOfDay(until))) { 
+                        render = true;
+                    }
+                }
+            } else {
+                // Single events: Check if the event's local date matches the current column's date
+                // We compare the date parts as strings (YYYY-MM-DD) to check for equality ignoring time.
+                const eventDayStr = lectureDate.toISOString().split('T')[0];
+                const currentDayStr = currentDate.toISOString().split('T')[0];
+                
+                if (eventDayStr === currentDayStr) {
+                    render = true;
+                }
+            }
 
+            if (render) {
                 // FIX: Extract HH:MM from the saved Date object using UTC getters
                 const formattedStart = `${String(lectureDate.getUTCHours()).padStart(2, '0')}:${String(lectureDate.getUTCMinutes()).padStart(2, '0')}`;
                 const formattedEnd = `${String(lectureEndDate.getUTCHours()).padStart(2, '0')}:${String(lectureEndDate.getUTCMinutes()).padStart(2, '0')}`;
@@ -1268,6 +1258,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     start: formattedStart,
                     end: formattedEnd,
                     type: 'lecture',
+                    isRecurring: lecture.isRecurring
                 }, dayIndex);
             }
         }
