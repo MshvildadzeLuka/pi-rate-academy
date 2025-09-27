@@ -507,6 +507,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
             const currentDayDate = new Date(startOfWeek);
             currentDayDate.setDate(currentDayDate.getDate() + dayIndex);
+            // This date string represents the local date being drawn on the calendar column
             const dayStr = currentDayDate.toISOString().split('T')[0];
             const dayColumn = dayColumns[dayIndex];
 
@@ -524,6 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (event.isRecurring) {
+                    // For recurring events, match the day of the week
                     if (event.dayOfWeek === dayNames[dayIndex]) {
                         render = true;
                         startTimeStr = ensureTimeFormat(event.recurringStartTime);
@@ -532,10 +534,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     const eventStartDate = new Date(event.startTime);
                     
-                    // Correctly compare dates without time to render events on the right day
-                    const eventDateStr = eventStartDate.toISOString().split('T')[0];
-                    if (eventDateStr === dayStr) {
+                    // FIX: Check if the event's local day matches the current day being rendered.
+                    // (getDay returns 0=Sunday, 1=Monday... We convert to 0=Monday, 6=Sunday)
+                    const eventLocalDay = (eventStartDate.getDay() + 6) % 7;
+
+                    if (eventLocalDay === dayIndex) {
                         render = true;
+                        // FIX: Extract local time components from the saved Date object for rendering on the local calendar.
                         startTimeStr = `${String(eventStartDate.getHours()).padStart(2, '0')}:${String(eventStartDate.getMinutes()).padStart(2, '0')}`;
                         const eventEndDate = new Date(event.endTime);
                         endTimeStr = `${String(eventEndDate.getHours()).padStart(2, '0')}:${String(eventEndDate.getMinutes()).padStart(2, '0')}`;
