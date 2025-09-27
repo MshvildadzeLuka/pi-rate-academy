@@ -14,8 +14,9 @@ document.addEventListener('DOMContentLoaded', () => {
         isDragging: false,
         dragStartSlot: null,
         // Mobile-specific state
+        activeDayIndex: (new Date().getDay() + 6) % 7,
         mobileView: 'day', // 'day', 'week', 'time'
-        mobileActiveDate: new Date(), // FIX: Ensure this is always initialized as Date
+        mobileActiveDate: new Date(), // FIX: Ensure this is always a Date object
         // Draggable FAB state
         isFabDragging: false,
         fabOffsetX: 0,
@@ -24,8 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
         touchStartX: 0,
         touchStartY: 0,
     };
-    // Ensure initial activeDayIndex is correct
-    state.activeDayIndex = (state.mobileActiveDate.getDay() + 6) % 7;
     
     // FIX: New utility function to correctly preserve local date and time components 
     // without UTC offset logic when sending to the server.
@@ -273,34 +272,25 @@ document.addEventListener('DOMContentLoaded', () => {
     async function saveEvent(isMobile = false) {
         let type, isRecurring, title, dayIndex, startTimeStr, endTimeStr, form;
 
-        // Use the correct form based on the device
+        // Determine the active form
         if (isMobile) {
             form = document.getElementById('event-mobile-form');
-            type = form.querySelector('input[name="event-type"]:checked')?.value;
-            isRecurring = form.querySelector('#event-mobile-recurring-checkbox')?.checked;
-            title = form.querySelector('#event-mobile-title-input')?.value;
-            dayIndex = form.querySelector('#event-mobile-day-select')?.value;
-            startTimeStr = form.querySelector('#event-mobile-start-time')?.value;
-            endTimeStr = form.querySelector('#event-mobile-end-time')?.value;
+        } else if (elements.calendarSidebar.classList.contains('open')) {
+            form = document.getElementById('event-form');
+        } else if (!elements.eventModalBackdrop.classList.contains('hidden')) {
+            form = document.getElementById('event-modal-form');
         } else {
-            // Check which form is active (sidebar or modal)
-            if (elements.calendarSidebar.classList.contains('open')) {
-                 form = document.getElementById('event-form');
-            } else if (!elements.eventModalBackdrop.classList.contains('hidden')) {
-                 form = document.getElementById('event-modal-form');
-            } else {
-                 showNotification('Form context error. Try again.', 'error');
-                 return;
-            }
-            
-            // Extract values using general IDs which should match the active form's inputs
-            type = form.querySelector('input[name="event-type"]:checked')?.value;
-            isRecurring = form.querySelector('[id$="-recurring-checkbox"]')?.checked;
-            title = form.querySelector('[id$="-title-input"]')?.value;
-            dayIndex = form.querySelector('[id$="-day-select"]')?.value;
-            startTimeStr = form.querySelector('[id$="-start-time"]')?.value;
-            endTimeStr = form.querySelector('[id$="-end-time"]')?.value;
+            showNotification('Form context error. Try again.', 'error');
+            return;
         }
+        
+        // Extract values using general IDs which should match the active form's inputs
+        type = form.querySelector('input[name="event-type"]:checked')?.value;
+        isRecurring = form.querySelector('[id$="-recurring-checkbox"]')?.checked;
+        title = form.querySelector('[id$="-title-input"]')?.value;
+        dayIndex = form.querySelector('[id$="-day-select"]')?.value;
+        startTimeStr = form.querySelector('[id$="-start-time"]')?.value;
+        endTimeStr = form.querySelector('[id$="-end-time"]')?.value;
         
         if (!title || !dayIndex || !startTimeStr || !endTimeStr || !type) {
             showNotification('გთხოვთ, შეავსოთ ყველა ველი', 'error');
@@ -653,8 +643,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return false;
         }).sort((a, b) => {
-            const aTime = eventIsRecurring(a) ? timeToMinutes(a.recurringStartTime) : new Date(a.startTime).getUTCHours() * 60 + new Date(a.startTime).getUTCMinutes();
-            const bTime = eventIsRecurring(b) ? timeToMinutes(b.recurringStartTime) : new Date(b.startTime).getUTCHours() * 60 + new Date(b.startTime).getUTCMinutes();
+            const aTime = eventIsRecurring(a) ? timeToMinutes(a.recurringStartTime) : (a.startTime ? new Date(a.startTime).getUTCHours() * 60 + new Date(a.startTime).getUTCMinutes() : 0);
+            const bTime = eventIsRecurring(b) ? timeToMinutes(b.recurringStartTime) : (b.startTime ? new Date(b.startTime).getUTCHours() * 60 + new Date(b.startTime).getUTCMinutes() : 0);
             return aTime - bTime;
         });
         
@@ -760,8 +750,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return false;
         }).sort((a, b) => {
-            const aTime = eventIsRecurring(a) ? timeToMinutes(a.recurringStartTime) : new Date(a.startTime).getUTCHours() * 60 + new Date(a.startTime).getUTCMinutes();
-            const bTime = eventIsRecurring(b) ? timeToMinutes(b.recurringStartTime) : new Date(b.startTime).getUTCHours() * 60 + new Date(b.startTime).getUTCMinutes();
+            const aTime = eventIsRecurring(a) ? timeToMinutes(a.recurringStartTime) : (a.startTime ? new Date(a.startTime).getUTCHours() * 60 + new Date(a.startTime).getUTCMinutes() : 0);
+            const bTime = eventIsRecurring(b) ? timeToMinutes(b.recurringStartTime) : (b.startTime ? new Date(b.startTime).getUTCHours() * 60 + new Date(b.startTime).getUTCMinutes() : 0);
             return aTime - bTime;
         });
         
@@ -1025,11 +1015,19 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             saveEvent(false);
         });
+        
+        elements.eventForm.addEventListener('change', () => updateFormValidity(elements.eventForm));
+
 
         elements.eventModalSaveBtn.addEventListener('click', (e) => {
             e.preventDefault();
             saveEvent(false);
         });
+        
+        if (document.getElementById('event-modal-form')) {
+            document.getElementById('event-modal-form').addEventListener('change', () => updateFormValidity(document.getElementById('event-modal-form')));
+        }
+        
         
         elements.deleteEventBtn.addEventListener('click', () => {
             if (state.activeEvent) deleteEvent(state.activeEvent._id, false);
@@ -1051,13 +1049,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             updateFormValidity(elements.eventForm);
         });
-        
-        elements.eventForm.addEventListener('change', () => updateFormValidity(elements.eventForm));
-        
-        if (document.getElementById('event-modal-form')) {
-            document.getElementById('event-modal-form').addEventListener('change', () => updateFormValidity(document.getElementById('event-modal-form')));
-        }
-
 
         // Unified Sidebar Toggle Functionality
         const toggleSidebar = () => {
@@ -1121,10 +1112,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         
-        // FIX for TypeError: undefined is not an object (evaluating 'elements.mobileActiveDate.setDate')
         if (elements.mobilePrevDayBtn) {
             elements.mobilePrevDayBtn.addEventListener('click', () => {
-                // state.mobileActiveDate is guaranteed to be a Date object from state initialization
+                // FIX: Use the state object directly to manipulate the date
                 state.mobileActiveDate.setDate(state.mobileActiveDate.getDate() - 1);
                 renderMobileDayView();
             });
@@ -1132,7 +1122,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (elements.mobileNextDayBtn) {
             elements.mobileNextDayBtn.addEventListener('click', () => {
-                // state.mobileActiveDate is guaranteed to be a Date object from state initialization
+                // FIX: Use the state object directly to manipulate the date
                 state.mobileActiveDate.setDate(state.mobileActiveDate.getDate() + 1);
                 renderMobileDayView();
             });
@@ -1243,22 +1233,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const isMobileView = window.innerWidth <= 1199;
 
         if (isMobileView) {
-            if (elements.addEventDesktopBtn) elements.addEventDesktopBtn.style.display = 'none';
-            if (elements.addEventFab) elements.addEventFab.classList.remove('hidden');
+            elements.addEventDesktopBtn.style.display = 'none';
+            elements.addEventFab.classList.remove('hidden');
             // Ensure sidebar is closed on mobile
-            if (elements.calendarSidebar) elements.calendarSidebar.classList.remove('open');
-            if (elements.pageWrapper) elements.pageWrapper.classList.remove('sidebar-open');
+            elements.calendarSidebar.classList.remove('open');
+            elements.pageWrapper.classList.remove('sidebar-open');
             
             // Initialize mobile view if not already done
             if (state.mobileView === 'day') {
                 renderMobileDayView();
             }
         } else {
-            if (elements.addEventDesktopBtn) elements.addEventDesktopBtn.style.display = 'flex';
-            if (elements.addEventFab) elements.addEventFab.classList.add('hidden');
+            elements.addEventDesktopBtn.style.display = 'flex';
+            elements.addEventFab.classList.add('hidden');
             
             // Ensure mobile form is closed on desktop
-            if (elements.mobileFormContainer) elements.mobileFormContainer.classList.remove('active');
+            elements.mobileFormContainer.classList.remove('active');
         }
     }
 
