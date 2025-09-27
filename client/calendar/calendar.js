@@ -14,9 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
         isDragging: false,
         dragStartSlot: null,
         // Mobile-specific state
-        activeDayIndex: (new Date().getDay() + 6) % 7,
         mobileView: 'day', // 'day', 'week', 'time'
-        mobileActiveDate: new Date(),
+        mobileActiveDate: new Date(), // FIX: Ensure this is always initialized as Date
         // Draggable FAB state
         isFabDragging: false,
         fabOffsetX: 0,
@@ -25,6 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
         touchStartX: 0,
         touchStartY: 0,
     };
+    // Ensure initial activeDayIndex is correct
+    state.activeDayIndex = (state.mobileActiveDate.getDay() + 6) % 7;
     
     // FIX: New utility function to correctly preserve local date and time components 
     // without UTC offset logic when sending to the server.
@@ -1120,17 +1121,20 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         
+        // FIX for TypeError: undefined is not an object (evaluating 'elements.mobileActiveDate.setDate')
         if (elements.mobilePrevDayBtn) {
             elements.mobilePrevDayBtn.addEventListener('click', () => {
+                // state.mobileActiveDate is guaranteed to be a Date object from state initialization
                 state.mobileActiveDate.setDate(state.mobileActiveDate.getDate() - 1);
                 renderMobileDayView();
             });
         }
         
         if (elements.mobileNextDayBtn) {
-            elements.mobileActiveDate.setDate(state.mobileActiveDate.getDate() + 1);
-            renderMobileDayView();
             elements.mobileNextDayBtn.addEventListener('click', () => {
+                // state.mobileActiveDate is guaranteed to be a Date object from state initialization
+                state.mobileActiveDate.setDate(state.mobileActiveDate.getDate() + 1);
+                renderMobileDayView();
             });
         }
 
@@ -1239,22 +1243,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const isMobileView = window.innerWidth <= 1199;
 
         if (isMobileView) {
-            elements.addEventDesktopBtn.style.display = 'none';
-            elements.addEventFab.classList.remove('hidden');
+            if (elements.addEventDesktopBtn) elements.addEventDesktopBtn.style.display = 'none';
+            if (elements.addEventFab) elements.addEventFab.classList.remove('hidden');
             // Ensure sidebar is closed on mobile
-            elements.calendarSidebar.classList.remove('open');
-            elements.pageWrapper.classList.remove('sidebar-open');
+            if (elements.calendarSidebar) elements.calendarSidebar.classList.remove('open');
+            if (elements.pageWrapper) elements.pageWrapper.classList.remove('sidebar-open');
             
             // Initialize mobile view if not already done
             if (state.mobileView === 'day') {
                 renderMobileDayView();
             }
         } else {
-            elements.addEventDesktopBtn.style.display = 'flex';
-            elements.addEventFab.classList.add('hidden');
+            if (elements.addEventDesktopBtn) elements.addEventDesktopBtn.style.display = 'flex';
+            if (elements.addEventFab) elements.addEventFab.classList.add('hidden');
             
             // Ensure mobile form is closed on desktop
-            elements.mobileFormContainer.classList.remove('active');
+            if (elements.mobileFormContainer) elements.mobileFormContainer.classList.remove('active');
         }
     }
 
