@@ -44,6 +44,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return event.isRecurring && event.dayOfWeek && event.recurringStartTime && event.recurringEndTime;
     };
     
+    // FIX: New Helper for consistent date string comparison (local date from UTC components)
+    const eventDateToLocalDayString = (date) => {
+        const pad = (num) => num.toString().padStart(2, '0');
+        return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
+    };
+    
     // API Service to encapsulate all fetch calls
     const apiService = {
         fetchUserGroups: async () => {
@@ -557,9 +563,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     // FIX: Use UTC day for comparison, as date objects sent without 'Z' 
                     // are incorrectly interpreted as UTC by the client browser.
-                    const eventLocalDay = (eventStartDate.getUTCDay() + 6) % 7; 
+                    const eventDayIndex = (eventStartDate.getUTCDay() + 6) % 7;
+                    const targetDayDate = new Date(startOfWeek);
+                    targetDayDate.setDate(targetDayDate.getDate() + eventDayIndex);
+                    
+                    const eventDayStr = eventDateToLocalDayString(eventStartDate);
+                    const targetDayStr = eventDateToLocalDayString(targetDayDate);
 
-                    if (eventLocalDay === dayIndex) {
+                    if (eventDayStr === targetDayStr) {
                         render = true;
                         // FIX: Extract local time components from the saved Date object using UTC getters.
                         startTimeStr = `${String(eventStartDate.getUTCHours()).padStart(2, '0')}:${String(eventStartDate.getUTCMinutes()).padStart(2, '0')}`;
@@ -603,7 +614,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const eventDate = new Date(event.startTime);
                 // FIX: Use UTC day for mobile event filtering as well
                 const eventDayIndex = (eventDate.getUTCDay() + 6) % 7;
-                return eventDayIndex === dayIndex;
+                // FIX: Now compare the intended local date string
+                const eventDayStr = eventDateToLocalDayString(eventDate);
+                const currentDayStr = eventDateToLocalDayString(currentDate);
+
+                return eventDayStr === currentDayStr;
             }
         }).sort((a, b) => {
             const aTime = eventIsRecurring(a) ? timeToMinutes(a.recurringStartTime) : new Date(a.startTime).getUTCHours() * 60 + new Date(a.startTime).getUTCMinutes();
@@ -1427,7 +1442,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
     };
     
-    // FIX: New helper function to consistently get local time from UTC-stored Date objects
+    // FIX: Helper function to consistently get local time from UTC-stored Date objects
     const formatTimeUTC = (date) => {
         if (!date) return '';
         const d = new Date(date);
