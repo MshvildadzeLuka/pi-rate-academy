@@ -29,6 +29,14 @@ router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
     // Correctly structured and commented code
     const { start, end } = req.query;
     const { _id: userId } = req.user;
+    
+    // Validate required query params for fetching within a date range
+    if (!start || !end) {
+        return next(new ErrorResponse('Missing start and end date query parameters.', 400));
+    }
+    
+    const startDate = new Date(start);
+    const endDate = new Date(end);
 
     const [personalEvents, groupLectures] = await Promise.all([
         CalendarEvent.find({ userId }).lean(),
@@ -38,8 +46,8 @@ router.get('/my-schedule', protect, asyncHandler(async (req, res) => {
                 {
                     isRecurring: false,
                     // Use standard ISO format for query, the server handles the conversion.
-                    startTime: { $gte: new Date(start) },
-                    endTime: { $lte: new Date(end) }
+                    startTime: { $gte: startDate },
+                    endTime: { $lte: endDate }
                 },
                 { isRecurring: true }
             ]
@@ -107,7 +115,7 @@ router.post('/', protect, asyncHandler(async (req, res, next) => {
     
     // Server-side validation for time consistency (recurring)
     if (isRecurring && recurringStartTime && recurringEndTime && 
-        (ensureTimeFormat(recurringStartTime) >= ensureTimeFormat(recurringEndTime))) {
+        (timeToMinutes(ensureTimeFormat(recurringStartTime)) >= timeToMinutes(ensureTimeFormat(recurringEndTime)))) {
         return next(new ErrorResponse('Recurring end time must be after recurring start time', 400));
     }
     
@@ -154,5 +162,11 @@ router.delete('/:id', protect, asyncHandler(async (req, res, next) => {
         res.status(200).json({ success: true, data: {} });
     }
 }));
+
+function timeToMinutes(time) {
+    if (!time) return 0;
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+}
 
 module.exports = router;
