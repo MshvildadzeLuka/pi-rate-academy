@@ -1,8 +1,8 @@
-// client/calendar/calendar.js
+// file: client/calendar/calendar.js
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = '/api';
 
-    // Enhanced state management
+    // Enhanced state management for mobile
     const state = {
         mainViewDate: new Date(),
         miniCalDate: new Date(),
@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dragStartSlot: null,
         // Mobile-specific state
         activeDayIndex: (new Date().getDay() + 6) % 7,
-        mobileView: 'day', // 'day', 'week', 'time'
+        mobileView: 'day',
         mobileActiveDate: new Date(),
         // Draggable FAB state
         isFabDragging: false,
@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
         touchStartY: 0,
     };
     
-    // FIX: Utility function to correctly preserve local date and time components 
+    // FIX: Correctly preserve local date and time components
     const toLocalISOString = (date) => {
         if (!date) return null;
         const pad = (num) => num.toString().padStart(2, '0');
@@ -35,21 +35,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const DD = pad(date.getDate());
         const HH = pad(date.getHours());
         const mm = pad(date.getMinutes());
-        // Returns a string without 'Z', telling Mongoose to store these components directly.
         return `${YYYY}-${MM}-${DD}T${HH}:${mm}`;
     };
 
+    // Helper function to check if an event is recurring
     const eventIsRecurring = (event) => {
         return event.isRecurring && event.dayOfWeek && event.recurringStartTime && event.recurringEndTime;
     };
     
-    // FIX: Helper for consistent date string comparison (reads components via UTC getters)
+    // FIX: Helper for consistent date string comparison
     const eventDateToLocalDayString = (date) => {
         const pad = (num) => num.toString().padStart(2, '0');
         return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
     };
     
-    // API Service to encapsulate all fetch calls
+    // API Service
     const apiService = {
         fetchUserGroups: async () => {
             const token = localStorage.getItem('piRateToken');
@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 
-    // API fetch wrapper for robust error handling and authentication
+    // API fetch wrapper
     async function apiFetch(endpoint, options = {}) {
         const token = localStorage.getItem('piRateToken');
         const headers = {
@@ -234,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // Fetch user groups to determine group context
+    // Fetch user groups
     async function fetchUserGroups() {
         try {
             const groupsData = await apiService.fetchUserGroups();
@@ -265,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Handle saving a new event or updating an existing one
+    // CORRECTED: Fixed event saving function
     async function saveEvent(isMobile = false) {
         let type, isRecurring, title, dayIndex, startTimeStr, endTimeStr, form;
 
@@ -301,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const startDate = new Date(dateFromForm);
         startDate.setHours(startH, startM);
 
-        const [endH, endM] = endTimeStr.split(':).map(Number);
+        const [endH, endM] = endTimeStr.split(':').map(Number);
         const endDate = new Date(dateFromForm);
         endDate.setHours(endH, endM);
 
@@ -533,7 +533,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Render events on the main calendar grid
+    // CORRECTED: Fixed event rendering function with proper lecture display
     function renderEventsForWeek() {
         const startOfWeek = getStartOfWeek(state.mainViewDate);
         const endOfWeek = getEndOfWeek(startOfWeek);
@@ -546,7 +546,8 @@ document.addEventListener('DOMContentLoaded', () => {
             !(event.title && event.title.startsWith('DELETED:')) && event.type
         );
         
-        const slotHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--calendar-slot-height').trim() || '40');
+        const slotHeight = getComputedStyle(document.documentElement).getPropertyValue('--calendar-slot-height').trim();
+        const slotHeightValue = parseFloat(slotHeight);
 
         document.querySelectorAll('.event-block').forEach(el => el.remove());
 
@@ -559,9 +560,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // FIX: Use simple ISO date string comparison for accurate date matching
             const currentDayDateStr = currentDayDate.toISOString().split('T')[0];
             const dayName = dayNames[dayIndex];
-            const dayColumn = dayColumns[dayIndex];
-
-            if (!dayColumn) continue;
+            const dayColumnsArray = Array.from(dayColumns);
+            const dayColumn = dayColumnsArray[dayIndex];
 
             eventsToRender.forEach(event => {
                 let render = false;
@@ -577,35 +577,115 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 // Consolidated and corrected logic for both personal events and lectures
-                if (event.isRecurring) {
-                    // Recurring events must match the day of week
-                    if (event.dayOfWeek === dayName) {
-                        render = true;
-                        startTimeStr = ensureTimeFormat(event.recurringStartTime);
-                        endTimeStr = ensureTimeFormat(event.recurringEndTime);
-                    }
-                } else if (event.startTime) {
-                    const eventStartDate = new Date(event.startTime);
-                    
-                    // FIX: Use simple ISO date string comparison for accurate date matching
-                    const eventDayStr = eventStartDate.toISOString().split('T')[0];
+                if (event.type === 'lecture') {
+                    // Handle lecture events specifically
+                    if (event.isRecurring) {
+                        // Recurring lectures must match the day of week
+                        const rruleWeekdays = event.recurrenceRule?.byweekday || [];
+                        const dayNamesShort = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+                        const currentDayShort = dayNamesShort[dayIndex];
+                        
+                        if (rruleWeekdays.includes(currentDayShort)) {
+                            render = true;
+                            // FIX: Extract time from the original lecture using UTC getters
+                            const lectureStart = new Date(event.startTime);
+                            startTimeStr = `${String(lectureStart.getUTCHours()).padStart(2, '0')}:${String(lectureStart.getUTCMinutes()).padStart(2, '0')}`;
+                            const lectureEnd = new Date(event.endTime);
+                            endTimeStr = `${String(lectureEnd.getUTCHours()).padStart(2, '0')}:${String(lectureEnd.getUTCMinutes()).padStart(2, '0')}`;
+                        }
+                    } else {
+                        // Single lecture events
+                        const eventStartDate = new Date(event.startTime);
+                        const eventDayStr = eventStartDate.toISOString().split('T')[0];
 
-                    if (eventDayStr === currentDayDateStr) {
-                        render = true;
-                        // FIX: Extract time components using UTC getters, as server saved local time components as UTC.
-                        startTimeStr = `${String(eventStartDate.getUTCHours()).padStart(2, '0')}:${String(eventStartDate.getUTCMinutes()).padStart(2, '0')}`;
-                        const eventEndDate = new Date(event.endTime);
-                        endTimeStr = `${String(eventEndDate.getUTCHours()).padStart(2, '0')}:${String(eventEndDate.getUTCMinutes()).padStart(2, '0')}`;
+                        if (eventDayStr === currentDayDateStr) {
+                            render = true;
+                            // FIX: Extract time components using UTC getters
+                            startTimeStr = `${String(eventStartDate.getUTCHours()).padStart(2, '0')}:${String(eventStartDate.getUTCMinutes()).padStart(2, '0')}`;
+                            const eventEndDate = new Date(event.endTime);
+                            endTimeStr = `${String(eventEndDate.getUTCHours()).padStart(2, '0')}:${String(eventEndDate.getUTCMinutes()).padStart(2, '0')}`;
+                        }
+                    }
+                } else {
+                    // Handle personal events (busy, preferred)
+                    if (event.isRecurring) {
+                        // Personal recurring events
+                        if (event.dayOfWeek === dayName) {
+                            render = true;
+                            startTimeStr = ensureTimeFormat(event.recurringStartTime);
+                            endTimeStr = ensureTimeFormat(event.recurringEndTime);
+                        }
+                    } else if (event.startTime) {
+                        // Personal single events
+                        const eventDate = new Date(event.startTime);
+                        const eventDayStr = eventDateToLocalDayString(eventDate);
+                        const currentDayStr = eventDateToLocalDayString(currentDayDate);
+
+                        if (eventDayStr === currentDayStr) {
+                            render = true;
+                            // FIX: Extract time components using UTC getters
+                            startTimeStr = `${String(eventDate.getUTCHours()).padStart(2, '0')}:${String(eventDate.getUTCMinutes()).padStart(2, '0')}`;
+                            const eventEndDate = new Date(event.endTime);
+                            endTimeStr = `${String(eventEndDate.getUTCHours()).padStart(2, '0')}:${String(eventEndDate.getUTCMinutes()).padStart(2, '0')}`;
+                        }
                     }
                 }
 
                 if (render) {
-                    renderEventBlock({ ...event, startTime: startTimeStr, endTime: endTimeStr }, dayColumn, slotHeight);
+                    renderEventBlock({ ...event, startTime: startTimeStr, endTime: endTimeStr }, dayColumn, false, slotHeightValue);
                 }
             });
         }
     }
 
+    // CORRECTED: Fixed event block rendering with proper lecture handling
+    function renderEventBlock(eventData, dayColumn, isException = false, slotHeight) {
+        if (isException || !dayColumn) return;
+
+        const startMinutes = timeToMinutes(eventData.startTime);
+        const endMinutes = timeToMinutes(eventData.endTime);
+        const durationMinutes = endMinutes - startMinutes;
+
+        // Visual grid starts at 8 AM (480 minutes)
+        const START_OF_GRID_MINUTES = 8 * 60; 
+
+        // Correct calculation relative to the grid start
+        const top = ((startMinutes - START_OF_GRID_MINUTES) / 30) * slotHeight;
+        const height = (durationMinutes / 30) * slotHeight - 2;
+
+        // Skip events outside the 8 AM - 11 PM visual range
+        if (top < 0 || (startMinutes > 23 * 60)) return;
+
+        const eventBlock = document.createElement('div');
+        eventBlock.className = `event-block event-${eventData.type}`;
+        
+        // Make lectures read-only
+        if (eventData.type === 'lecture') {
+            eventBlock.classList.add('read-only');
+        }
+        
+        eventBlock.style.top = `${top}px`;
+        eventBlock.style.height = `${height}px`;
+        eventBlock.dataset.eventId = eventData._id;
+
+        let titleContent = eventData.title || eventData.type.toUpperCase();
+        // Add group name to lectures for context
+        if (eventData.type === 'lecture' && eventData.groupName) {
+            titleContent += ` (${eventData.groupName})`;
+        }
+
+        eventBlock.innerHTML = `
+            <div class="event-title">${titleContent}</div>
+            <div class="event-time">${formatTime(eventData.startTime)} - ${formatTime(eventData.endTime)}</div>
+        `;
+
+        // Only make personal events clickable (not lectures)
+        if (eventData.type !== 'lecture') {
+            eventBlock.addEventListener('click', () => handleEventClick(eventData));
+        }
+
+        dayColumn.appendChild(eventBlock);
+    }
 
     // Mobile-specific rendering functions
     function renderMobileDayView() {
@@ -628,21 +708,51 @@ document.addEventListener('DOMContentLoaded', () => {
         const dayEvents = state.allEvents.filter(event => {
             if (event.title && event.title.startsWith('DELETED:')) return false;
             
-            if (event.isRecurring) {
-                return event.dayOfWeek === dayName;
-            } else if (event.startTime) {
-                const eventDate = new Date(event.startTime);
-                // FIX: Now compare the intended local date string
-                const eventDayStr = eventDateToLocalDayString(eventDate);
-                const currentDayStr = eventDateToLocalDayString(currentDate);
-
-                return eventDayStr === currentDayStr;
+            if (event.type === 'lecture') {
+                if (event.isRecurring) {
+                    const rruleWeekdays = event.recurrenceRule?.byweekday || [];
+                    const dayNamesShort = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+                    const currentDayShort = dayNamesShort[dayIndex];
+                    return rruleWeekdays.includes(currentDayShort);
+                } else {
+                    const eventDate = new Date(event.startTime);
+                    const eventDayStr = eventDateToLocalDayString(eventDate);
+                    const currentDayStr = eventDateToLocalDayString(currentDate);
+                    return eventDayStr === currentDayStr;
+                }
+            } else {
+                // Personal events
+                if (event.isRecurring) {
+                    return event.dayOfWeek === dayName;
+                } else if (event.startTime) {
+                    const eventDate = new Date(event.startTime);
+                    const eventDayStr = eventDateToLocalDayString(eventDate);
+                    const currentDayStr = eventDateToLocalDayString(currentDate);
+                    return eventDayStr === currentDayStr;
+                }
             }
             return false;
         }).sort((a, b) => {
-            const aTime = eventIsRecurring(a) ? timeToMinutes(a.recurringStartTime) : (a.startTime ? new Date(a.startTime).getUTCHours() * 60 + new Date(a.startTime).getUTCMinutes() : 0);
-            const bTime = eventIsRecurring(b) ? timeToMinutes(b.recurringStartTime) : (b.startTime ? new Date(b.startTime).getUTCHours() * 60 + new Date(b.startTime).getUTCMinutes() : 0);
-            return aTime - bTime;
+            const getEventTime = (event) => {
+                if (event.type === 'lecture') {
+                    if (event.isRecurring) {
+                        const lectureStart = new Date(event.startTime);
+                        return lectureStart.getUTCHours() * 60 + lectureStart.getUTCMinutes();
+                    } else {
+                        const eventDate = new Date(event.startTime);
+                        return eventDate.getUTCHours() * 60 + eventDate.getUTCMinutes();
+                    }
+                } else {
+                    if (eventIsRecurring(event)) {
+                        return timeToMinutes(event.recurringStartTime);
+                    } else {
+                        const eventDate = new Date(event.startTime);
+                        return eventDate.getUTCHours() * 60 + eventDate.getUTCMinutes();
+                    }
+                }
+            };
+            
+            return getEventTime(a) - getEventTime(b);
         });
         
         if (dayEvents.length === 0) {
@@ -661,13 +771,27 @@ document.addEventListener('DOMContentLoaded', () => {
             eventElement.className = `mobile-event-card event-${event.type}`;
             eventElement.dataset.eventId = event._id;
             
-            const startTime = eventIsRecurring(event) ? 
-                formatTime(event.recurringStartTime) : 
-                formatTimeUTC(new Date(event.startTime));
-                
-            const endTime = eventIsRecurring(event) ? 
-                formatTime(event.recurringEndTime) : 
-                formatTimeUTC(new Date(event.endTime));
+            let startTime, endTime;
+            
+            if (event.type === 'lecture') {
+                if (event.isRecurring) {
+                    const lectureStart = new Date(event.startTime);
+                    startTime = formatTimeUTC(lectureStart);
+                    const lectureEnd = new Date(event.endTime);
+                    endTime = formatTimeUTC(lectureEnd);
+                } else {
+                    startTime = formatTimeUTC(new Date(event.startTime));
+                    endTime = formatTimeUTC(new Date(event.endTime));
+                }
+            } else {
+                if (eventIsRecurring(event)) {
+                    startTime = formatTime(event.recurringStartTime);
+                    endTime = formatTime(event.recurringEndTime);
+                } else {
+                    startTime = formatTimeUTC(new Date(event.startTime));
+                    endTime = formatTimeUTC(new Date(event.endTime));
+                }
+            }
             
             let title = event.title || event.type.toUpperCase();
             if (event.type === 'lecture' && event.groupName) {
@@ -680,6 +804,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${event.description ? `<div class="mobile-event-details">${event.description}</div>` : ''}
             `;
             
+            // Only make personal events clickable (not lectures)
             if (event.type !== 'lecture') {
                 eventElement.addEventListener('click', () => handleMobileEventClick(event));
             }
@@ -736,20 +861,51 @@ document.addEventListener('DOMContentLoaded', () => {
         const dayEvents = state.allEvents.filter(event => {
             if (event.title && event.title.startsWith('DELETED:')) return false;
             
-            if (event.isRecurring) {
-                return event.dayOfWeek === dayName;
-            } else if (event.startTime) {
-                const eventDate = new Date(event.startTime);
-                const eventDayStr = eventDateToLocalDayString(eventDate);
-                const activeDayStr = eventDateToLocalDayString(activeDayDate);
-                
-                return eventDayStr === activeDayStr;
+            if (event.type === 'lecture') {
+                if (event.isRecurring) {
+                    const rruleWeekdays = event.recurrenceRule?.byweekday || [];
+                    const dayNamesShort = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+                    const currentDayShort = dayNamesShort[state.activeDayIndex];
+                    return rruleWeekdays.includes(currentDayShort);
+                } else {
+                    const eventDate = new Date(event.startTime);
+                    const eventDayStr = eventDateToLocalDayString(eventDate);
+                    const activeDayStr = eventDateToLocalDayString(activeDayDate);
+                    return eventDayStr === activeDayStr;
+                }
+            } else {
+                // Personal events
+                if (event.isRecurring) {
+                    return event.dayOfWeek === dayName;
+                } else if (event.startTime) {
+                    const eventDate = new Date(event.startTime);
+                    const eventDayStr = eventDateToLocalDayString(eventDate);
+                    const activeDayStr = eventDateToLocalDayString(activeDayDate);
+                    return eventDayStr === activeDayStr;
+                }
             }
             return false;
         }).sort((a, b) => {
-            const aTime = eventIsRecurring(a) ? timeToMinutes(a.recurringStartTime) : (a.startTime ? new Date(a.startTime).getUTCHours() * 60 + new Date(a.startTime).getUTCMinutes() : 0);
-            const bTime = eventIsRecurring(b) ? timeToMinutes(b.recurringStartTime) : (b.startTime ? new Date(b.startTime).getUTCHours() * 60 + new Date(b.startTime).getUTCMinutes() : 0);
-            return aTime - bTime;
+            const getEventTime = (event) => {
+                if (event.type === 'lecture') {
+                    if (event.isRecurring) {
+                        const lectureStart = new Date(event.startTime);
+                        return lectureStart.getUTCHours() * 60 + lectureStart.getUTCMinutes();
+                    } else {
+                        const eventDate = new Date(event.startTime);
+                        return eventDate.getUTCHours() * 60 + eventDate.getUTCMinutes();
+                    }
+                } else {
+                    if (eventIsRecurring(event)) {
+                        return timeToMinutes(event.recurringStartTime);
+                    } else {
+                        const eventDate = new Date(event.startTime);
+                        return eventDate.getUTCHours() * 60 + eventDate.getUTCMinutes();
+                    }
+                }
+            };
+            
+            return getEventTime(a) - getEventTime(b);
         });
         
         if (dayEvents.length === 0) {
@@ -767,13 +923,27 @@ document.addEventListener('DOMContentLoaded', () => {
             eventElement.className = `mobile-event-card event-${event.type}`;
             eventElement.dataset.eventId = event._id;
             
-            const startTime = eventIsRecurring(event) ? 
-                formatTime(event.recurringStartTime) : 
-                formatTimeUTC(new Date(event.startTime));
-                
-            const endTime = eventIsRecurring(event) ? 
-                formatTime(event.recurringEndTime) : 
-                formatTimeUTC(new Date(event.endTime));
+            let startTime, endTime;
+            
+            if (event.type === 'lecture') {
+                if (event.isRecurring) {
+                    const lectureStart = new Date(event.startTime);
+                    startTime = formatTimeUTC(lectureStart);
+                    const lectureEnd = new Date(event.endTime);
+                    endTime = formatTimeUTC(lectureEnd);
+                } else {
+                    startTime = formatTimeUTC(new Date(event.startTime));
+                    endTime = formatTimeUTC(new Date(event.endTime));
+                }
+            } else {
+                if (eventIsRecurring(event)) {
+                    startTime = formatTime(event.recurringStartTime);
+                    endTime = formatTime(event.recurringEndTime);
+                } else {
+                    startTime = formatTimeUTC(new Date(event.startTime));
+                    endTime = formatTimeUTC(new Date(event.endTime));
+                }
+            }
             
             let title = event.title || event.type.toUpperCase();
             if (event.type === 'lecture' && event.groupName) {
@@ -811,16 +981,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (event.title && event.title.startsWith('DELETED:')) return false;
                     
                     let eventStart, eventEnd;
-                    if (event.isRecurring) {
-                        eventStart = timeToMinutes(event.recurringStartTime);
-                        eventEnd = timeToMinutes(event.recurringEndTime);
-                    } else if (event.startTime) {
-                        const startDate = new Date(event.startTime);
-                        const endDate = new Date(event.endTime);
-                        eventStart = startDate.getUTCHours() * 60 + startDate.getUTCMinutes();
-                        eventEnd = endDate.getUTCHours() * 60 + endDate.getUTCMinutes();
+                    if (event.type === 'lecture') {
+                        if (event.isRecurring) {
+                            const lectureStart = new Date(event.startTime);
+                            eventStart = lectureStart.getUTCHours() * 60 + lectureStart.getUTCMinutes();
+                            const lectureEnd = new Date(event.endTime);
+                            eventEnd = lectureEnd.getUTCHours() * 60 + lectureEnd.getUTCMinutes();
+                        } else {
+                            const startDate = new Date(event.startTime);
+                            eventStart = startDate.getUTCHours() * 60 + startDate.getUTCMinutes();
+                            const endDate = new Date(event.endTime);
+                            eventEnd = endDate.getUTCHours() * 60 + endDate.getUTCMinutes();
+                        }
                     } else {
-                        return false;
+                        if (eventIsRecurring(event)) {
+                            eventStart = timeToMinutes(event.recurringStartTime);
+                            eventEnd = timeToMinutes(event.recurringEndTime);
+                        } else {
+                            const startDate = new Date(event.startTime);
+                            eventStart = startDate.getUTCHours() * 60 + startDate.getUTCMinutes();
+                            const endDate = new Date(event.endTime);
+                            eventEnd = endDate.getUTCHours() * 60 + endDate.getUTCMinutes();
+                        }
                     }
                     
                     const slotTime = hour * 60 + minute;
@@ -884,15 +1066,15 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const dayOfWeek = eventIsRecurring(event) ? 
                 ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].indexOf(event.dayOfWeek) :
-                (new Date(event.startTime).getUTCDay() + 6) % 7; // FIX: Use UTC day
+                (new Date(event.startTime).getUTCDay() + 6) % 7;
                 
             const startTime = eventIsRecurring(event) ? 
                 event.recurringStartTime : 
-                `${String(new Date(event.startTime).getUTCHours()).padStart(2, '0')}:${String(new Date(event.startTime).getUTCMinutes()).padStart(2, '0')}`; // FIX: Use UTC getters
+                `${String(new Date(event.startTime).getUTCHours()).padStart(2, '0')}:${String(new Date(event.startTime).getUTCMinutes()).padStart(2, '0')}`;
                 
             const endTime = eventIsRecurring(event) ? 
                 event.recurringEndTime : 
-                `${String(new Date(event.endTime).getUTCHours()).padStart(2, '0')}:${String(new Date(event.endTime).getUTCMinutes()).padStart(2, '0')}`; // FIX: Use UTC getters
+                `${String(new Date(event.endTime).getUTCHours()).padStart(2, '0')}:${String(new Date(event.endTime).getUTCMinutes()).padStart(2, '0')}`;
             
             elements.mobileDaySelect.value = dayOfWeek;
             elements.mobileStartTime.value = startTime;
@@ -930,49 +1112,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function handleMobileEventClick(event) {
         openMobileEventForm(event);
-    }
-
-    // Helper function to create and position an event block
-    function renderEventBlock(eventData, dayColumn, slotHeight) {
-        const startMinutes = timeToMinutes(eventData.startTime);
-        const endMinutes = timeToMinutes(eventData.endTime);
-        const durationMinutes = endMinutes - startMinutes;
-
-        // Visual grid starts at 8 AM (480 minutes)
-        const START_OF_GRID_MINUTES = 8 * 60; 
-
-        // Correct calculation relative to the grid start
-        const top = ((startMinutes - START_OF_GRID_MINUTES) / 30) * slotHeight;
-        const height = (durationMinutes / 30) * slotHeight - 2;
-
-        // Skip events outside the 8 AM - 11 PM visual range
-        if (top < 0 || (startMinutes > 23 * 60)) return;
-
-
-        const eventBlock = document.createElement('div');
-        eventBlock.className = `event-block event-${eventData.type}`;
-        if (eventData.type === 'lecture') {
-            eventBlock.classList.add('read-only');
-        }
-        eventBlock.style.top = `${top}px`;
-        eventBlock.style.height = `${height}px`;
-        eventBlock.dataset.eventId = eventData._id;
-
-        let titleContent = eventData.title || eventData.type.toUpperCase();
-        if (eventData.type === 'lecture' && eventData.groupName) {
-            titleContent += ` (${eventData.groupName})`;
-        }
-
-        eventBlock.innerHTML = `
-            <div class="event-title">${titleContent}</div>
-            <div class="event-time">${formatTime(eventData.startTime)} - ${formatTime(eventData.endTime)}</div>
-        `;
-
-        if (eventData.type !== 'lecture') {
-            eventBlock.addEventListener('click', () => handleEventClick(eventData));
-        }
-
-        dayColumn.appendChild(eventBlock);
     }
 
     // Add all event listeners
@@ -1013,7 +1152,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         elements.eventForm.addEventListener('change', () => updateFormValidity(elements.eventForm));
 
-
         elements.eventModalSaveBtn.addEventListener('click', (e) => {
             e.preventDefault();
             saveEvent(false);
@@ -1022,7 +1160,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (document.getElementById('event-modal-form')) {
             document.getElementById('event-modal-form').addEventListener('change', () => updateFormValidity(document.getElementById('event-modal-form')));
         }
-        
         
         elements.deleteEventBtn.addEventListener('click', () => {
             if (state.activeEvent) deleteEvent(state.activeEvent._id, false);
@@ -1108,16 +1245,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         if (elements.mobilePrevDayBtn) {
-            elements.mobilePrevDayBtn.addEventListener('click', async () => {
-                // FIX: Use the state object directly to manipulate the date
+            elements.mobilePrevDayBtn.addEventListener('click', () => {
                 state.mobileActiveDate.setDate(state.mobileActiveDate.getDate() - 1);
                 renderMobileDayView();
             });
         }
         
         if (elements.mobileNextDayBtn) {
-            elements.mobileNextDayBtn.addEventListener('click', async () => {
-                // FIX: Use the state object directly to manipulate the date
+            elements.mobileNextDayBtn.addEventListener('click', () => {
                 state.mobileActiveDate.setDate(state.mobileActiveDate.getDate() + 1);
                 renderMobileDayView();
             });
@@ -1156,14 +1291,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Touch gesture handlers for mobile
     function handleTouchStart(e) {
-        if (window.innerWidth > 1199) return; // Only on mobile
+        if (window.innerWidth > 1199) return;
         
         state.touchStartX = e.touches[0].clientX;
         state.touchStartY = e.touches[0].clientY;
     }
     
     function handleTouchMove(e) {
-        if (window.innerWidth > 1199) return; // Only on mobile
+        if (window.innerWidth > 1199) return;
         
         if (!state.touchStartX || !state.touchStartY) return;
         
@@ -1175,7 +1310,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Horizontal swipe (for day navigation)
         if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
-            e.preventDefault(); // Prevent scroll when swiping horizontally
+            e.preventDefault();
             
             if (diffX > 0) {
                 // Swipe left - next day
@@ -1321,7 +1456,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const lastSlot = sortedSlots[sortedSlots.length - 1];
         
         const startTime = firstSlot.dataset.time;
-        const endTimeInMinutes = timeToMinutes(lastSlot.dataset.time) + 30; // End of the last selected slot
+        const endTimeInMinutes = timeToMinutes(lastSlot.dataset.time) + 30;
         const endTime = minutesToTime(endTimeInMinutes);
 
         // Update both sidebar and modal form inputs
@@ -1341,7 +1476,6 @@ document.addEventListener('DOMContentLoaded', () => {
         clearSelection(false);
         state.activeEvent = eventData;
         
-        // FIX: Use UTC day for recurring events to avoid incorrect day mapping
         const dayOfWeek = eventIsRecurring(eventData) ? 
             ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].indexOf(eventData.dayOfWeek) :
             (new Date(eventData.startTime).getUTCDay() + 6) % 7;
@@ -1538,7 +1672,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return end;
     };
 
-
     // Update the current time indicator on the calendar grid
     function updateCurrentTimeIndicator() {
         const now = new Date();
@@ -1546,7 +1679,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const startOfWeek = getStartOfWeek(state.mainViewDate);
         const endOfWeek = getEndOfWeek(startOfWeek);
         
-        const slotHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--calendar-slot-height').trim() || '40');
+        const slotHeight = getComputedStyle(document.documentElement).getPropertyValue('--calendar-slot-height').trim();
+        const slotHeightValue = parseFloat(slotHeight);
 
         if (now < startOfWeek || now > endOfWeek) {
             elements.currentTimeIndicator.style.display = 'none';
@@ -1559,7 +1693,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const top = ((timeInMinutes - 8 * 60) / 30) * slotHeight;
+        const top = ((timeInMinutes - 8 * 60) / 30) * slotHeightValue;
         
         const dayColumn = document.querySelector(`.day-column[data-day="${dayOfWeek}"]`);
         if (dayColumn) {
