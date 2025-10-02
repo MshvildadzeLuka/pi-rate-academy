@@ -1415,6 +1415,7 @@ const uiRenderer = {
             listContainer.innerHTML = '<div class="loading-spinner"></div>';
             
             try {
+                // FIX: Use the correct API service method to fetch bank data
                 const quizBankTemplates = await apiService.fetchQuizBank();
                 listContainer.innerHTML = '';
 
@@ -1429,12 +1430,12 @@ const uiRenderer = {
                         <i class="fas fa-file-alt quiz-item-icon"></i>
                         <div class="quiz-item-info">
                             <span class="quiz-item-title">${utils.escapeHTML(quiz.title)}</span>
-                            <span class="quiz-item-meta">${quiz.questions.length} questions</span>
+                            <span class="quiz-item-meta">${quiz.questions.length} questions | ${quiz.points || 0} points</span>
                         </div>
                     </div>
                 `).join('');
 
-                // Save to state
+                // Save to state to be accessible by handleSelectQuizFromBank
                 state.quizBank = quizBankTemplates;
             } catch (error) {
                 console.error('Failed to load quiz bank:', error);
@@ -1618,10 +1619,12 @@ const uiRenderer = {
             
             if (questions && questions.length > 0) {
                 questions.forEach((question, index) => {
+                    // Start by adding a fresh, empty question container
                     this.addNewQuestion(modalElement);
                     const questionElement = questionsContainer.children[index];
                     
                     if (questionElement) {
+                        // Populate question fields
                         questionElement.querySelector('.question-text').value = question.text || '';
                         questionElement.querySelector('.question-points').value = question.points || 1;
                         questionElement.querySelector('.question-solution').value = question.solution || '';
@@ -1657,8 +1660,13 @@ const uiRenderer = {
                     }
                 });
             } else {
+                // If no questions, add a single empty one
                 this.addNewQuestion(modalElement);
             }
+            
+            // Ensure LaTeX is rendered for all newly populated fields
+            modalElement.querySelectorAll('.latex-preview').forEach(this.updateLatexPreview.bind(this));
+
         } catch (error) {
             console.error('Error rendering questions:', error);
         }
@@ -1823,6 +1831,7 @@ const uiRenderer = {
             }
             
             // 6. Copy questions by re-rendering the question section
+            // FIX: Pass quizData.questions to ensure only the questions array is used
             this.renderQuestions(quizData.questions, modalElement); 
             
             this.showNotification('ქვიზის შაბლონი წარმატებით გადმოკოპირდა. გთხოვთ, შეამოწმოთ დრო და ჯგუფი.', 'info');
@@ -1842,6 +1851,7 @@ const uiRenderer = {
             listContainer.innerHTML = '<div class="loading-spinner"></div>';
             
             try {
+                // FIX: Use the correct API service method to fetch bank data
                 const quizBankTemplates = await apiService.fetchQuizBank();
                 listContainer.innerHTML = '';
 
@@ -1856,12 +1866,12 @@ const uiRenderer = {
                         <i class="fas fa-file-alt quiz-item-icon"></i>
                         <div class="quiz-item-info">
                             <span class="quiz-item-title">${utils.escapeHTML(quiz.title)}</span>
-                            <span class="quiz-item-meta">${quiz.questions.length} questions</span>
+                            <span class="quiz-item-meta">${quiz.questions.length} questions | ${quiz.points || 0} points</span>
                         </div>
                     </div>
                 `).join('');
 
-                // Save to state
+                // Save to state to be accessible by handleSelectQuizFromBank
                 state.quizBank = quizBankTemplates;
             } catch (error) {
                 console.error('Failed to load quiz bank:', error);
@@ -1887,6 +1897,8 @@ const eventHandlers = {
                 }
                 if (elements.createBtn) {
                     elements.createBtn.addEventListener('click', () => {
+                        // Ensure editingId is cleared before opening the modal for creation
+                        state.editingId = null; 
                         uiRenderer.openModal('create-edit-quiz');
                     });
                 }
@@ -1999,6 +2011,8 @@ const eventHandlers = {
     // Handle edit quiz
     async handleEditQuiz(quizId) {
         try {
+            // FIX: Set editingId before fetching data, so the form knows it's an update
+            state.editingId = quizId;
             const quiz = await apiService.fetchQuizById(quizId);
             uiRenderer.openModal('create-edit-quiz', quiz);
         } catch (error) {
@@ -2476,7 +2490,7 @@ const eventHandlers = {
     // Handle add from bank
     async handleAddFromBank() {
         try {
-            uiRenderer.openModal('question-bank');
+            uiRenderer.openModal('quiz-bank', null, true); // FIXED: Changed to 'quiz-bank'
         } catch (error) {
             console.error('Error handling add from bank:', error);
         }
@@ -2752,7 +2766,11 @@ const eventHandlers = {
     // Handle add from quiz bank
     handleAddFromQuizBank() {
         try {
-            uiRenderer.openModal('quiz-bank', null, true); // FIXED: Changed to 'quiz-bank'
+            // FIX: Ensure the primary form is visible before opening the layered modal
+            if (!document.getElementById('modal-create-edit-quiz')) {
+                 uiRenderer.openModal('create-edit-quiz');
+            }
+            uiRenderer.openModal('quiz-bank', null, true); 
         } catch (error) {
             console.error('Error handling add from quiz bank:', error);
         }
@@ -2768,11 +2786,9 @@ const eventHandlers = {
             
             const selectedQuiz = state.quizBank.find(q => q._id === quizId);
             if (selectedQuiz) {
-                // Ensure the create/edit modal is open first (it must be the parent/first modal)
-                if (!document.getElementById('modal-create-edit-quiz')) {
-                    uiRenderer.openModal('create-edit-quiz');
-                }
+                // Pre-fill the form with the selected quiz data
                 uiRenderer.prefillQuizForm(selectedQuiz);
+                // Close the Quiz Bank modal (the layered one)
                 uiRenderer.closeModal();
             } else {
                 uiRenderer.showNotification('Selected quiz could not be found.', 'error');
@@ -2839,3 +2855,4 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initQuizzes);
 } else {
     initQuizzes();
+}
