@@ -1234,8 +1234,8 @@ const uiRenderer = {
                     );
                 
                 groupSelect.innerHTML = relevantGroups.map(g => `
-                    <option value="${g._id}">${utils.escapeHTML(g.name)}</option>
-                `).join('');
+                        <option value="${g._id}"${g._id === state.selectedGroupId ? 'selected' : ''}>${utils.escapeHTML(g.name)}</option>
+                    `).join('');
             }
 
             const now = new Date();
@@ -1243,17 +1243,26 @@ const uiRenderer = {
             
             modalElement.querySelector('#quiz-start-time').value = utils.formatDateTimeLocal(now);
             modalElement.querySelector('#quiz-end-time').value = utils.formatDateTimeLocal(oneHourLater);
+            
+            // Determine if we are editing or creating/cloning
+            const isEditing = data && data._id; 
+            state.editingId = isEditing ? data._id : null;
 
-            if (data) { // Prefill data if editing
-                modalElement.querySelector('#modal-title').textContent = 'Edit Quiz';
+
+            if (data) { // Prefill data if editing OR cloning
+                modalElement.querySelector('#modal-title').textContent = isEditing ? 'Edit Quiz' : 'Clone Quiz from Bank'; // FIX 1: Set correct title
                 modalElement.querySelector('#quiz-title').value = data.title || '';
                 modalElement.querySelector('#quiz-description').value = data.description || '';
                 modalElement.querySelector('#quiz-start-time').value = utils.formatDateTimeLocal(new Date(data.startTime || now));
                 modalElement.querySelector('#quiz-end-time').value = utils.formatDateTimeLocal(new Date(data.endTime || oneHourLater));
                 modalElement.querySelector('#quiz-time-limit').value = data.timeLimit || 60;
-                modalElement.querySelector('#quiz-group').value = data.group?._id || data.groupId || data.courseId[0]?._id || '';
                 
-                // ✅ FIX: Removed pre-filling for deleted fields (maxAttempts, showResults, password, etc.)
+                // FIX 2: Only pre-select a group if editing. If cloning, the user must choose a new group.
+                if (isEditing) { 
+                    modalElement.querySelector('#quiz-group').value = data.group?._id || data.groupId || data.courseId?.[0] || '';
+                } else {
+                     modalElement.querySelector('#quiz-group').value = ''; // Ensure no group is selected for cloning.
+                }
                 
                 this.renderQuestions(data.questions, modalElement);
             } else {
@@ -1266,8 +1275,6 @@ const uiRenderer = {
                 }
             }, 300));
 
-            // ✅ FIX: Removed event listener for the deleted password checkbox.
-
             const addFromBankBtn = modalElement.querySelector('#add-from-quiz-bank-btn');
             if (addFromBankBtn) {
                 addFromBankBtn.addEventListener('click', () => {
@@ -1279,7 +1286,7 @@ const uiRenderer = {
             if (form) {
                 form.onsubmit = async (e) => {
                     e.preventDefault();
-                    if (data) {
+                    if (isEditing) { // FIX 3: Use the isEditing flag for accurate update/create selection
                         await eventHandlers.handleUpdateQuiz(data._id, form);
                     } else {
                         await eventHandlers.handleCreateQuiz(form);
@@ -1427,9 +1434,9 @@ const uiRenderer = {
             }
 
             // Fetch question banks
-            apiService.fetchQuestionBanks(groupId)
+            apiService.fetchQuizBank()
                 .then(banks => {
-                    state.questionBanks = banks;
+                    state.quizBank = banks;
                     
                     const banksContainer = modalElement.querySelector('.quiz-bank-list');
                     if (!banksContainer) return;
@@ -1437,32 +1444,30 @@ const uiRenderer = {
                     banksContainer.innerHTML = '';
                     
                     if (banks.length === 0) {
-                        banksContainer.innerHTML = '<p class="empty-state">No question banks available for this group.</p>';
+                        banksContainer.innerHTML = '<p class="empty-state">No saved quiz templates found.</p>';
                         return;
                     }
                     
                     // Render question banks
-                    banks.forEach(bank => {
+                    banks.forEach(quiz => {
                         const bankElement = document.createElement('div');
-                        bankElement.className = 'question-bank-item';
+                        bankElement.className = 'quiz-item';
+                        bankElement.dataset.action = QUIZ_ACTIONS.SELECT_QUIZ_FROM_BANK;
+                        bankElement.dataset.quizId = quiz._id;
+                        
                         bankElement.innerHTML = `
-                            <h4>${utils.escapeHTML(bank.name)}</h4>
-                            <p>${utils.escapeHTML(bank.description || 'No description')}</p>
-                            <div class="bank-questions">
-                                ${bank.questions.map(q => `
-                                    <div class="bank-question" data-question-id="${q._id}">
-                                        <input type="checkbox" id="q-${q._id}">
-                                        <label for="q-${q._id}">${utils.escapeHTML(q.text)}</label>
-                                    </div>
-                                `).join('')}
+                            <i class="fas fa-file-alt quiz-item-icon"></i>
+                            <div class="quiz-item-info">
+                                <span class="quiz-item-title">${utils.escapeHTML(quiz.title)}</span>
+                                <span class="quiz-item-meta">${quiz.questions.length} questions, ${quiz.timeLimit ? quiz.timeLimit + ' min' : 'No limit'}</span>
                             </div>
                         `;
                         banksContainer.appendChild(bankElement);
                     });
                 })
                 .catch(error => {
-                    console.error('Failed to load question banks:', error);
-                    this.showNotification('Failed to load question banks', 'error');
+                    console.error('Failed to load quiz bank:', error);
+                    this.showNotification('Failed to load quiz bank', 'error');
                 });
         } catch (error) {
             console.error('Error setting up question bank modal:', error);
@@ -1648,8 +1653,7 @@ const uiRenderer = {
                         questionElement.querySelector('.question-text').value = question.text || '';
                         questionElement.querySelector('.question-points').value = question.points || 1;
                         questionElement.querySelector('.question-solution').value = question.solution || '';
-                        questionElement.querySelector('.question-type').value = question.type || 'multiple-choice';
-
+                        
                         // Handle image
                         if (question.imageUrl) {
                             const preview = questionElement.querySelector('.question-image-preview');
@@ -1816,23 +1820,7 @@ const uiRenderer = {
             modal.querySelector('#quiz-title').value = (quizData.title || '') + ' (Copy)';
             modal.querySelector('#quiz-description').value = quizData.description || '';
             modal.querySelector('#quiz-time-limit').value = quizData.timeLimit || 60;
-            modal.querySelector('#quiz-max-attempts').value = quizData.maxAttempts || 1;
-            modal.querySelector('#quiz-show-results').value = quizData.showResults || 'after-submission';
-            modal.querySelector('#quiz-allow-retakes').checked = quizData.allowRetakes || false;
-
-            // Handle password field
-            const requiresPasswordField = modal.querySelector('#quiz-requires-password');
-            const passwordField = modal.querySelector('#quiz-password-field');
-            requiresPasswordField.checked = quizData.requiresPassword || false;
             
-            if (requiresPasswordField.checked) {
-                passwordField.style.display = 'block';
-                passwordField.value = quizData.password || '';
-            } else {
-                passwordField.style.display = 'none';
-                passwordField.value = '';
-            }
-
             // Render questions
             this.renderQuestions(quizData.questions, modal);
         } catch (error) {
@@ -1863,7 +1851,7 @@ const uiRenderer = {
                         <i class="fas fa-file-alt quiz-item-icon"></i>
                         <div class="quiz-item-info">
                             <span class="quiz-item-title">${utils.escapeHTML(quiz.title)}</span>
-                            <span class="quiz-item-meta">${quiz.questions.length} questions</span>
+                            <span class="quiz-item-meta">${quiz.questions.length} questions, ${quiz.timeLimit ? quiz.timeLimit + ' min' : 'No limit'}</span>
                         </div>
                     </div>
                 `).join('');
@@ -2483,7 +2471,7 @@ const eventHandlers = {
     // Handle add from bank
     async handleAddFromBank() {
         try {
-            uiRenderer.openModal('question-bank');
+            uiRenderer.openModal('quiz-bank', null, true);
         } catch (error) {
             console.error('Error handling add from bank:', error);
         }
@@ -2759,7 +2747,7 @@ const eventHandlers = {
     // Handle add from quiz bank
     handleAddFromQuizBank() {
         try {
-            uiRenderer.openModal('question-bank', null, true);
+            uiRenderer.openModal('quiz-bank', null, true);
         } catch (error) {
             console.error('Error handling add from quiz bank:', error);
         }
@@ -2775,8 +2763,21 @@ const eventHandlers = {
             
             const selectedQuiz = state.quizBank.find(q => q._id === quizId);
             if (selectedQuiz) {
-                uiRenderer.prefillQuizForm(selectedQuiz);
-                uiRenderer.closeModal();
+                // --- CORE FIX: Clone and Clear ID to enable reuse ---
+                const clonedData = JSON.parse(JSON.stringify(selectedQuiz));
+                delete clonedData._id; // IMPORTANT: Deletes the ID to force creation of a NEW quiz
+                delete clonedData.templateId;
+                delete clonedData.courseId; // Clear old course ID to force new selection
+                
+                // Manually change the title to indicate cloning
+                clonedData.title = (clonedData.title || '') + ' (Copy)';
+                
+                // 1. Close the current modal (Quiz Bank)
+                uiRenderer.closeModal(); 
+                
+                // 2. Re-open the main modal with the cloned data
+                // This is the clean way to prefill the form for a new quiz creation
+                uiRenderer.openModal('create-edit-quiz', clonedData); 
             } else {
                 uiRenderer.showNotification('Selected quiz could not be found.', 'error');
             }
