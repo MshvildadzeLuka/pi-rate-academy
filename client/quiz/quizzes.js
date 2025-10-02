@@ -1,4 +1,4 @@
-// client/quiz/quizzes.js (Enhanced Version)
+// quizzes.js (Enhanced Version)
 // Comprehensive solution for Pi-Rate Academy Quiz System
 // =========================================================================
 
@@ -1178,7 +1178,10 @@ const uiRenderer = {
                     this.setupQuizTakingModal(modalElement);
                     break;
                 case 'quiz-bank':
-                    this.setupQuizBankModal(modalElement);
+                    this.setupQuestionBankModal(modalElement);
+                    break;
+                case 'question-bank': // Added for completeness from your file
+                    this.setupQuestionBankModal(modalElement);
                     break;
                 default:
                     console.warn(`Unknown modal type: ${type}`);
@@ -1385,7 +1388,7 @@ const uiRenderer = {
                     <span class="option-text">${option.text}</span>
                 `;
                 
-                const existingAnswer = attempt.answers?.find(a => a.question && a.question.toString() === question._id.toString());
+                const existingAnswer = attempt.answers?.find(a => a.question?.toString() === question._id.toString());
                 if (existingAnswer && existingAnswer.selectedOptionIndex === index) {
                     optionElement.classList.add('selected');
                 }
@@ -1406,46 +1409,65 @@ const uiRenderer = {
         }
     },
 
-    // Setup quiz bank modal
-    async setupQuizBankModal(modalElement) {
+    // Setup question bank modal
+    setupQuestionBankModal(modalElement) {
         try {
-            const listContainer = modalElement.querySelector('.quiz-bank-list');
-            if (!listContainer) return;
-            
-            listContainer.innerHTML = '<div class="loading-spinner"></div>';
-            
-            try {
-                // FIX: Use the correct API service method to fetch bank data
-                const quizBankTemplates = await apiService.fetchQuizBank();
-                listContainer.innerHTML = '';
-
-                if (quizBankTemplates.length === 0) {
-                    listContainer.innerHTML = '<p>No saved quiz templates found.</p>';
-                    return;
-                }
-
-                // Create list items
-                listContainer.innerHTML = quizBankTemplates.map(quiz => `
-                    <div class="quiz-item" data-action="${QUIZ_ACTIONS.SELECT_QUIZ_FROM_BANK}" data-quiz-id="${quiz._id}">
-                        <i class="fas fa-file-alt quiz-item-icon"></i>
-                        <div class="quiz-item-info">
-                            <span class="quiz-item-title">${utils.escapeHTML(quiz.title)}</span>
-                            <span class="quiz-item-meta">${quiz.questions.length} questions | ${quiz.points || 0} points</span>
-                        </div>
-                    </div>
-                `).join('');
-
-                // Save to state to be accessible by handleSelectQuizFromBank
-                state.quizBank = quizBankTemplates;
-            } catch (error) {
-                console.error('Failed to load quiz bank:', error);
-                listContainer.innerHTML = '<p>Could not load quiz bank.</p>';
+            const groupSelect = document.querySelector('#quiz-group');
+            if (!groupSelect) {
+                this.showNotification('Please select a group first', 'error');
+                this.closeModal();
+                return;
             }
+            
+            const groupId = groupSelect.value;
+            if (!groupId) {
+                this.showNotification('Please select a group first', 'error');
+                this.closeModal();
+                return;
+            }
+
+            // Fetch question banks
+            apiService.fetchQuestionBanks(groupId)
+                .then(banks => {
+                    state.questionBanks = banks;
+                    
+                    const banksContainer = modalElement.querySelector('.quiz-bank-list');
+                    if (!banksContainer) return;
+                    
+                    banksContainer.innerHTML = '';
+                    
+                    if (banks.length === 0) {
+                        banksContainer.innerHTML = '<p class="empty-state">No question banks available for this group.</p>';
+                        return;
+                    }
+                    
+                    // Render question banks
+                    banks.forEach(bank => {
+                        const bankElement = document.createElement('div');
+                        bankElement.className = 'question-bank-item';
+                        bankElement.innerHTML = `
+                            <h4>${utils.escapeHTML(bank.name)}</h4>
+                            <p>${utils.escapeHTML(bank.description || 'No description')}</p>
+                            <div class="bank-questions">
+                                ${bank.questions.map(q => `
+                                    <div class="bank-question" data-question-id="${q._id}">
+                                        <input type="checkbox" id="q-${q._id}">
+                                        <label for="q-${q._id}">${utils.escapeHTML(q.text)}</label>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `;
+                        banksContainer.appendChild(bankElement);
+                    });
+                })
+                .catch(error => {
+                    console.error('Failed to load question banks:', error);
+                    this.showNotification('Failed to load question banks', 'error');
+                });
         } catch (error) {
-            console.error('Error setting up quiz bank modal:', error);
+            console.error('Error setting up question bank modal:', error);
         }
     },
-
 
     // Update LaTeX preview
     updateLatexPreview(inputElement) {
@@ -1619,12 +1641,10 @@ const uiRenderer = {
             
             if (questions && questions.length > 0) {
                 questions.forEach((question, index) => {
-                    // Start by adding a fresh, empty question container
                     this.addNewQuestion(modalElement);
                     const questionElement = questionsContainer.children[index];
                     
                     if (questionElement) {
-                        // Populate question fields
                         questionElement.querySelector('.question-text').value = question.text || '';
                         questionElement.querySelector('.question-points').value = question.points || 1;
                         questionElement.querySelector('.question-solution').value = question.solution || '';
@@ -1660,13 +1680,8 @@ const uiRenderer = {
                     }
                 });
             } else {
-                // If no questions, add a single empty one
                 this.addNewQuestion(modalElement);
             }
-            
-            // Ensure LaTeX is rendered for all newly populated fields
-            modalElement.querySelectorAll('.latex-preview').forEach(this.updateLatexPreview.bind(this));
-
         } catch (error) {
             console.error('Error rendering questions:', error);
         }
@@ -1791,54 +1806,37 @@ const uiRenderer = {
     // Prefill quiz form from template
     prefillQuizForm(quizData) {
         try {
-            // 1. Get the quiz creation form (assuming it's already open)
-            const modalContainer = document.getElementById('modal-backdrop');
-            const form = modalContainer?.querySelector('#quiz-form');
-            const modalElement = form?.closest('.modal');
-            
-            if (!form || !modalElement) {
+            const modal = document.querySelector('#modal-create-edit-quiz');
+            if (!modal) {
                 this.showNotification('Could not find the quiz form to prefill.', 'error');
                 return;
             }
 
-            // 2. Clear any active editing state 
-            state.editingId = null; 
+            // Prefill basic fields
+            modal.querySelector('#quiz-title').value = (quizData.title || '') + ' (Copy)';
+            modal.querySelector('#quiz-description').value = quizData.description || '';
+            modal.querySelector('#quiz-time-limit').value = quizData.timeLimit || 60;
+            modal.querySelector('#quiz-max-attempts').value = quizData.maxAttempts || 1;
+            modal.querySelector('#quiz-show-results').value = quizData.showResults || 'after-submission';
+            modal.querySelector('#quiz-allow-retakes').checked = quizData.allowRetakes || false;
 
-            // 3. Set new title and properties for the COPY
-            modalElement.querySelector('#modal-title').textContent = 'ქვიზის შექმნა (კოპირებული)';
-            form.querySelector('#quiz-title').value = (quizData.title || '') + ' (კოპირებული)';
-            form.querySelector('#quiz-description').value = quizData.description || '';
-            form.querySelector('#quiz-time-limit').value = quizData.timeLimit || ''; 
-
-            // 4. Set default start/end times to current/future, forcing user to update
-            const now = new Date();
-            // Set the start time to the current time, rounded up to the nearest minute
-            now.setSeconds(0, 0);
-            if (now.getMilliseconds() > 0) {
-                 now.setMinutes(now.getMinutes() + 1);
-            }
-            const twoDaysLater = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+            // Handle password field
+            const requiresPasswordField = modal.querySelector('#quiz-requires-password');
+            const passwordField = modal.querySelector('#quiz-password-field');
+            requiresPasswordField.checked = quizData.requiresPassword || false;
             
-            form.querySelector('#quiz-start-time').value = utils.formatDateTimeLocal(now);
-            form.querySelector('#quiz-end-time').value = utils.formatDateTimeLocal(twoDaysLater);
-
-            // 5. Reset Group selection to force a choice (select the first one by default if available)
-            const groupSelect = form.querySelector('#quiz-group');
-            if (groupSelect && groupSelect.options.length > 0) {
-                 groupSelect.value = groupSelect.options[0].value; 
+            if (requiresPasswordField.checked) {
+                passwordField.style.display = 'block';
+                passwordField.value = quizData.password || '';
             } else {
-                 groupSelect.value = '';
+                passwordField.style.display = 'none';
+                passwordField.value = '';
             }
-            
-            // 6. Copy questions by re-rendering the question section
-            // FIX: Pass quizData.questions to ensure only the questions array is used
-            this.renderQuestions(quizData.questions, modalElement); 
-            
-            this.showNotification('ქვიზის შაბლონი წარმატებით გადმოკოპირდა. გთხოვთ, შეამოწმოთ დრო და ჯგუფი.', 'info');
 
+            // Render questions
+            this.renderQuestions(quizData.questions, modal);
         } catch (error) {
             console.error('Error prefilling quiz form:', error);
-            this.showNotification('ქვიზის ფორმის შევსება ვერ მოხერხდა.', 'error');
         }
     },
 
@@ -1851,7 +1849,6 @@ const uiRenderer = {
             listContainer.innerHTML = '<div class="loading-spinner"></div>';
             
             try {
-                // FIX: Use the correct API service method to fetch bank data
                 const quizBankTemplates = await apiService.fetchQuizBank();
                 listContainer.innerHTML = '';
 
@@ -1866,12 +1863,12 @@ const uiRenderer = {
                         <i class="fas fa-file-alt quiz-item-icon"></i>
                         <div class="quiz-item-info">
                             <span class="quiz-item-title">${utils.escapeHTML(quiz.title)}</span>
-                            <span class="quiz-item-meta">${quiz.questions.length} questions | ${quiz.points || 0} points</span>
+                            <span class="quiz-item-meta">${quiz.questions.length} questions</span>
                         </div>
                     </div>
                 `).join('');
 
-                // Save to state to be accessible by handleSelectQuizFromBank
+                // Save to state
                 state.quizBank = quizBankTemplates;
             } catch (error) {
                 console.error('Failed to load quiz bank:', error);
@@ -1897,8 +1894,6 @@ const eventHandlers = {
                 }
                 if (elements.createBtn) {
                     elements.createBtn.addEventListener('click', () => {
-                        // Ensure editingId is cleared before opening the modal for creation
-                        state.editingId = null; 
                         uiRenderer.openModal('create-edit-quiz');
                     });
                 }
@@ -2011,8 +2006,6 @@ const eventHandlers = {
     // Handle edit quiz
     async handleEditQuiz(quizId) {
         try {
-            // FIX: Set editingId before fetching data, so the form knows it's an update
-            state.editingId = quizId;
             const quiz = await apiService.fetchQuizById(quizId);
             uiRenderer.openModal('create-edit-quiz', quiz);
         } catch (error) {
@@ -2490,7 +2483,7 @@ const eventHandlers = {
     // Handle add from bank
     async handleAddFromBank() {
         try {
-            uiRenderer.openModal('quiz-bank', null, true); // FIXED: Changed to 'quiz-bank'
+            uiRenderer.openModal('question-bank');
         } catch (error) {
             console.error('Error handling add from bank:', error);
         }
@@ -2766,11 +2759,7 @@ const eventHandlers = {
     // Handle add from quiz bank
     handleAddFromQuizBank() {
         try {
-            // FIX: Ensure the primary form is visible before opening the layered modal
-            if (!document.getElementById('modal-create-edit-quiz')) {
-                 uiRenderer.openModal('create-edit-quiz');
-            }
-            uiRenderer.openModal('quiz-bank', null, true); 
+            uiRenderer.openModal('question-bank', null, true);
         } catch (error) {
             console.error('Error handling add from quiz bank:', error);
         }
@@ -2786,9 +2775,7 @@ const eventHandlers = {
             
             const selectedQuiz = state.quizBank.find(q => q._id === quizId);
             if (selectedQuiz) {
-                // Pre-fill the form with the selected quiz data
                 uiRenderer.prefillQuizForm(selectedQuiz);
-                // Close the Quiz Bank modal (the layered one)
                 uiRenderer.closeModal();
             } else {
                 uiRenderer.showNotification('Selected quiz could not be found.', 'error');
