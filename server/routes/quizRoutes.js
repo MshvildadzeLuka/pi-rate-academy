@@ -769,7 +769,11 @@ router.put('/grade/:quizId', protect, restrictTo('Teacher', 'Admin'), asyncHandl
 router.get('/bank', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async (req, res) => {
   const quizBank = await QuizTemplate.find({ 
     creatorId: req.user._id 
-  }).select('title questions startTime endTime');
+  })
+  // *** FIX 1: Populate questions to allow client to clone the quiz ***
+  .populate('questions') 
+  // *** FIX 2: Added timeLimit and points which are used in clone logic ***
+  .select('title questions points startTime endTime timeLimit'); 
   
   res.json({
     success: true,
