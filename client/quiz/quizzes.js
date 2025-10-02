@@ -1806,39 +1806,57 @@ const uiRenderer = {
     // Prefill quiz form from template
     prefillQuizForm(quizData) {
         try {
-            const modal = document.querySelector('#modal-create-edit-quiz');
-            if (!modal) {
+            // 1. Get the quiz creation form (assuming it's already open)
+            const modalContainer = document.getElementById('modal-backdrop');
+            const form = modalContainer?.querySelector('#quiz-form');
+            const modalElement = form?.closest('.modal');
+            
+            if (!form || !modalElement) {
                 this.showNotification('Could not find the quiz form to prefill.', 'error');
                 return;
             }
 
-            // Prefill basic fields
-            modal.querySelector('#quiz-title').value = (quizData.title || '') + ' (Copy)';
-            modal.querySelector('#quiz-description').value = quizData.description || '';
-            modal.querySelector('#quiz-time-limit').value = quizData.timeLimit || 60;
-            modal.querySelector('#quiz-max-attempts').value = quizData.maxAttempts || 1;
-            modal.querySelector('#quiz-show-results').value = quizData.showResults || 'after-submission';
-            modal.querySelector('#quiz-allow-retakes').checked = quizData.allowRetakes || false;
+            // 2. Clear any active editing state 
+            state.editingId = null; 
 
-            // Handle password field
-            const requiresPasswordField = modal.querySelector('#quiz-requires-password');
-            const passwordField = modal.querySelector('#quiz-password-field');
-            requiresPasswordField.checked = quizData.requiresPassword || false;
-            
-            if (requiresPasswordField.checked) {
-                passwordField.style.display = 'block';
-                passwordField.value = quizData.password || '';
-            } else {
-                passwordField.style.display = 'none';
-                passwordField.value = '';
+            // 3. Set new title and properties for the COPY
+            modalElement.querySelector('#modal-title').textContent = 'ქვიზის შექმნა (კოპირებული)';
+            form.querySelector('#quiz-title').value = (quizData.title || '') + ' (კოპირებული)';
+            form.querySelector('#quiz-description').value = quizData.description || '';
+            form.querySelector('#quiz-time-limit').value = quizData.timeLimit || ''; 
+
+            // 4. Set default start/end times to current/future, forcing user to update
+            const now = new Date();
+            // Set the start time to the current time, rounded up to the nearest minute
+            now.setSeconds(0, 0);
+            if (now.getMilliseconds() > 0) {
+                 now.setMinutes(now.getMinutes() + 1);
             }
+            const twoDaysLater = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+            
+            form.querySelector('#quiz-start-time').value = utils.formatDateTimeLocal(now);
+            form.querySelector('#quiz-end-time').value = utils.formatDateTimeLocal(twoDaysLater);
 
-            // Render questions
-            this.renderQuestions(quizData.questions, modal);
+            // 5. Reset Group selection to force a choice (select the first one by default if available)
+            const groupSelect = form.querySelector('#quiz-group');
+            if (groupSelect && groupSelect.options.length > 0) {
+                 groupSelect.value = groupSelect.options[0].value; 
+            } else {
+                 groupSelect.value = '';
+            }
+            
+            // 6. Copy questions by re-rendering the question section
+            this.renderQuestions(quizData.questions, modalElement); 
+            
+            this.showNotification('ქვიზის შაბლონი წარმატებით გადმოკოპირდა. გთხოვთ, შეამოწმოთ დრო და ჯგუფი.', 'info');
+
         } catch (error) {
             console.error('Error prefilling quiz form:', error);
+            this.showNotification('ქვიზის ფორმის შევსება ვერ მოხერხდა.', 'error');
         }
-    },
+    }
+};
+
 
     // Setup quiz bank modal
     async setupQuizBankModal(modalElement) {
