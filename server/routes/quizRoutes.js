@@ -770,10 +770,17 @@ router.get('/bank', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async 
   const quizBank = await QuizTemplate.find({ 
     creatorId: req.user._id 
   })
-  // *** FIX 1: Populate questions to allow client to clone the quiz ***
-  .populate('questions') 
-  // *** FIX 2: Added timeLimit and points which are used in clone logic ***
-  .select('title questions points startTime endTime timeLimit'); 
+  // *** CRITICAL FIX: Use expanded populate syntax with skipInvalidIds: true ***
+  .populate({
+    path: 'questions',
+    // Select fields needed for the client-side cloning/display in modal
+    select: 'text options points solution imageUrl imagePublicId type timeLimit difficulty', 
+    options: {
+        skipInvalidIds: true // IGNORES broken Question ObjectIds
+    }
+  }) 
+  // Select fields needed for the template overview
+  .select('title description questions points startTime endTime timeLimit'); 
   
   res.json({
     success: true,
@@ -804,16 +811,20 @@ router.post('/:id/request-retake', protect, restrictTo('Student'), asyncHandler(
   }
   
   // Check if retake is allowed
-  if (!studentQuiz.templateId.allowRetakes) {
+  // NOTE: Assuming templateId is populated or accessible via StudentQuiz for this check
+  const template = await QuizTemplate.findById(studentQuiz.templateId);
+  if (!template || !template.allowRetakes) {
     return next(new ErrorResponse('Retakes are not allowed for this quiz', 400));
   }
   
   // Create retake request
   const retakeRequest = new RetakeRequest({
-    student: req.user._id,
-    quiz: studentQuiz._id,
+    // FIX: Using correct field names for RetakeRequest model
+    requestableId: studentQuiz._id,
+    requestableType: 'Quiz',
+    studentId: req.user._id,
+    courseId: studentQuiz.courseId,
     reason: reason || 'No reason provided',
-    status: 'pending'
   });
   
   await retakeRequest.save();
