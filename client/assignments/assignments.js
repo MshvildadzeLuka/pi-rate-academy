@@ -219,7 +219,6 @@ const uiRenderer = {
         return 'fa-file-alt'; // Default
     },
     
-    // [FIX 2] New helper to render a single file list item for cleaner code and correct icons
     renderFileListItem(file, allowDownload = true) {
         const iconClass = this.getFileIconClass(file.fileType, file.fileName);
         const fileName = this.escapeHTML(file.fileName);
@@ -483,7 +482,6 @@ const uiRenderer = {
 
         const attachmentsContainer = template.querySelector('.attachments-list');
         if (assignment.templateId.attachments?.length > 0) {
-            // [Fix Applied] Using renderFileListItem helper
             attachmentsContainer.innerHTML = assignment.templateId.attachments.map(file => 
                 this.renderFileListItem(file)
             ).join('');
@@ -501,7 +499,6 @@ const uiRenderer = {
         statusBadge.className = `status-badge ${assignment.status}`;
 
         if (assignment.submission?.files?.length > 0) {
-            // [Fix Applied] Using renderFileListItem helper
             submissionFilesList.innerHTML = assignment.submission.files.map(file => 
                 this.renderFileListItem(file)
             ).join('');
@@ -522,7 +519,7 @@ const uiRenderer = {
 
         if (assignment.status === STATUS.UPCOMING && !isPastDue) {
             handInBtn.style.display = 'block';
-            handInBtn.disabled = state.filesToUpload.size === 0;
+            // Hand-in button disability is managed by eventHandlers.handleFileInputChange
         } else if (assignment.status === STATUS.COMPLETED && !isPastDue) {
             unsubmitBtn.style.display = 'block';
         } else if (assignment.status === STATUS.PAST_DUE || (isPastDue && assignment.status !== STATUS.GRADED)) {
@@ -535,9 +532,22 @@ const uiRenderer = {
         dropZone.dataset.action = ACTIONS.TRIGGER_FILE_UPLOAD;
         dropZone.dataset.target = 'submission-file-input';
         fileInput.addEventListener('change', (e) => eventHandlers.handleFileInputChange(e.target));
+        
+        // [Fix 4] Event listeners for drag-and-drop on student submission view
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => dropZone.addEventListener(eventName, this.preventDefaults));
+        ['dragenter', 'dragover'].forEach(eventName => dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over')));
+        ['dragleave', 'drop'].forEach(eventName => dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over')));
+        dropZone.addEventListener('drop', (e) => {
+            if (e.dataTransfer.files.length) eventHandlers.handleFileInputChange({files: e.dataTransfer.files, id: 'submission-file-input'});
+        });
+
 
         elements.detailView.innerHTML = '';
         elements.detailView.appendChild(template);
+        // Ensure the hand-in button is disabled if no files are in the map initially
+        if (handInBtn) handInBtn.disabled = state.filesToUpload.size === 0;
+        
+        // Call renderFileList to show any files already in the map (e.g., re-entering the detail view)
         this.renderFileList('submission-file-list');
     },
 
@@ -555,7 +565,6 @@ const uiRenderer = {
         
         const attachmentsList = template.querySelector('.attachments-list');
         if (assignment.templateId.attachments?.length > 0) {
-            // [Fix Applied] Using renderFileListItem helper
             attachmentsList.innerHTML = assignment.templateId.attachments.map(file => 
                 this.renderFileListItem(file)
             ).join('');
@@ -568,7 +577,6 @@ const uiRenderer = {
         // Render student-specific content
         let filesHTML = '<p>ფაილები არ არის გაგზავნილი.</p>';
         if (assignment.submission?.files?.length > 0) {
-            // [Fix Applied] Using renderFileListItem helper
             filesHTML = assignment.submission.files.map(file => 
                 this.renderFileListItem(file)
             ).join('');
@@ -630,7 +638,6 @@ const uiRenderer = {
 
         let filesHTML = '<p>ფაილები არ არის გაგზავნილი.</p>';
         if (assignment.submission?.files?.length > 0) {
-            // [Fix Applied] Using renderFileListItem helper
             filesHTML = assignment.submission.files.map(file => 
                 this.renderFileListItem(file)
             ).join('');
@@ -716,13 +723,13 @@ const uiRenderer = {
             const fileInput = modalElement.querySelector('#attachment-file-input');
             dropZone.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', (e) => {
-                if (e.target.files.length) this.handleFiles(e.target.files);
+                if (e.target.files.length) this.handleFiles(e.target.files, 'attachment-list');
             });
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => dropZone.addEventListener(eventName, this.preventDefaults));
             ['dragenter', 'dragover'].forEach(eventName => dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over')));
             ['dragleave', 'drop'].forEach(eventName => dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over')));
             dropZone.addEventListener('drop', (e) => {
-                if (e.dataTransfer.files.length) this.handleFiles(e.dataTransfer.files);
+                if (e.dataTransfer.files.length) this.handleFiles(e.dataTransfer.files, 'attachment-list');
             });
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -787,7 +794,8 @@ const uiRenderer = {
         }
     },
 
-    handleFiles(files) {
+    // [FIX 5] handleFiles now accepts containerId
+    handleFiles(files, containerId = 'attachment-list') {
         Array.from(files).forEach(file => {
             if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
                 this.showNotification(`ფაილი ${file.name} აჭარბებს ${MAX_FILE_SIZE_MB}MB ლიმიტს`, 'error');
@@ -805,10 +813,10 @@ const uiRenderer = {
                     clearInterval(interval);
                     fileWrapper.status = 'complete';
                 }
-                this.renderFileList('attachment-list');
+                this.renderFileList(containerId); // Use passed containerId
             }, 200);
         });
-        this.renderFileList('attachment-list');
+        this.renderFileList(containerId); // Use passed containerId
     },
 
     renderFileList(containerId = 'attachment-list') {
@@ -901,7 +909,7 @@ const eventHandlers = {
             case ACTIONS.BACK_TO_LIST: this.handleBackToList(); break;
             case ACTIONS.SELECT_STUDENT_FOR_GRADING: this.handleSelectStudentForGrading(id); break;
             case ACTIONS.REMOVE_FILE: this.handleRemoveFile(fileName, containerId); break;
-            case ACTIONS.VIEW_FILE: e.preventDefault(); this.handleViewFile(url, type, fileName); break; // [FIX] Passed fileName
+            case ACTIONS.VIEW_FILE: e.preventDefault(); this.handleViewFile(url, type, fileName); break;
             case ACTIONS.CLOSE_MODAL: uiRenderer.closeModal(); break;
             case ACTIONS.UNSUBMIT_ASSIGNMENT: this.handleUnsubmitAssignment(state.detailedAssignment._id); break;
             case ACTIONS.REQUEST_RETAKE: this.handleRequestRetake(state.detailedAssignment._id); break;
@@ -915,11 +923,15 @@ const eventHandlers = {
         }
     },
 
+    // [FIX 6] Corrected handleFileInputChange to pass fileListId to uiRenderer.handleFiles
     async handleFileInputChange(input) {
         if (!input.files.length) return;
         const isSubmission = input.id === 'submission-file-input';
-        const fileListId = isSubmission ? 'submission-file-list' : 'attachment-list';
-        uiRenderer.handleFiles(input.files);
+        const fileListId = isSubmission ? 'submission-file-list' : 'attachment-list'; // Correct target ID
+        
+        // Pass the correct fileListId to handleFiles
+        uiRenderer.handleFiles(input.files, fileListId);
+        
         if (isSubmission) {
             const handInBtn = document.querySelector('.hand-in-btn');
             if(handInBtn) handInBtn.disabled = state.filesToUpload.size === 0;
@@ -987,11 +999,9 @@ const eventHandlers = {
         }
     },
 
-    // [FIX 3] Corrected handleViewFile logic
     handleViewFile(fileUrl, fileType, fileName) {
         const modalTemplate = document.getElementById('template-file-viewer-modal').content.cloneNode(true);
         
-        // Determine file type handling
         const isPDF = fileType === 'application/pdf' || fileUrl.toLowerCase().endsWith('.pdf');
         const isImage = fileType?.startsWith('image/');
         
@@ -1000,19 +1010,15 @@ const eventHandlers = {
         let iframeSrc = fileUrl;
         
         if (isPDF) {
-            // PDF: Use Google Docs Viewer for reliable embedding
             const encodedUrl = encodeURIComponent(fileUrl);
             iframeSrc = `https://docs.google.com/gview?url=${encodedUrl}&embedded=true`;
         } else if (isImage) {
-            // Image: Use direct URL, which browsers can render natively in an iframe
             iframeSrc = fileUrl;
         } else {
-            // Other document types: Use Google Viewer as a best effort fallback
             const encodedUrl = encodeURIComponent(fileUrl);
             iframeSrc = `https://docs.google.com/gview?url=${encodedUrl}&embedded=true`;
         }
         
-        // Set up the modal content
         modalTemplate.querySelector('#file-viewer-iframe').src = iframeSrc;
         modalTemplate.querySelector('#file-download-btn').href = fileUrl;
         
