@@ -764,14 +764,11 @@ router.put('/grade/:quizId', protect, restrictTo('Teacher', 'Admin'), asyncHandl
 }));
 
 // @route   GET /api/quizzes/bank
-// @desc    Get all quiz templates for the bank
+// @desc    Get all quiz templates for the bank (Visible to all Teachers/Admins)
 // @access  Private/Teacher,Admin
 router.get('/bank', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async (req, res) => {
-  const quizBank = await QuizTemplate.find({ 
-    creatorId: req.user._id 
-  })
-  // *** CRITICAL FIX 3: MOVE .lean() to the end to ensure populate runs. ***
-  // *** CRITICAL FIX 1: Add skipInvalidIds: true to the questions array to ignore broken links.
+  // FIX: Removed creatorId filter to fetch ALL templates as requested.
+  const quizBank = await QuizTemplate.find({}) 
   .populate({
     path: 'questions',
     select: 'text options points solution imageUrl imagePublicId type timeLimit difficulty', 
@@ -779,7 +776,6 @@ router.get('/bank', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async 
         skipInvalidIds: true
     }
   })
-  // *** CRITICAL FIX 2: Apply populate to courseId with skipInvalidIds as well, just in case.
   .populate({
     path: 'courseId',
     select: 'name', 
@@ -787,9 +783,7 @@ router.get('/bank', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async 
         skipInvalidIds: true
     }
   })
-  // Select fields needed for the template overview
   .select('title description questions points startTime endTime timeLimit')
-  // *** CRITICAL FIX 3: ADD .lean() HERE. This is the correct placement. ***
   .lean(); 
   
   res.json({
