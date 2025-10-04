@@ -179,9 +179,16 @@ router.get(
       .sort({ dueDate: 1 })
       .lean();
       
-    // [CORRECTED] Filter out assignments that have not started yet for students.
+    // [FIXED] Filter out assignments that have not started yet for students with robust date checking.
     const visibleAssignments = assignments.filter(assignment => {
-        return assignment.templateId && new Date(assignment.templateId.startTime) <= now;
+        if (!assignment.templateId || !assignment.templateId.startTime) {
+            return false;
+        }
+        
+        const startTime = new Date(assignment.templateId.startTime);
+        
+        // Ensure the date is valid AND the start time is now or in the past.
+        return !isNaN(startTime.getTime()) && startTime <= now;
     });
 
     const unseenIds = visibleAssignments
