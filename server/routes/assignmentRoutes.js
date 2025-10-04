@@ -35,7 +35,7 @@ router.post(
   '/',
   protect,
   restrictTo('Teacher', 'Admin'),
-  upload.array('attachments', 5),
+  upload.array('attachments', 20), // [FIXED] გაიზარდა ლიმიტი 20-მდე
   uploadToAssignments,
   handleUploadErrors,
   asyncHandler(async (req, res, next) => {
@@ -231,7 +231,7 @@ router.put(
   '/template/:id',
   protect,
   restrictTo('Teacher', 'Admin'),
-  upload.array('attachments', 5),
+  upload.array('attachments', 20), // [FIXED] გაიზარდა ლიმიტი 20-მდე
   uploadToAssignments,
   handleUploadErrors,
   asyncHandler(async (req, res, next) => {
@@ -493,7 +493,7 @@ router.post(
   '/student/:assignmentId/submit',
   protect,
   restrictTo('Student'),
-  upload.array('files', 5),
+  upload.array('files', 20), // [FIXED] გაიზარდა ლიმიტი 20-მდე
   uploadToAssignments,
   handleUploadErrors,
   asyncHandler(async (req, res, next) => {
