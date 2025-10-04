@@ -767,29 +767,14 @@ router.put('/grade/:quizId', protect, restrictTo('Teacher', 'Admin'), asyncHandl
 // @desc    Get all quiz templates for the bank
 // @access  Private/Teacher,Admin
 router.get('/bank', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async (req, res) => {
-  try {
-    // ✅ FIX: Get ALL quiz templates, not just those created by current user
-    // Also populate the questions to get full question data
-    const quizBank = await QuizTemplate.find({})
-      .populate({
-        path: 'questions',
-        model: 'Question'
-      })
-      .populate('courseId', 'name')
-      .select('title description questions points startTime endTime timeLimit')
-      .sort({ createdAt: -1 });
-    
-    res.json({
-      success: true,
-      data: quizBank
-    });
-  } catch (error) {
-    console.error('Error fetching quiz bank:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch quiz bank'
-    });
-  }
+  const quizBank = await QuizTemplate.find({ 
+    creatorId: req.user._id 
+  }).select('title questions startTime endTime');
+  
+  res.json({
+    success: true,
+    data: quizBank
+  });
 }));
 
 // @route   POST /api/quizzes/:id/request-retake
