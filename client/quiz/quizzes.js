@@ -1,4 +1,3 @@
-
 // quizzes.js (Enhanced Version)
 // Comprehensive solution for Pi-Rate Academy Quiz System
 // =========================================================================
@@ -1235,8 +1234,8 @@ const uiRenderer = {
                     );
                 
                 groupSelect.innerHTML = relevantGroups.map(g => `
-                        <option value="${g._id}"${g._id === state.selectedGroupId ? 'selected' : ''}>${utils.escapeHTML(g.name)}</option>
-                    `).join('');
+                    <option value="${g._id}">${utils.escapeHTML(g.name)}</option>
+                `).join('');
             }
 
             const now = new Date();
@@ -1244,26 +1243,17 @@ const uiRenderer = {
             
             modalElement.querySelector('#quiz-start-time').value = utils.formatDateTimeLocal(now);
             modalElement.querySelector('#quiz-end-time').value = utils.formatDateTimeLocal(oneHourLater);
-            
-            // Determine if we are editing or creating/cloning
-            const isEditing = data && data._id; 
-            state.editingId = isEditing ? data._id : null;
 
-
-            if (data) { // Prefill data if editing OR cloning
-                modalElement.querySelector('#modal-title').textContent = isEditing ? 'Edit Quiz' : 'Clone Quiz from Bank'; // FIX 1: Set correct title
+            if (data) { // Prefill data if editing
+                modalElement.querySelector('#modal-title').textContent = 'Edit Quiz';
                 modalElement.querySelector('#quiz-title').value = data.title || '';
                 modalElement.querySelector('#quiz-description').value = data.description || '';
                 modalElement.querySelector('#quiz-start-time').value = utils.formatDateTimeLocal(new Date(data.startTime || now));
                 modalElement.querySelector('#quiz-end-time').value = utils.formatDateTimeLocal(new Date(data.endTime || oneHourLater));
                 modalElement.querySelector('#quiz-time-limit').value = data.timeLimit || 60;
+                modalElement.querySelector('#quiz-group').value = data.group?._id || data.groupId || data.courseId[0]?._id || '';
                 
-                // FIX 2: Only pre-select a group if editing. If cloning, the user must choose a new group.
-                if (isEditing) { 
-                    modalElement.querySelector('#quiz-group').value = data.group?._id || data.groupId || data.courseId?.[0] || '';
-                } else {
-                     modalElement.querySelector('#quiz-group').value = ''; // Ensure no group is selected for cloning.
-                }
+                // ✅ FIX: Removed pre-filling for deleted fields (maxAttempts, showResults, password, etc.)
                 
                 this.renderQuestions(data.questions, modalElement);
             } else {
@@ -1276,6 +1266,8 @@ const uiRenderer = {
                 }
             }, 300));
 
+            // ✅ FIX: Removed event listener for the deleted password checkbox.
+
             const addFromBankBtn = modalElement.querySelector('#add-from-quiz-bank-btn');
             if (addFromBankBtn) {
                 addFromBankBtn.addEventListener('click', () => {
@@ -1287,7 +1279,7 @@ const uiRenderer = {
             if (form) {
                 form.onsubmit = async (e) => {
                     e.preventDefault();
-                    if (isEditing) { // FIX 3: Use the isEditing flag for accurate update/create selection
+                    if (data) {
                         await eventHandlers.handleUpdateQuiz(data._id, form);
                     } else {
                         await eventHandlers.handleCreateQuiz(form);
@@ -1417,18 +1409,27 @@ const uiRenderer = {
         }
     },
 
-    // ✅ FIXED: Setup question bank modal - Corrected implementation
+    // Setup question bank modal
     setupQuestionBankModal(modalElement) {
         try {
-            const listContainer = modalElement.querySelector('.quiz-bank-list');
-            if (!listContainer) return;
+            const groupSelect = document.querySelector('#quiz-group');
+            if (!groupSelect) {
+                this.showNotification('Please select a group first', 'error');
+                this.closeModal();
+                return;
+            }
             
-            listContainer.innerHTML = '<div class="loading-spinner"></div>';
-            
-            // ✅ FIX: Fetch ALL quiz templates without requiring group selection
-            apiService.fetchQuizBank()
+            const groupId = groupSelect.value;
+            if (!groupId) {
+                this.showNotification('Please select a group first', 'error');
+                this.closeModal();
+                return;
+            }
+
+            // Fetch question banks
+            apiService.fetchQuestionBanks(groupId)
                 .then(banks => {
-                    state.quizBank = banks;
+                    state.questionBanks = banks;
                     
                     const banksContainer = modalElement.querySelector('.quiz-bank-list');
                     if (!banksContainer) return;
@@ -1436,34 +1437,32 @@ const uiRenderer = {
                     banksContainer.innerHTML = '';
                     
                     if (banks.length === 0) {
-                        banksContainer.innerHTML = '<p class="empty-state">No saved quiz templates found.</p>';
+                        banksContainer.innerHTML = '<p class="empty-state">No question banks available for this group.</p>';
                         return;
                     }
                     
                     // Render question banks
-                    banks.forEach(quiz => {
+                    banks.forEach(bank => {
                         const bankElement = document.createElement('div');
-                        bankElement.className = 'quiz-item';
-                        bankElement.dataset.action = QUIZ_ACTIONS.SELECT_QUIZ_FROM_BANK;
-                        bankElement.dataset.quizId = quiz._id;
-                        
+                        bankElement.className = 'question-bank-item';
                         bankElement.innerHTML = `
-                            <i class="fas fa-file-alt quiz-item-icon"></i>
-                            <div class="quiz-item-info">
-                                <span class="quiz-item-title">${utils.escapeHTML(quiz.title)}</span>
-                                <span class="quiz-item-meta">${quiz.questions ? quiz.questions.length : 0} questions, ${quiz.timeLimit ? quiz.timeLimit + ' min' : 'No limit'}</span>
+                            <h4>${utils.escapeHTML(bank.name)}</h4>
+                            <p>${utils.escapeHTML(bank.description || 'No description')}</p>
+                            <div class="bank-questions">
+                                ${bank.questions.map(q => `
+                                    <div class="bank-question" data-question-id="${q._id}">
+                                        <input type="checkbox" id="q-${q._id}">
+                                        <label for="q-${q._id}">${utils.escapeHTML(q.text)}</label>
+                                    </div>
+                                `).join('')}
                             </div>
                         `;
                         banksContainer.appendChild(bankElement);
                     });
                 })
                 .catch(error => {
-                    console.error('Failed to load quiz bank:', error);
-                    const banksContainer = modalElement.querySelector('.quiz-bank-list');
-                    if (banksContainer) {
-                        banksContainer.innerHTML = '<p class="empty-state">Could not load quiz bank. Please try again.</p>';
-                    }
-                    this.showNotification('Failed to load quiz bank', 'error');
+                    console.error('Failed to load question banks:', error);
+                    this.showNotification('Failed to load question banks', 'error');
                 });
         } catch (error) {
             console.error('Error setting up question bank modal:', error);
@@ -1649,7 +1648,8 @@ const uiRenderer = {
                         questionElement.querySelector('.question-text').value = question.text || '';
                         questionElement.querySelector('.question-points').value = question.points || 1;
                         questionElement.querySelector('.question-solution').value = question.solution || '';
-                        
+                        questionElement.querySelector('.question-type').value = question.type || 'multiple-choice';
+
                         // Handle image
                         if (question.imageUrl) {
                             const preview = questionElement.querySelector('.question-image-preview');
@@ -1816,7 +1816,23 @@ const uiRenderer = {
             modal.querySelector('#quiz-title').value = (quizData.title || '') + ' (Copy)';
             modal.querySelector('#quiz-description').value = quizData.description || '';
             modal.querySelector('#quiz-time-limit').value = quizData.timeLimit || 60;
+            modal.querySelector('#quiz-max-attempts').value = quizData.maxAttempts || 1;
+            modal.querySelector('#quiz-show-results').value = quizData.showResults || 'after-submission';
+            modal.querySelector('#quiz-allow-retakes').checked = quizData.allowRetakes || false;
+
+            // Handle password field
+            const requiresPasswordField = modal.querySelector('#quiz-requires-password');
+            const passwordField = modal.querySelector('#quiz-password-field');
+            requiresPasswordField.checked = quizData.requiresPassword || false;
             
+            if (requiresPasswordField.checked) {
+                passwordField.style.display = 'block';
+                passwordField.value = quizData.password || '';
+            } else {
+                passwordField.style.display = 'none';
+                passwordField.value = '';
+            }
+
             // Render questions
             this.renderQuestions(quizData.questions, modal);
         } catch (error) {
@@ -1847,7 +1863,7 @@ const uiRenderer = {
                         <i class="fas fa-file-alt quiz-item-icon"></i>
                         <div class="quiz-item-info">
                             <span class="quiz-item-title">${utils.escapeHTML(quiz.title)}</span>
-                            <span class="quiz-item-meta">${quiz.questions.length} questions, ${quiz.timeLimit ? quiz.timeLimit + ' min' : 'No limit'}</span>
+                            <span class="quiz-item-meta">${quiz.questions.length} questions</span>
                         </div>
                     </div>
                 `).join('');
@@ -2467,7 +2483,7 @@ const eventHandlers = {
     // Handle add from bank
     async handleAddFromBank() {
         try {
-            uiRenderer.openModal('quiz-bank', null, true);
+            uiRenderer.openModal('question-bank');
         } catch (error) {
             console.error('Error handling add from bank:', error);
         }
@@ -2489,190 +2505,191 @@ const eventHandlers = {
         }
     },
 
-    // Handle create quiz
-    async handleCreateQuiz(form) {
-        try {
-            const formData = new FormData(form);
-            const questions = this.collectQuestionsData(form);
-            
-            if (questions.length === 0) {
-                uiRenderer.showNotification('A quiz must have at least one question', 'error');
-                return;
-            }
-            
-            const quizData = {
-                title: formData.get('title'),
-                description: formData.get('description'),
-                groupId: formData.get('groupId'),
-                startTime: formData.get('startTime'),
-                endTime: formData.get('endTime'),
-                timeLimit: parseInt(formData.get('timeLimit')) || 60,
-                questions: questions
-            };
-            
-            await apiService.createQuiz(quizData);
-            uiRenderer.closeModal();
-            uiRenderer.showNotification('Quiz created successfully');
-            await this.loadQuizzes();
-        } catch (error) {
-            console.error('Failed to create quiz:', error);
-            uiRenderer.showNotification(error.message || 'Failed to create quiz', 'error');
-        }
-    },
-
-    // Handle update quiz
-    async handleUpdateQuiz(quizId, form) {
-        try {
-            const formData = new FormData(form);
-            const questions = this.collectQuestionsData(form);
-            
-            if (questions.length === 0) {
-                uiRenderer.showNotification('A quiz must have at least one question', 'error');
-                return;
-            }
-            
-            const quizData = {
-                title: formData.get('title'),
-                description: formData.get('description'),
-                groupId: formData.get('groupId'),
-                startTime: formData.get('startTime'),
-                endTime: formData.get('endTime'),
-                timeLimit: parseInt(formData.get('timeLimit')) || 60,
-                questions: questions
-            };
-            
-            await apiService.updateQuiz(quizId, quizData);
-            uiRenderer.closeModal();
-            uiRenderer.showNotification('Quiz updated successfully');
-            await this.loadQuizzes();
-        } catch (error) {
-            console.error('Failed to update quiz:', error);
-            uiRenderer.showNotification(error.message || 'Failed to update quiz', 'error');
-        }
-    },
-
-    // Collect questions data from form
-    collectQuestionsData(form) {
+    // Extract questions data from form
+    extractQuestionsData(form) {
         try {
             const questions = [];
+            // This selector now correctly finds the question items inside the form.
             const questionElements = form.querySelectorAll('.question-item');
-            
+
+            if (questionElements.length === 0) {
+                console.error("Error: No '.question-item' elements were found inside the form.");
+            }
+
             questionElements.forEach(questionElement => {
-                const text = questionElement.querySelector('.question-text').value.trim();
-                const points = parseInt(questionElement.querySelector('.question-points').value) || 1;
-                const solution = questionElement.querySelector('.question-solution').value.trim();
-                const imageUrl = questionElement.querySelector('.question-image-preview img')?.src || '';
-                
-                // Collect options
                 const options = [];
                 const optionElements = questionElement.querySelectorAll('.option-item');
                 
                 optionElements.forEach(optionElement => {
-                    const optionText = optionElement.querySelector('.option-text').value.trim();
-                    const isCorrect = optionElement.querySelector('.correct-option-radio').checked;
-                    
-                    if (optionText) {
-                        options.push({
-                            text: optionText,
-                            isCorrect: isCorrect
-                        });
-                    }
+                    options.push({
+                        text: optionElement.querySelector('.option-text').value,
+                        isCorrect: optionElement.querySelector('.correct-option-radio').checked
+                    });
                 });
                 
-                if (text && options.length >= 2) {
-                    questions.push({
-                        text,
-                        points,
-                        solution,
-                        imageUrl,
-                        options
-                    });
-                }
+                const imagePreview = questionElement.querySelector('.question-image-preview');
+                const img = imagePreview.querySelector('img');
+                const imageUrl = imagePreview.style.display !== 'none' ? img.src : null;
+                const imagePublicId = imagePreview.style.display !== 'none' ? img.dataset.publicId : null;
+                
+                questions.push({
+                    text: questionElement.querySelector('.question-text').value,
+                    options: options,
+                    points: parseInt(questionElement.querySelector('.question-points').value) || 1,
+                    solution: questionElement.querySelector('.question-solution').value || '',
+                    imageUrl: imageUrl,
+                    imagePublicId: imagePublicId
+                });
             });
             
             return questions;
         } catch (error) {
-            console.error('Error collecting questions data:', error);
+            console.error('A critical error occurred in extractQuestionsData:', error);
+            // Return an empty array on error to trigger the validation message
             return [];
         }
     },
-
-    // Handle select quiz from bank
-    async handleSelectQuizFromBank(quizId) {
+    // Handle create quiz
+    async handleCreateQuiz(form) {
         try {
-            // Find the quiz in the bank
-            const selectedQuiz = state.quizBank.find(q => q._id === quizId);
-            if (!selectedQuiz) {
-                uiRenderer.showNotification('Selected quiz could not be found.', 'error');
-                return;
-            }
+            const startTimeValue = form.querySelector('#quiz-start-time').value;
+            const endTimeValue = form.querySelector('#quiz-end-time').value;
             
-            // --- CORE FIX: Clone and Clear ID to enable reuse ---
-            const clonedData = JSON.parse(JSON.stringify(selectedQuiz));
-            delete clonedData._id; // IMPORTANT: Deletes the ID to force creation of a NEW quiz
-            delete clonedData.templateId;
-            delete clonedData.courseId; // Clear old course ID to force new selection
+            // Prepare quiz data
+            const quizData = {
+                title: form.querySelector('#quiz-title').value,
+                description: form.querySelector('#quiz-description').value,
+                groupId: form.querySelector('#quiz-group').value,
+                startTime: new Date(startTimeValue).toISOString(),
+                endTime: new Date(endTimeValue).toISOString(),
+                timeLimit: parseInt(form.querySelector('#quiz-time-limit').value) || null,
+                // ✅ FIX: Removed keys for maxAttempts, showResults, password, etc.
+                questions: this.extractQuestionsData(form)
+            };
 
-            // Manually change the title to indicate cloning
-            clonedData.title = (clonedData.title || '') + ' (Copy)';
+            // Validate quiz data
+            const validationErrors = utils.validateQuizData(quizData);
+            if (validationErrors.length > 0) {
+                return uiRenderer.showNotification(validationErrors[0], 'error');
+            }
 
-            // 1. Close the current modal (Quiz Bank)
-            uiRenderer.closeModal(); 
-
-            // 2. Re-open the main modal with the cloned data
-            // This is the clean way to prefill the form for a new quiz creation
-            uiRenderer.openModal('create-edit-quiz', clonedData); 
+            await apiService.createQuiz(quizData);
+            uiRenderer.showNotification('Quiz created successfully');
+            uiRenderer.closeModal();
+            await this.loadQuizzes();
         } catch (error) {
-            console.error('Error handling select quiz from bank:', error);
+            console.error('Failed to create quiz:', error);
+            uiRenderer.showNotification(error.data?.message || 'Failed to create quiz', 'error');
         }
     },
 
-    // Handle global click events
-    async handleGlobalClick(e) {
+    async handleUpdateQuiz(quizId, form) {
         try {
-            const target = e.target;
-            const actionElement = target.closest('[data-action]');
+            const startTimeValue = form.querySelector('#quiz-start-time').value;
+            const endTimeValue = form.querySelector('#quiz-end-time').value;
             
+            // Prepare quiz data
+            const quizData = {
+                title: form.querySelector('#quiz-title').value,
+                description: form.querySelector('#quiz-description').value,
+                groupId: form.querySelector('#quiz-group').value,
+                startTime: new Date(startTimeValue).toISOString(),
+                endTime: new Date(endTimeValue).toISOString(),
+                timeLimit: parseInt(form.querySelector('#quiz-time-limit').value) || null,
+                // ✅ FIX: Removed keys for maxAttempts, showResults, password, etc.
+                questions: this.extractQuestionsData(form)
+            };
+
+            // Validate quiz data
+            const validationErrors = utils.validateQuizData(quizData);
+            if (validationErrors.length > 0) {
+                return uiRenderer.showNotification(validationErrors[0], 'error');
+            }
+
+            await apiService.updateQuiz(quizId, quizData);
+            uiRenderer.showNotification('Quiz updated successfully');
+            uiRenderer.closeModal();
+            await this.loadQuizzes();
+        } catch (error) {
+            console.error('Failed to update quiz:', error);
+            uiRenderer.showNotification(error.data?.message || 'Failed to update quiz', 'error');
+        }
+    },
+
+
+    // Load quizzes based on current state
+    async loadQuizzes() {
+        try {
+            state.isLoading = true;
+            uiRenderer.updateView();
+            
+            let quizzes = [];
+            let statusToFetch = state.activeTab;
+
+            // This logic correctly fetches 'completed' AND 'graded' statuses for the Completed tab
+            if (state.activeTab === 'completed') {
+                statusToFetch = 'completed,graded';
+            }
+            
+            if ([ROLES.TEACHER, ROLES.ADMIN].includes(state.currentUser.role)) {
+                if (!state.selectedGroupId) {
+                    state.studentQuizzes = [];
+                    state.isLoading = false;
+                    uiRenderer.updateView();
+                    return;
+                }
+                
+                quizzes = await apiService.fetchQuizzesForGroup(state.selectedGroupId, statusToFetch);
+            } else {
+                quizzes = await apiService.fetchStudentQuizzes(statusToFetch);
+            }
+            
+            state.studentQuizzes = Array.isArray(quizzes) ? quizzes : [];
+            state.isLoading = false;
+            uiRenderer.updateView();
+            
+        } catch (error) {
+            console.error('Failed to fetch quizzes:', error);
+            uiRenderer.showNotification('Failed to load quizzes', 'error');
+            state.isLoading = false;
+            uiRenderer.updateView();
+        }
+    },
+    // Handle global click events
+    handleGlobalClick(e) {
+        try {
+            const actionElement = e.target.closest('[data-action]');
             if (!actionElement) return;
-            
-            const action = actionElement.dataset.action;
-            const quizId = actionElement.dataset.id || actionElement.dataset.quizId;
-            const attemptId = actionElement.dataset.attemptId;
-            const questionId = actionElement.dataset.questionId;
-            
-            e.preventDefault();
-            
+
+            const { action, id, quizId, attemptId, requestId } = actionElement.dataset;
+
             switch (action) {
                 case QUIZ_ACTIONS.VIEW_DETAIL:
-                    await this.handleViewDetail(quizId);
+                    this.handleViewDetail(id);
                     break;
                 case QUIZ_ACTIONS.BACK_TO_LIST:
                     this.handleBackToList();
                     break;
-                case QUIZ_ACTIONS.CREATE_QUIZ:
-                    uiRenderer.openModal('create-edit-quiz');
+                case QUIZ_ACTIONS.CLOSE_MODAL:
+                    uiRenderer.closeModal();
                     break;
                 case QUIZ_ACTIONS.EDIT_QUIZ:
-                    await this.handleEditQuiz(quizId);
+                    this.handleEditQuiz(quizId || state.detailedQuiz._id);
                     break;
                 case QUIZ_ACTIONS.DELETE_QUIZ:
-                    await this.handleDeleteQuiz(quizId);
+                    this.handleDeleteQuiz(quizId);
                     break;
                 case QUIZ_ACTIONS.START_QUIZ:
-                    await this.handleStartQuiz(quizId);
+                    this.handleStartQuiz(state.detailedQuiz._id);
                     break;
                 case QUIZ_ACTIONS.NEXT_QUESTION:
-                    await this.saveCurrentAnswer();
-                    await this.handleNextQuestion();
+                    this.handleNextQuestion();
                     break;
                 case QUIZ_ACTIONS.PREV_QUESTION:
-                    await this.handlePrevQuestion();
+                    this.handlePrevQuestion();
                     break;
                 case QUIZ_ACTIONS.FINISH_QUIZ:
-                    await this.handleFinishQuiz();
-                    break;
-                case QUIZ_ACTIONS.SELECT_OPTION:
-                    await this.handleSelectOption(parseInt(target.dataset.optionIndex));
+                    this.handleFinishQuiz();
                     break;
                 case QUIZ_ACTIONS.ADD_QUESTION:
                     this.handleAddQuestion(actionElement);
@@ -2687,162 +2704,142 @@ const eventHandlers = {
                     this.handleMoveQuestionDown(actionElement.closest('.question-item'));
                     break;
                 case QUIZ_ACTIONS.ADD_OPTION:
-                    this.handleAddOption(actionElement.closest('.options-container'));
+                    this.handleAddOption(actionElement.closest('.options-container-wrapper').querySelector('.options-container'));
                     break;
                 case QUIZ_ACTIONS.DELETE_OPTION:
                     this.handleDeleteOption(actionElement.closest('.option-item'));
                     break;
-                case QUIZ_ACTIONS.VIEW_STUDENT_ATTEMPT:
-                    await this.handleViewStudentAttempt(attemptId);
-                    break;
-                case QUIZ_ACTIONS.VIEW_INSTRUCTIONS:
-                    uiRenderer.openModal('quiz-instructions');
+                case QUIZ_ACTIONS.REVIEW_QUIZ:
+                    this.handleReviewQuiz(attemptId);
                     break;
                 case QUIZ_ACTIONS.ADD_FROM_BANK:
-                    this.handleAddFromBank();
+                    this.handleAddFromQuizBank();
+                    break;
+                case QUIZ_ACTIONS.SELECT_QUIZ_FROM_BANK:
+                    this.handleSelectQuizFromBank(quizId);
                     break;
                 case QUIZ_ACTIONS.REQUEST_RETAKE:
                     this.handleRequestRetake(quizId);
                     break;
-                case QUIZ_ACTIONS.REVIEW_QUIZ:
-                    await this.handleReviewQuiz(attemptId);
+                case QUIZ_ACTIONS.APPROVE_REQUEST:
+                    this.handleApproveRequest(requestId);
                     break;
-                case QUIZ_ACTIONS.SELECT_QUIZ_FROM_BANK:
-                    await this.handleSelectQuizFromBank(quizId);
-                    break;
-                case QUIZ_ACTIONS.CLOSE_MODAL:
-                    uiRenderer.closeModal();
+                case QUIZ_ACTIONS.DENY_REQUEST:
+                    this.handleDenyRequest(requestId);
                     break;
             }
         } catch (error) {
             console.error('Error handling global click:', error);
         }
     },
-
+    
     // Handle keyboard shortcuts
     handleKeyboardShortcuts(e) {
         try {
-            // Only handle shortcuts when not in an input field
-            if (e.target.matches('input, textarea, select')) return;
+            // ESC key to close modals
+            if (e.key === 'Escape' && elements.modalBackdrop.style.display === 'flex') {
+                uiRenderer.closeModal();
+            }
             
-            switch (e.key) {
-                case 'Escape':
-                    if (state.modalStack.length > 0) {
-                        uiRenderer.closeModal();
-                    } else if (state.currentView === 'detail') {
-                        this.handleBackToList();
+            // Ctrl+Enter to submit forms
+            if (e.ctrlKey && e.key === 'Enter') {
+                const activeModal = document.querySelector('.modal:last-child');
+                if (activeModal) {
+                    const submitButton = activeModal.querySelector('button[type="submit"]');
+                    if (submitButton) {
+                        submitButton.click();
                     }
-                    break;
-                case 'ArrowRight':
-                    if (state.activeQuizAttempt) {
-                        this.handleNextQuestion();
-                    }
-                    break;
-                case 'ArrowLeft':
-                    if (state.activeQuizAttempt) {
-                        this.handlePrevQuestion();
-                    }
-                    break;
-                case '1':
-                case '2':
-                case '3':
-                case '4':
-                    if (state.activeQuizAttempt) {
-                        const optionIndex = parseInt(e.key) - 1;
-                        this.handleSelectOption(optionIndex);
-                    }
-                    break;
+                }
             }
         } catch (error) {
             console.error('Error handling keyboard shortcuts:', error);
         }
     },
 
-    // Load quizzes based on current state
-    async loadQuizzes() {
+    // Handle add from quiz bank
+    handleAddFromQuizBank() {
         try {
-            state.isLoading = true;
-            uiRenderer.updateView();
-            
-            if (state.activeTab === 'requests' && [ROLES.TEACHER, ROLES.ADMIN].includes(state.currentUser.role)) {
-                const requests = await apiService.fetchRetakeRequests();
-                uiRenderer.renderRequestsList(requests);
-            } else if (state.currentUser.role === ROLES.STUDENT) {
-                state.studentQuizzes = await apiService.fetchStudentQuizzes(state.activeTab);
-            } else if ([ROLES.TEACHER, ROLES.ADMIN].includes(state.currentUser.role)) {
-                if (!state.selectedGroupId) {
-                    state.studentQuizzes = [];
-                } else {
-                    state.studentQuizzes = await apiService.fetchQuizzesForGroup(state.selectedGroupId, state.activeTab);
-                }
+            uiRenderer.openModal('question-bank', null, true);
+        } catch (error) {
+            console.error('Error handling add from quiz bank:', error);
+        }
+    },
+
+    // Handle select quiz from bank
+    handleSelectQuizFromBank(quizId) {
+        try {
+            if (!state.quizBank) {
+                uiRenderer.showNotification('Quiz bank data is not loaded.', 'error');
+                return;
             }
             
-            state.isLoading = false;
-            uiRenderer.updateView();
+            const selectedQuiz = state.quizBank.find(q => q._id === quizId);
+            if (selectedQuiz) {
+                uiRenderer.prefillQuizForm(selectedQuiz);
+                uiRenderer.closeModal();
+            } else {
+                uiRenderer.showNotification('Selected quiz could not be found.', 'error');
+            }
         } catch (error) {
-            console.error('Failed to load quizzes:', error);
-            state.isLoading = false;
-            uiRenderer.updateView();
+            console.error('Error handling select quiz from bank:', error);
         }
     }
 };
 
-// Application initialization
-class QuizApp {
-    constructor() {
-        this.initialized = false;
-    }
-
-    async init() {
-        try {
-            if (this.initialized) return;
-            
-            if (elements.globalLoading) {
-                elements.globalLoading.style.display = 'flex';
-            }
-            
-            // Fetch initial data
-            const { user, groups } = await apiService.fetchInitialData();
-            
-            if (!user) {
-                console.error('Failed to initialize app: No user data');
-                return;
-            }
-            
-            // Initialize state
-            state.currentUser = user;
-            state.groups = groups;
-            
-            // Initialize UI
-            uiRenderer.init();
-            eventHandlers.init();
-            
-            // Load initial quizzes
-            await eventHandlers.loadQuizzes();
-            
-            this.initialized = true;
-            
-        } catch (error) {
-            console.error('Failed to initialize Quiz App:', error);
-            uiRenderer.showNotification('Failed to initialize application', 'error');
-        } finally {
-            if (elements.globalLoading) {
-                elements.globalLoading.style.display = 'none';
-            }
+// Initialize the application
+async function initQuizzes() {
+    try {
+        state.isLoading = true;
+        
+        const token = localStorage.getItem('piRateToken');
+        if (!token) {
+            window.location.href = '/client/login/login.html';
+            return;
         }
+        
+        const { user, groups } = await apiService.fetchInitialData();
+        
+        // ✅ DEBUGGING: Let's see the exact user object we receive.
+        console.log('--- USER DATA RECEIVED FROM SERVER ---:', user);
+        if (user && user.role) {
+            console.log('User Role is:', user.role);
+            console.log('Is the Role exactly "Admin"?', user.role === ROLES.ADMIN);
+            console.log('Is the Role exactly "Teacher"?', user.role === ROLES.TEACHER);
+        } else {
+            console.error('CRITICAL: User object is null or missing a role after fetch.');
+            uiRenderer.showNotification('Could not verify user role. Logging out.', 'error');
+            setTimeout(() => {
+                // Redirect if user data is invalid
+                localStorage.removeItem('piRateToken');
+                window.location.href = '/client/login/login.html';
+            }, 2000);
+            return;
+        }
+        
+        state.currentUser = user;
+        state.groups = groups;
+        
+        uiRenderer.init();
+        eventHandlers.init();
+        
+        if (state.currentUser.role === ROLES.STUDENT) {
+            await eventHandlers.loadQuizzes();
+        } else {
+            state.isLoading = false;
+            uiRenderer.updateView();
+        }
+        
+    } catch (error) {
+        console.error('Failed to initialize quizzes:', error);
+        uiRenderer.showNotification('A critical error occurred. Please try logging in again.', 'error');
+        state.isLoading = false;
+        uiRenderer.updateView();
     }
 }
 
-// Initialize the application when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    const app = new QuizApp();
-    app.init();
-});
-
-// Export for global access (if needed)
-window.QuizApp = QuizApp;
-window.quizState = state;
-window.quizHandlers = eventHandlers;
-window.quizRenderer = uiRenderer;
-window.quizAPI = apiService;
-window.quizUtils = utils;
+// Start the application when DOM is loaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initQuizzes);
+} else {
+    initQuizzes();
+}
