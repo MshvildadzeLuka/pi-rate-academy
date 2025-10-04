@@ -1,4 +1,3 @@
-
 const express = require('express');
 const mongoose = require('mongoose');
 const router = express.Router();
@@ -30,6 +29,7 @@ const updateQuizStatuses = asyncHandler(async (req, res, next) => {
 
 // server/routes/quizRoutes.js
 
+// ✅ Ensure this route exists and is correct in your file.
 // @route   GET /api/quizzes/templates/:templateId/analytics
 // @desc    Get analytics for a specific quiz template
 // @access  Private
@@ -770,8 +770,7 @@ router.get('/bank', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async 
   const quizBank = await QuizTemplate.find({ 
     creatorId: req.user._id 
   })
-  // *** CRITICAL FIX 3: ADD .lean() to bypass strict Mongoose validation on corrupt documents. ***
-  .lean() 
+  // *** CRITICAL FIX 3: MOVE .lean() to the end to ensure populate runs. ***
   // *** CRITICAL FIX 1: Add skipInvalidIds: true to the questions array to ignore broken links.
   .populate({
     path: 'questions',
@@ -789,7 +788,9 @@ router.get('/bank', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async 
     }
   })
   // Select fields needed for the template overview
-  .select('title description questions points startTime endTime timeLimit'); 
+  .select('title description questions points startTime endTime timeLimit')
+  // *** CRITICAL FIX 3: ADD .lean() HERE. This is the correct placement. ***
+  .lean(); 
   
   res.json({
     success: true,
