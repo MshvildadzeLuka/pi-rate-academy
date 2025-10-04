@@ -1,3 +1,5 @@
+// Path: client/assignments/assignments.js
+
 // =========================================================================
 // FILE: assignments.js (Georgian Language & Enhanced File Handling)
 // =========================================================================
@@ -184,6 +186,19 @@ const apiService = {
 };
 
 const uiRenderer = {
+    
+    // [FIX] New utility method to correctly handle local date-time strings
+    // This takes the local datetime-local string (e.g., "2025-10-04T21:52") 
+    // and converts it to a UTC ISO string, which correctly embeds the timezone offset
+    // for safe server storage.
+    toServerISOString(dateTimeLocalString) {
+        if (!dateTimeLocalString) return null;
+        // JS interprets the YYYY-MM-DDTHH:MM string as local time.
+        const date = new Date(dateTimeLocalString);
+        // .toISOString() converts this local time to the corresponding UTC time.
+        return date.toISOString();
+    },
+
     getFileIconClass(fileType) {
         if (!fileType) return 'fa-file-alt';
         if (fileType.startsWith('image/')) return 'fa-file-image';
@@ -398,7 +413,6 @@ const uiRenderer = {
                     <span class="assignment-item-title">${this.escapeHTML(title)}</span>
                     <span class="assignment-item-meta">ვადა: ${dueDate.toLocaleString('ka-GE')}</span>
                 </div>
-                ${statusHTML}
                 ${(assignment.status === STATUS.PAST_DUE && !assignment.seenByTeacher && isTeacher) ? 
                     '<span class="status-badge new">ახალი</span>' : ''}
             </div>
@@ -839,6 +853,8 @@ const uiRenderer = {
         e.stopPropagation();
     },
 
+    // This function remains the same as it correctly populates the datetime-local input
+    // with the current local time components.
     formatDateTimeLocal(date) {
         const pad = (num) => num.toString().padStart(2, '0');
         return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
@@ -1014,12 +1030,21 @@ const eventHandlers = {
     },
 
     async handleCreateAssignment(form) {
+        // Get the local time string from the input
+        const startTimeLocal = form.querySelector('#assignment-start-time').value;
+        const endTimeLocal = form.querySelector('#assignment-end-time').value;
+
+        // [FIX] Convert local input values to UTC ISO strings for server storage
+        const startTimeServer = uiRenderer.toServerISOString(startTimeLocal);
+        const endTimeServer = uiRenderer.toServerISOString(endTimeLocal);
+        
         const formData = new FormData();
         formData.append('title', form.querySelector('#assignment-title').value);
         formData.append('instructions', form.querySelector('#assignment-instructions').value);
         formData.append('points', form.querySelector('#assignment-points').value);
-        formData.append('startTime', form.querySelector('#assignment-start-time').value);
-        formData.append('endTime', form.querySelector('#assignment-end-time').value);
+        // [FIX] Use the corrected, server-safe time strings
+        formData.append('startTime', startTimeServer);
+        formData.append('endTime', endTimeServer);
         Array.from(form.querySelector('#assignment-course').selectedOptions).forEach(option => {
             formData.append('courseId', option.value);
         });
@@ -1036,12 +1061,21 @@ const eventHandlers = {
     },
 
     async handleUpdateAssignment(templateId, form) {
+        // Get the local time string from the input
+        const startTimeLocal = form.querySelector('#assignment-start-time').value;
+        const endTimeLocal = form.querySelector('#assignment-end-time').value;
+
+        // [FIX] Convert local input values to UTC ISO strings for server storage
+        const startTimeServer = uiRenderer.toServerISOString(startTimeLocal);
+        const endTimeServer = uiRenderer.toServerISOString(endTimeLocal);
+        
         const formData = new FormData();
         formData.append('title', form.querySelector('#assignment-title').value);
         formData.append('instructions', form.querySelector('#assignment-instructions').value);
         formData.append('points', form.querySelector('#assignment-points').value);
-        formData.append('startTime', form.querySelector('#assignment-start-time').value);
-        formData.append('endTime', form.querySelector('#assignment-end-time').value);
+        // [FIX] Use the corrected, server-safe time strings
+        formData.append('startTime', startTimeServer);
+        formData.append('endTime', endTimeServer);
         Array.from(form.querySelector('#assignment-course').selectedOptions).forEach(option => {
             formData.append('courseId', option.value);
         });
@@ -1169,13 +1203,17 @@ const eventHandlers = {
 
         form.onsubmit = async (e) => {
             e.preventDefault();
-            const newDueDate = new FormData(form).get('newDueDate');
-            if (!newDueDate) {
+            const newDueDateLocal = new FormData(form).get('newDueDate');
+            if (!newDueDateLocal) {
                 uiRenderer.showNotification('გთხოვთ აირჩიოთ ახალი ვადა.', 'error');
                 return;
             }
+            
+            // [FIX] Convert local time string to UTC ISO string for server
+            const newDueDateServer = uiRenderer.toServerISOString(newDueDateLocal);
+            
             try {
-                await apiService.processRetakeRequest(requestId, STATUS.APPROVED, { newDueDate });
+                await apiService.processRetakeRequest(requestId, STATUS.APPROVED, { newDueDate: newDueDateServer });
                 uiRenderer.showNotification('მოთხოვნა დამტკიცდა და დავალება განახლდა!', 'success');
                 uiRenderer.closeModal();
                 await this.loadRetakeRequests();
