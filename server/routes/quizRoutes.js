@@ -764,32 +764,32 @@ router.put('/grade/:quizId', protect, restrictTo('Teacher', 'Admin'), asyncHandl
 }));
 
 // @route   GET /api/quizzes/bank
-// @desc    Get all quiz templates for the bank (Visible to all Teachers/Admins)
+// @desc    Get all quiz templates for the bank
 // @access  Private/Teacher,Admin
 router.get('/bank', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async (req, res) => {
-  // FIX: Removed creatorId filter to fetch ALL templates as requested.
-  const quizBank = await QuizTemplate.find({}) 
-  .populate({
-    path: 'questions',
-    select: 'text options points solution imageUrl imagePublicId type timeLimit difficulty', 
-    options: {
-        skipInvalidIds: true
-    }
-  })
-  .populate({
-    path: 'courseId',
-    select: 'name', 
-    options: {
-        skipInvalidIds: true
-    }
-  })
-  .select('title description questions points startTime endTime timeLimit')
-  .lean(); 
-  
-  res.json({
-    success: true,
-    data: quizBank
-  });
+  try {
+    // ✅ FIX: Get ALL quiz templates, not just those created by current user
+    // Also populate the questions to get full question data
+    const quizBank = await QuizTemplate.find({})
+      .populate({
+        path: 'questions',
+        model: 'Question'
+      })
+      .populate('courseId', 'name')
+      .select('title description questions points startTime endTime timeLimit')
+      .sort({ createdAt: -1 });
+    
+    res.json({
+      success: true,
+      data: quizBank
+    });
+  } catch (error) {
+    console.error('Error fetching quiz bank:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch quiz bank'
+    });
+  }
 }));
 
 // @route   POST /api/quizzes/:id/request-retake
@@ -815,20 +815,16 @@ router.post('/:id/request-retake', protect, restrictTo('Student'), asyncHandler(
   }
   
   // Check if retake is allowed
-  // NOTE: Assuming templateId is populated or accessible via StudentQuiz for this check
-  const template = await QuizTemplate.findById(studentQuiz.templateId);
-  if (!template || !template.allowRetakes) {
+  if (!studentQuiz.templateId.allowRetakes) {
     return next(new ErrorResponse('Retakes are not allowed for this quiz', 400));
   }
   
   // Create retake request
   const retakeRequest = new RetakeRequest({
-    // FIX: Using correct field names for RetakeRequest model
-    requestableId: studentQuiz._id,
-    requestableType: 'Quiz',
-    studentId: req.user._id,
-    courseId: studentQuiz.courseId,
+    student: req.user._id,
+    quiz: studentQuiz._id,
     reason: reason || 'No reason provided',
+    status: 'pending'
   });
   
   await retakeRequest.save();
