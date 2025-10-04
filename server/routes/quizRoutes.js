@@ -1,3 +1,4 @@
+
 const express = require('express');
 const mongoose = require('mongoose');
 const router = express.Router();
@@ -769,6 +770,8 @@ router.get('/bank', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async 
   const quizBank = await QuizTemplate.find({ 
     creatorId: req.user._id 
   })
+  // *** CRITICAL FIX 3: ADD .lean() to bypass strict Mongoose validation on corrupt documents. ***
+  .lean() 
   // *** CRITICAL FIX 1: Add skipInvalidIds: true to the questions array to ignore broken links.
   .populate({
     path: 'questions',
