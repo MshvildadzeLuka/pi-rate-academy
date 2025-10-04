@@ -31,7 +31,7 @@ const upload = multer({
   fileFilter: fileFilter,
   limits: {
     fileSize: 5000 * 1024 * 1024, // 5000MB
-    files: 1
+    files: 20 // [FIXED] გაიზარდა მაქსიმალური ფაილების რაოდენობა 20-მდე
   }
 });
 
@@ -138,7 +138,7 @@ const handleUploadErrors = (err, req, res, next) => {
     if (err.code === 'LIMIT_FILE_COUNT') {
       return res.status(413).json({
         success: false,
-        message: 'Too many files uploaded (max 1).'
+        message: 'Too many files uploaded (max 20).' // [FIXED] განახლებულია შეცდომის შეტყობინება
       });
     }
     if (err.code === 'LIMIT_UNEXPECTED_FILE') {
