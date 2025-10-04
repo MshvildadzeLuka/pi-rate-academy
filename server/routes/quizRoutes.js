@@ -29,7 +29,6 @@ const updateQuizStatuses = asyncHandler(async (req, res, next) => {
 
 // server/routes/quizRoutes.js
 
-// ✅ Ensure this route exists and is correct in your file.
 // @route   GET /api/quizzes/templates/:templateId/analytics
 // @desc    Get analytics for a specific quiz template
 // @access  Private
@@ -770,15 +769,22 @@ router.get('/bank', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async 
   const quizBank = await QuizTemplate.find({ 
     creatorId: req.user._id 
   })
-  // *** CRITICAL FIX: Use expanded populate syntax with skipInvalidIds: true ***
+  // *** CRITICAL FIX 1: Add skipInvalidIds: true to the questions array to ignore broken links.
   .populate({
     path: 'questions',
-    // Select fields needed for the client-side cloning/display in modal
     select: 'text options points solution imageUrl imagePublicId type timeLimit difficulty', 
     options: {
-        skipInvalidIds: true // IGNORES broken Question ObjectIds
+        skipInvalidIds: true
     }
-  }) 
+  })
+  // *** CRITICAL FIX 2: Apply populate to courseId with skipInvalidIds as well, just in case.
+  .populate({
+    path: 'courseId',
+    select: 'name', 
+    options: {
+        skipInvalidIds: true
+    }
+  })
   // Select fields needed for the template overview
   .select('title description questions points startTime endTime timeLimit'); 
   
