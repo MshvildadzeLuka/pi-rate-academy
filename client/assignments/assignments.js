@@ -187,30 +187,58 @@ const apiService = {
 
 const uiRenderer = {
     
-    // [FIX] New utility method to correctly handle local date-time strings
-    // This takes the local datetime-local string (e.g., "2025-10-04T21:52") 
-    // and converts it to a UTC ISO string, which correctly embeds the timezone offset
-    // for safe server storage.
     toServerISOString(dateTimeLocalString) {
         if (!dateTimeLocalString) return null;
-        // JS interprets the YYYY-MM-DDTHH:MM string as local time.
         const date = new Date(dateTimeLocalString);
-        // .toISOString() converts this local time to the corresponding UTC time.
         return date.toISOString();
     },
 
-    getFileIconClass(fileType) {
-        if (!fileType) return 'fa-file-alt';
-        if (fileType.startsWith('image/')) return 'fa-file-image';
+    // [FIX 1] Enhanced getFileIconClass for robust file type checking
+    getFileIconClass(fileType, fileName = '') {
+        const extension = fileName.split('.').pop()?.toLowerCase() || '';
+        
+        if (!fileType && !fileName) return 'fa-file-alt';
+        
+        // Primary check by MIME type
+        if (fileType?.startsWith('image/')) return 'fa-file-image';
         if (fileType === 'application/pdf') return 'fa-file-pdf';
-        if (fileType.includes('wordprocessingml') || fileType === 'application/msword') return 'fa-file-word';
-        if (fileType.includes('spreadsheetml') || fileType.includes('excel')) return 'fa-file-excel';
-        if (fileType.includes('presentationml') || fileType.includes('powerpoint')) return 'fa-file-powerpoint';
-        if (fileType.startsWith('video/')) return 'fa-file-video';
-        if (fileType.startsWith('audio/')) return 'fa-file-audio';
-        if (fileType.includes('zip') || fileType.includes('archive')) return 'fa-file-archive';
-        if (fileType.startsWith('text/')) return 'fa-file-alt';
-        return 'fa-file-alt';
+        if (fileType?.includes('wordprocessingml') || fileType === 'application/msword') return 'fa-file-word';
+        if (fileType?.includes('spreadsheetml') || fileType?.includes('excel')) return 'fa-file-excel';
+        if (fileType?.includes('presentationml') || fileType?.includes('powerpoint')) return 'fa-file-powerpoint';
+        if (fileType?.startsWith('video/')) return 'fa-file-video';
+        if (fileType?.startsWith('audio/')) return 'fa-file-audio';
+        if (fileType?.includes('zip') || fileType?.includes('archive')) return 'fa-file-archive';
+        if (fileType?.startsWith('text/')) return 'fa-file-alt';
+
+        // Secondary check by extension for robustness
+        if (['jpg', 'jpeg', 'png', 'gif'].includes(extension)) return 'fa-file-image';
+        if (extension === 'pdf') return 'fa-file-pdf';
+        if (['doc', 'docx'].includes(extension)) return 'fa-file-word';
+        if (['zip', 'rar', '7z'].includes(extension)) return 'fa-file-archive';
+
+        return 'fa-file-alt'; // Default
+    },
+    
+    // [FIX 2] New helper to render a single file list item for cleaner code and correct icons
+    renderFileListItem(file, allowDownload = true) {
+        const iconClass = this.getFileIconClass(file.fileType, file.fileName);
+        const fileName = this.escapeHTML(file.fileName);
+        
+        return `
+            <div class="file-list-item view-only">
+                <i class="fas ${iconClass}"></i>
+                <div class="file-info">
+                    <a href="${file.url}" 
+                       target="_blank" 
+                       data-action="${ACTIONS.VIEW_FILE}" 
+                       data-url="${file.url}" 
+                       data-type="${file.fileType}"
+                       data-file-name="${fileName}">
+                       ${fileName}
+                    </a>
+                </div>
+            </div>
+        `;
     },
     
     init() {
@@ -455,18 +483,10 @@ const uiRenderer = {
 
         const attachmentsContainer = template.querySelector('.attachments-list');
         if (assignment.templateId.attachments?.length > 0) {
-            attachmentsContainer.innerHTML = assignment.templateId.attachments.map(file => {
-                const iconClass = this.getFileIconClass(file.fileType);
-                return `
-                <div class="file-list-item view-only">
-                    <i class="fas ${iconClass}"></i>
-                    <div class="file-info">
-                        <a href="${file.url}" target="_blank" data-action="${ACTIONS.VIEW_FILE}" data-url="${file.url}" data-type="${file.fileType}">
-                           ${this.escapeHTML(file.fileName)}
-                        </a>
-                    </div>
-                </div>`;
-            }).join('');
+            // [Fix Applied] Using renderFileListItem helper
+            attachmentsContainer.innerHTML = assignment.templateId.attachments.map(file => 
+                this.renderFileListItem(file)
+            ).join('');
         } else {
             attachmentsContainer.innerHTML = `<p>მიმაგრებული ფაილები არ არის.</p>`;
         }
@@ -481,18 +501,10 @@ const uiRenderer = {
         statusBadge.className = `status-badge ${assignment.status}`;
 
         if (assignment.submission?.files?.length > 0) {
-            submissionFilesList.innerHTML = assignment.submission.files.map(file => {
-                const iconClass = this.getFileIconClass(file.fileType);
-                return `
-                <div class="file-list-item view-only">
-                    <i class="fas ${iconClass}"></i>
-                    <div class="file-info">
-                        <a href="${file.url}" target="_blank" data-action="${ACTIONS.VIEW_FILE}" data-url="${file.url}" data-type="${file.fileType}">
-                           ${this.escapeHTML(file.fileName)}
-                        </a>
-                    </div>
-                </div>`;
-            }).join('');
+            // [Fix Applied] Using renderFileListItem helper
+            submissionFilesList.innerHTML = assignment.submission.files.map(file => 
+                this.renderFileListItem(file)
+            ).join('');
         } else {
             submissionFilesList.innerHTML = `<p>ფაილები არ არის გაგზავნილი.</p>`;
         }
@@ -543,18 +555,10 @@ const uiRenderer = {
         
         const attachmentsList = template.querySelector('.attachments-list');
         if (assignment.templateId.attachments?.length > 0) {
-            attachmentsList.innerHTML = assignment.templateId.attachments.map(file => {
-                const iconClass = this.getFileIconClass(file.fileType);
-                return `
-                <div class="file-list-item view-only">
-                    <i class="fas ${iconClass}"></i>
-                    <div class="file-info">
-                        <a href="${file.url}" target="_blank" data-action="${ACTIONS.VIEW_FILE}" data-url="${file.url}" data-type="${file.fileType}">
-                           ${this.escapeHTML(file.fileName)}
-                        </a>
-                    </div>
-                </div>`;
-            }).join('');
+            // [Fix Applied] Using renderFileListItem helper
+            attachmentsList.innerHTML = assignment.templateId.attachments.map(file => 
+                this.renderFileListItem(file)
+            ).join('');
         } else {
             attachmentsList.innerHTML = `<p>მიმაგრებული ფაილები არ არის.</p>`;
         }
@@ -564,18 +568,10 @@ const uiRenderer = {
         // Render student-specific content
         let filesHTML = '<p>ფაილები არ არის გაგზავნილი.</p>';
         if (assignment.submission?.files?.length > 0) {
-            filesHTML = assignment.submission.files.map(file => {
-                const iconClass = this.getFileIconClass(file.fileType);
-                return `
-                <div class="file-list-item view-only">
-                    <i class="fas ${iconClass}"></i>
-                    <div class="file-info">
-                        <a href="${file.url}" target="_blank" data-action="${ACTIONS.VIEW_FILE}" data-url="${file.url}" data-type="${file.fileType}">
-                           ${this.escapeHTML(file.fileName)}
-                        </a>
-                    </div>
-                </div>`;
-            }).join('');
+            // [Fix Applied] Using renderFileListItem helper
+            filesHTML = assignment.submission.files.map(file => 
+                this.renderFileListItem(file)
+            ).join('');
         }
 
         container.innerHTML = `
@@ -634,18 +630,10 @@ const uiRenderer = {
 
         let filesHTML = '<p>ფაილები არ არის გაგზავნილი.</p>';
         if (assignment.submission?.files?.length > 0) {
-            filesHTML = assignment.submission.files.map(file => {
-                const iconClass = this.getFileIconClass(file.fileType);
-                return `
-                <div class="file-list-item view-only">
-                    <i class="fas ${iconClass}"></i>
-                    <div class="file-info">
-                        <a href="${file.url}" target="_blank" data-action="${ACTIONS.VIEW_FILE}" data-url="${file.url}" data-type="${file.fileType}">
-                           ${this.escapeHTML(file.fileName)}
-                        </a>
-                    </div>
-                </div>`;
-            }).join('');
+            // [Fix Applied] Using renderFileListItem helper
+            filesHTML = assignment.submission.files.map(file => 
+                this.renderFileListItem(file)
+            ).join('');
         }
 
         container.innerHTML = `
@@ -853,8 +841,6 @@ const uiRenderer = {
         e.stopPropagation();
     },
 
-    // This function remains the same as it correctly populates the datetime-local input
-    // with the current local time components.
     formatDateTimeLocal(date) {
         const pad = (num) => num.toString().padStart(2, '0');
         return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
@@ -915,7 +901,7 @@ const eventHandlers = {
             case ACTIONS.BACK_TO_LIST: this.handleBackToList(); break;
             case ACTIONS.SELECT_STUDENT_FOR_GRADING: this.handleSelectStudentForGrading(id); break;
             case ACTIONS.REMOVE_FILE: this.handleRemoveFile(fileName, containerId); break;
-            case ACTIONS.VIEW_FILE: e.preventDefault(); this.handleViewFile(url, type); break;
+            case ACTIONS.VIEW_FILE: e.preventDefault(); this.handleViewFile(url, type, fileName); break; // [FIX] Passed fileName
             case ACTIONS.CLOSE_MODAL: uiRenderer.closeModal(); break;
             case ACTIONS.UNSUBMIT_ASSIGNMENT: this.handleUnsubmitAssignment(state.detailedAssignment._id); break;
             case ACTIONS.REQUEST_RETAKE: this.handleRequestRetake(state.detailedAssignment._id); break;
@@ -971,7 +957,6 @@ const eventHandlers = {
             state.selectedStudentIdForGrading = assignmentId;
             const masterAssignment = state.studentAssignments.find(sa => sa._id === assignmentId);
             if (masterAssignment) {
-                // Fetch the entire master assignment data, including the template, to get attachments
                 state.detailedAssignment = masterAssignment;
             }
         }
@@ -1002,39 +987,50 @@ const eventHandlers = {
         }
     },
 
-    handleViewFile(fileUrl, fileType) {
+    // [FIX 3] Corrected handleViewFile logic
+    handleViewFile(fileUrl, fileType, fileName) {
         const modalTemplate = document.getElementById('template-file-viewer-modal').content.cloneNode(true);
-        const fileName = fileUrl.split('/').pop();
         
-        // Check if it's a PDF
-        const isPDF = fileType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf');
+        // Determine file type handling
+        const isPDF = fileType === 'application/pdf' || fileUrl.toLowerCase().endsWith('.pdf');
+        const isImage = fileType?.startsWith('image/');
         
-        modalTemplate.querySelector('#file-viewer-title').textContent = fileName;
+        modalTemplate.querySelector('#file-viewer-title').textContent = fileName || fileUrl.split('/').pop();
+        
+        let iframeSrc = fileUrl;
         
         if (isPDF) {
-            // Use Google Docs viewer for PDFs as a fallback
+            // PDF: Use Google Docs Viewer for reliable embedding
             const encodedUrl = encodeURIComponent(fileUrl);
-            modalTemplate.querySelector('#file-viewer-iframe').src = 
-                `https://docs.google.com/gview?url=${encodedUrl}&embedded=true`;
+            iframeSrc = `https://docs.google.com/gview?url=${encodedUrl}&embedded=true`;
+        } else if (isImage) {
+            // Image: Use direct URL, which browsers can render natively in an iframe
+            iframeSrc = fileUrl;
         } else {
-            modalTemplate.querySelector('#file-viewer-iframe').src = fileUrl;
+            // Other document types: Use Google Viewer as a best effort fallback
+            const encodedUrl = encodeURIComponent(fileUrl);
+            iframeSrc = `https://docs.google.com/gview?url=${encodedUrl}&embedded=true`;
         }
         
+        // Set up the modal content
+        modalTemplate.querySelector('#file-viewer-iframe').src = iframeSrc;
         modalTemplate.querySelector('#file-download-btn').href = fileUrl;
+        
         elements.modalBackdrop.innerHTML = '';
         elements.modalBackdrop.appendChild(modalTemplate);
         elements.modalBackdrop.style.display = 'flex';
-        elements.modalBackdrop.querySelector('[data-action="close-modal"]').addEventListener('click', () => {
-            elements.modalBackdrop.style.display = 'none';
-        });
+        
+        const newModal = elements.modalBackdrop.querySelector('.file-viewer-modal');
+        if (newModal) {
+            newModal.querySelector('[data-action="close-modal"]').addEventListener('click', () => {
+                elements.modalBackdrop.style.display = 'none';
+            });
+        }
     },
 
     async handleCreateAssignment(form) {
-        // Get the local time string from the input
         const startTimeLocal = form.querySelector('#assignment-start-time').value;
         const endTimeLocal = form.querySelector('#assignment-end-time').value;
-
-        // [FIX] Convert local input values to UTC ISO strings for server storage
         const startTimeServer = uiRenderer.toServerISOString(startTimeLocal);
         const endTimeServer = uiRenderer.toServerISOString(endTimeLocal);
         
@@ -1042,7 +1038,6 @@ const eventHandlers = {
         formData.append('title', form.querySelector('#assignment-title').value);
         formData.append('instructions', form.querySelector('#assignment-instructions').value);
         formData.append('points', form.querySelector('#assignment-points').value);
-        // [FIX] Use the corrected, server-safe time strings
         formData.append('startTime', startTimeServer);
         formData.append('endTime', endTimeServer);
         Array.from(form.querySelector('#assignment-course').selectedOptions).forEach(option => {
@@ -1061,11 +1056,8 @@ const eventHandlers = {
     },
 
     async handleUpdateAssignment(templateId, form) {
-        // Get the local time string from the input
         const startTimeLocal = form.querySelector('#assignment-start-time').value;
         const endTimeLocal = form.querySelector('#assignment-end-time').value;
-
-        // [FIX] Convert local input values to UTC ISO strings for server storage
         const startTimeServer = uiRenderer.toServerISOString(startTimeLocal);
         const endTimeServer = uiRenderer.toServerISOString(endTimeLocal);
         
@@ -1073,7 +1065,6 @@ const eventHandlers = {
         formData.append('title', form.querySelector('#assignment-title').value);
         formData.append('instructions', form.querySelector('#assignment-instructions').value);
         formData.append('points', form.querySelector('#assignment-points').value);
-        // [FIX] Use the corrected, server-safe time strings
         formData.append('startTime', startTimeServer);
         formData.append('endTime', endTimeServer);
         Array.from(form.querySelector('#assignment-course').selectedOptions).forEach(option => {
@@ -1209,7 +1200,6 @@ const eventHandlers = {
                 return;
             }
             
-            // [FIX] Convert local time string to UTC ISO string for server
             const newDueDateServer = uiRenderer.toServerISOString(newDueDateLocal);
             
             try {
