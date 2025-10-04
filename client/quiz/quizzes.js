@@ -2754,6 +2754,7 @@ const eventHandlers = {
     },
 
     // Handle select quiz from bank
+    // Handle select quiz from bank
     handleSelectQuizFromBank(quizId) {
         try {
             if (!state.quizBank) {
@@ -2763,20 +2764,28 @@ const eventHandlers = {
             
             const selectedQuiz = state.quizBank.find(q => q._id === quizId);
             if (selectedQuiz) {
-                // --- CORE FIX: Clone and Clear ID to enable reuse ---
+                // 1. Deep clone the entire object to avoid modifying the source template
                 const clonedData = JSON.parse(JSON.stringify(selectedQuiz));
-                delete clonedData._id; // IMPORTANT: Deletes the ID to force creation of a NEW quiz
-                delete clonedData.templateId;
-                delete clonedData.courseId; // Clear old course ID to force new selection
                 
-                // Manually change the title to indicate cloning
+                // 2. Remove all existing MongoDB IDs to force the creation of new documents
+                delete clonedData._id; 
+                delete clonedData.templateId;
+                delete clonedData.courseId; 
+                
+                // 3. Iterate through nested questions and remove their IDs as well
+                if (clonedData.questions && Array.isArray(clonedData.questions)) {
+                    clonedData.questions.forEach(q => {
+                        delete q._id; 
+                        // It's also safe to clear the imagePublicId to prevent reuse conflicts
+                        delete q.imagePublicId;
+                    });
+                }
+                
+                // 4. Update the title to clearly indicate it is a copy
                 clonedData.title = (clonedData.title || '') + ' (Copy)';
                 
-                // 1. Close the current modal (Quiz Bank)
+                // 5. Close the quiz bank modal and open the main creation modal
                 uiRenderer.closeModal(); 
-                
-                // 2. Re-open the main modal with the cloned data
-                // This is the clean way to prefill the form for a new quiz creation
                 uiRenderer.openModal('create-edit-quiz', clonedData); 
             } else {
                 uiRenderer.showNotification('Selected quiz could not be found.', 'error');
@@ -2785,7 +2794,6 @@ const eventHandlers = {
             console.error('Error handling select quiz from bank:', error);
         }
     }
-};
 
 // Initialize the application
 async function initQuizzes() {
