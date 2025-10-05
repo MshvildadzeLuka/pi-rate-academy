@@ -601,9 +601,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (eventDayStr === currentDayDateStr) {
                             render = true;
                             // FIX: Extract time components using UTC getters
-                            startTimeStr = `${String(eventStartDate.getUTCHours()).padStart(2, '0')}:${String(eventStartDate.getUTCMinutes()).padStart(2, '0')}`;
+                            startTimeStr = `${String(eventStartDate.getUTCHours()).padStart(2, '0')}:${String(eventStartDate.getUTCMINUTES()).padStart(2, '0')}`;
                             const eventEndDate = new Date(event.endTime);
-                            endTimeStr = `${String(eventEndDate.getUTCHours()).padStart(2, '0')}:${String(eventEndDate.getUTCMinutes()).padStart(2, '0')}`;
+                            endTimeStr = `${String(eventEndDate.getUTCHours()).padStart(2, '0')}:${String(eventEndDate.getUTCMINUTES()).padStart(2, '0')}`;
                         }
                     }
                 } else {
@@ -624,9 +624,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (eventDayStr === currentDayStr) {
                             render = true;
                             // FIX: Extract time components using UTC getters
-                            startTimeStr = `${String(eventDate.getUTCHours()).padStart(2, '0')}:${String(eventDate.getUTCMinutes()).padStart(2, '0')}`;
+                            startTimeStr = `${String(eventDate.getUTCHours()).padStart(2, '0')}:${String(eventDate.getUTCMINUTES()).padStart(2, '0')}`;
                             const eventEndDate = new Date(event.endTime);
-                            endTimeStr = `${String(eventEndDate.getUTCHours()).padStart(2, '0')}:${String(eventEndDate.getUTCMinutes()).padStart(2, '0')}`;
+                            endTimeStr = `${String(eventEndDate.getUTCHours()).padStart(2, '0')}:${String(eventEndDate.getUTCMINUTES()).padStart(2, '0')}`;
                         }
                     }
                 }
@@ -676,7 +676,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         eventBlock.innerHTML = `
             <div class="event-title">${titleContent}</div>
-            <div class="event-time">${formatTime(eventData.startTime)} - ${formatTime(eventData.endTime)}</div>
+            <div class="event-time">${formatTime(eventData.startTime, false)} - ${formatTime(eventData.endTime, false)}</div>
         `;
 
         // Only make personal events clickable (not lectures)
@@ -776,20 +776,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (event.type === 'lecture') {
                 if (event.isRecurring) {
                     const lectureStart = new Date(event.startTime);
-                    startTime = formatTimeUTC(lectureStart);
+                    startTime = formatTimeUTC(lectureStart, true);
                     const lectureEnd = new Date(event.endTime);
-                    endTime = formatTimeUTC(lectureEnd);
+                    endTime = formatTimeUTC(lectureEnd, true);
                 } else {
-                    startTime = formatTimeUTC(new Date(event.startTime));
-                    endTime = formatTimeUTC(new Date(event.endTime));
+                    startTime = formatTimeUTC(new Date(event.startTime), true);
+                    endTime = formatTimeUTC(new Date(event.endTime), true);
                 }
             } else {
                 if (eventIsRecurring(event)) {
-                    startTime = formatTime(event.recurringStartTime);
-                    endTime = formatTime(event.recurringEndTime);
+                    startTime = formatTime(event.recurringStartTime, false);
+                    endTime = formatTime(event.recurringEndTime, false);
                 } else {
-                    startTime = formatTimeUTC(new Date(event.startTime));
-                    endTime = formatTimeUTC(new Date(event.endTime));
+                    startTime = formatTimeUTC(new Date(event.startTime), true);
+                    endTime = formatTimeUTC(new Date(event.endTime), true);
                 }
             }
             
@@ -928,20 +928,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (event.type === 'lecture') {
                 if (event.isRecurring) {
                     const lectureStart = new Date(event.startTime);
-                    startTime = formatTimeUTC(lectureStart);
+                    startTime = formatTimeUTC(lectureStart, true);
                     const lectureEnd = new Date(event.endTime);
-                    endTime = formatTimeUTC(lectureEnd);
+                    endTime = formatTimeUTC(lectureEnd, true);
                 } else {
-                    startTime = formatTimeUTC(new Date(event.startTime));
-                    endTime = formatTimeUTC(new Date(event.endTime));
+                    startTime = formatTimeUTC(new Date(event.startTime), true);
+                    endTime = formatTimeUTC(new Date(event.endTime), true);
                 }
             } else {
                 if (eventIsRecurring(event)) {
-                    startTime = formatTime(event.recurringStartTime);
-                    endTime = formatTime(event.recurringEndTime);
+                    startTime = formatTime(event.recurringStartTime, false);
+                    endTime = formatTime(event.recurringEndTime, false);
                 } else {
-                    startTime = formatTimeUTC(new Date(event.startTime));
-                    endTime = formatTimeUTC(new Date(event.endTime));
+                    startTime = formatTimeUTC(new Date(event.startTime), true);
+                    endTime = formatTimeUTC(new Date(event.endTime), true);
                 }
             }
             
@@ -974,7 +974,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 timeSlot.className = 'mobile-time-slot';
                 
                 const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-                const timeLabel = formatTime(timeStr);
+                const timeLabel = formatTime(timeStr, false);
                 
                 // Find events happening at this time
                 const currentEvents = state.allEvents.filter(event => {
@@ -1627,7 +1627,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
             return '';
         }
-
+        
+        // Correction: Apply padding when 24-hour format is requested
         if (!includePeriod) return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 
         const period = h >= 12 ? 'PM' : 'AM';
@@ -1636,11 +1637,16 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     // FIX: Helper function to consistently get local time from UTC-stored Date objects
-    const formatTimeUTC = (date) => {
+    const formatTimeUTC = (date, use24Hour = false) => {
         if (!date) return '';
         const d = new Date(date);
         const h = d.getUTCHours();
         const m = d.getUTCMinutes();
+        
+        if (use24Hour) {
+             return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+
         const period = h >= 12 ? 'PM' : 'AM';
         const hour12 = h % 12 || 12;
         return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
