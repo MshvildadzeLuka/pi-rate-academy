@@ -113,7 +113,7 @@ const apiService = {
             const errorData = await response.json().catch(() => ({
                 message: 'დაფიქსირდა უცნობი შეცდომა'
             }));
-            throw new Error(errorData.message);
+            throw new Error(errorData.message || 'API შეცდომა');
         }
 
         return response.status === 204 ? null : response.json();
@@ -187,10 +187,26 @@ const apiService = {
 
 const uiRenderer = {
     
+    // FIX: This ensures the string from datetime-local (which is 24-hour) is correctly parsed
     toServerISOString(dateTimeLocalString) {
         if (!dateTimeLocalString) return null;
+        // The browser's datetime-local gives YYYY-MM-DDTHH:mm. new Date() handles this.
         const date = new Date(dateTimeLocalString);
         return date.toISOString();
+    },
+
+    // FIX: This helper formats a Date object into the 24-hour string expected by <input type="datetime-local">
+    formatDateTimeLocal(date) {
+        try {
+            if (!(date instanceof Date)) date = new Date(date);
+            if (isNaN(date.getTime())) return '';
+            
+            const pad = (num) => num.toString().padStart(2, '0');
+            return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+        } catch (error) {
+            console.error('Error formatting date for input:', error);
+            return '';
+        }
     },
 
     // [FIX 1] Enhanced getFileIconClass for robust file type checking
@@ -417,6 +433,16 @@ const uiRenderer = {
         let statusHTML = '';
         let title = '';
 
+        // FIX: Use explicit 24-hour formatting for display to avoid AM/PM issues.
+        const dueDateDisplay = dueDate.toLocaleString('ka-GE', { 
+            year: 'numeric', 
+            month: 'numeric', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            hour12: false // Force 24-hour format
+        });
+
         if (isTeacher) {
             const statusText = this.getTeacherStatusText(assignment);
             statusHTML = `<span class="assignment-item-status status-badge ${assignment.status}">${statusText}</span>`;
@@ -438,7 +464,7 @@ const uiRenderer = {
                 <i class="fas fa-file-alt assignment-item-icon"></i>
                 <div class="assignment-item-info">
                     <span class="assignment-item-title">${this.escapeHTML(title)}</span>
-                    <span class="assignment-item-meta">ვადა: ${dueDate.toLocaleString('ka-GE')}</span>
+                    <span class="assignment-item-meta">ვადა: ${dueDateDisplay}</span>
                 </div>
                 ${(assignment.status === STATUS.PAST_DUE && !assignment.seenByTeacher && isTeacher) ? 
                     '<span class="status-badge new">ახალი</span>' : ''}
@@ -474,8 +500,18 @@ const uiRenderer = {
         const dueDate = new Date(assignment.dueDate);
         const isPastDue = now > dueDate;
 
+        // FIX: Use explicit 24-hour formatting for display to avoid AM/PM issues.
+        const dueDateDisplay = dueDate.toLocaleString('ka-GE', {
+            year: 'numeric', 
+            month: 'numeric', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            hour12: false // Force 24-hour format
+        });
+
         template.querySelector('.assignment-title-detail').textContent = assignment.templateId.title;
-        template.querySelector('.due-date').textContent = dueDate.toLocaleString('ka-GE');
+        template.querySelector('.due-date').textContent = dueDateDisplay;
         template.querySelector('.points').textContent = assignment.templateId.points;
         template.querySelector('.instructions-text').innerHTML =
             this.sanitizeHTML(assignment.templateId.instructions || 'ინსტრუქციები არ არის მოწოდებული.');
@@ -489,14 +525,17 @@ const uiRenderer = {
             attachmentsContainer.innerHTML = `<p>მიმაგრებული ფაილები არ არის.</p>`;
         }
 
-        const statusBadge = template.querySelector('.status-badge');
+        const statusBadge = template.querySelector('.submission-status-box .status-badge');
         const handInBtn = template.querySelector('.hand-in-btn');
         const unsubmitBtn = template.querySelector('.unsubmit-btn');
         const requestRetakeBtn = template.querySelector('.request-retake-btn');
         const submissionFilesList = template.querySelector('#submission-file-list');
 
-        statusBadge.textContent = this.getStudentStatusText(assignment);
-        statusBadge.className = `status-badge ${assignment.status}`;
+        if (statusBadge) {
+             statusBadge.textContent = this.getStudentStatusText(assignment);
+             statusBadge.className = `status-badge ${assignment.status}`;
+        }
+
 
         if (assignment.submission?.files?.length > 0) {
             submissionFilesList.innerHTML = assignment.submission.files.map(file => 
@@ -513,17 +552,18 @@ const uiRenderer = {
             feedbackBox.textContent = assignment.grade.feedback;
         }
 
-        handInBtn.style.display = 'none';
-        unsubmitBtn.style.display = 'none';
-        requestRetakeBtn.style.display = 'none';
+        if (handInBtn) handInBtn.style.display = 'none';
+        if (unsubmitBtn) unsubmitBtn.style.display = 'none';
+        if (requestRetakeBtn) requestRetakeBtn.style.display = 'none';
 
-        if (assignment.status === STATUS.UPCOMING && !isPastDue) {
-            handInBtn.style.display = 'block';
+
+        if (assignment.status === STATUS.UPCOMING && !isPastDue && assignment.templateId) {
+            if (handInBtn) handInBtn.style.display = 'block';
             // Hand-in button disability is managed by eventHandlers.handleFileInputChange
         } else if (assignment.status === STATUS.COMPLETED && !isPastDue) {
-            unsubmitBtn.style.display = 'block';
+            if (unsubmitBtn) unsubmitBtn.style.display = 'block';
         } else if (assignment.status === STATUS.PAST_DUE || (isPastDue && assignment.status !== STATUS.GRADED)) {
-            requestRetakeBtn.style.display = 'block';
+            if (requestRetakeBtn) requestRetakeBtn.style.display = 'block';
         }
 
         template.querySelector('.back-btn').dataset.action = ACTIONS.BACK_TO_LIST;
@@ -704,6 +744,8 @@ const uiRenderer = {
             const now = new Date();
             const tomorrow = new Date(now);
             tomorrow.setDate(tomorrow.getDate() + 1);
+            
+            // FIX: Use the consistent 24-hour format helper for input fields
             modalElement.querySelector('#assignment-start-time').value = this.formatDateTimeLocal(now);
             modalElement.querySelector('#assignment-end-time').value = this.formatDateTimeLocal(tomorrow);
 
@@ -715,6 +757,7 @@ const uiRenderer = {
                 Array.from(courseSelect.options).forEach(option => {
                     option.selected = data.courseId.includes(option.value);
                 });
+                // FIX: Use the consistent 24-hour format helper for input fields
                 modalElement.querySelector('#assignment-start-time').value = this.formatDateTimeLocal(new Date(data.startTime));
                 modalElement.querySelector('#assignment-end-time').value = this.formatDateTimeLocal(new Date(data.endTime));
             }
@@ -739,6 +782,14 @@ const uiRenderer = {
                     eventHandlers.handleCreateAssignment(form);
                 }
             });
+        }
+        
+        if (type === 'approve-retake') {
+            const newDueDateInput = modalElement.querySelector('#retake-end-time');
+            const defaultDate = new Date();
+            defaultDate.setDate(defaultDate.getDate() + 3);
+            // FIX: Ensure default date is 24-hour for the input field
+            newDueDateInput.value = this.formatDateTimeLocal(defaultDate);
         }
 
         modalElement.querySelectorAll(`[data-action="${ACTIONS.CLOSE_MODAL}"]`).forEach(btn => btn.addEventListener('click', () => this.closeModal()));
@@ -801,10 +852,15 @@ const uiRenderer = {
                 this.showNotification(`ფაილი ${file.name} აჭარბებს ${MAX_FILE_SIZE_MB}MB ლიმიტს`, 'error');
                 return;
             }
-            if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-                this.showNotification(`ფაილის ტიპი არ არის მხარდაჭერილი: ${file.name}`, 'error');
+            // FIX: Check if file type is in the allowed list or if it's a file without a type but an allowed extension (e.g. .zip)
+            const extension = file.name.split('.').pop()?.toLowerCase();
+            const allowedExtensions = ['.pdf', '.png', '.jpeg', '.jpg', '.gif', '.doc', '.docx', '.txt', '.zip'];
+
+            if (!ALLOWED_FILE_TYPES.includes(file.type) && !allowedExtensions.includes(`.${extension}`)) {
+                 this.showNotification(`ფაილის ტიპი არ არის მხარდაჭერილი: ${file.name}`, 'error');
                 return;
             }
+
             const fileWrapper = { file, progress: 0, status: 'uploading' };
             state.filesToUpload.set(file.name, fileWrapper);
             const interval = setInterval(() => {
@@ -847,11 +903,6 @@ const uiRenderer = {
     preventDefaults(e) {
         e.preventDefault();
         e.stopPropagation();
-    },
-
-    formatDateTimeLocal(date) {
-        const pad = (num) => num.toString().padStart(2, '0');
-        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
     }
 };
 
@@ -1196,6 +1247,8 @@ const eventHandlers = {
         const newDueDateInput = document.getElementById('retake-end-time');
         const defaultDate = new Date();
         defaultDate.setDate(defaultDate.getDate() + 3);
+        
+        // FIX: Ensure the default date is in 24-hour format for the input field.
         newDueDateInput.value = uiRenderer.formatDateTimeLocal(defaultDate);
 
         form.onsubmit = async (e) => {
