@@ -1240,6 +1240,7 @@ document.addEventListener('DOMContentLoaded', () => {
       eventBlock.style.height = `${height - 2}px`;
       eventBlock.dataset.lectureId = lectureData._id;
 
+      // FIX: Use 24-hour format
       eventBlock.innerHTML = `
         <div class="event-title">${escapeHTML(lectureData.title)}</div>
         <div class="event-time">${formatTime(lectureData.start, false)} - ${formatTime(lectureData.end, false)}</div>
@@ -1314,8 +1315,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const endTimeStr = minutesToTime(endMinutes);
 
       if (elements.lectureTitleInput) elements.lectureTitleInput.value = lecture.title;
+      // FIX: Use 24-hour format
       if (elements.sidebarTimeRange) {
-        elements.sidebarTimeRange.textContent = `${formatTimeUTC(lecture.startTime)} - ${formatTimeUTC(lecture.endTime)}`;
+        elements.sidebarTimeRange.textContent = `${formatTimeUTC(lecture.startTime, false)} - ${formatTimeUTC(lecture.endTime, false)}`;
       }
 
       const panelTitle = document.getElementById('calendar-panel-title');
@@ -1384,8 +1386,9 @@ document.addEventListener('DOMContentLoaded', () => {
         .sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
 
       if (elements.sidebarTimeRange && times.length > 0) {
+        // FIX: Use 24-hour format
         elements.sidebarTimeRange.textContent =
-          `${formatTime(times[0])} - ${formatTime(minutesToTime(timeToMinutes(times[times.length - 1]) + 30))}`;
+          `${formatTime(times[0], false)} - ${formatTime(minutesToTime(timeToMinutes(times[times.length - 1]) + 30), false)}`;
       }
     }
 
@@ -1504,7 +1507,7 @@ document.addEventListener('DOMContentLoaded', () => {
       for (let hour = 8; hour <= 22; hour++) {
         const timeLabel = document.createElement('div');
         timeLabel.className = 'time-label';
-        timeLabel.textContent = formatTime(`${hour}:00`);
+        timeLabel.textContent = formatTime(`${hour}:00`, false);
         elements.timeColumn.appendChild(timeLabel);
       }
 
@@ -1667,22 +1670,30 @@ document.addEventListener('DOMContentLoaded', () => {
         m = timeStr.getMinutes();
       }
 
-      if (!includePeriod) return `${h}:${String(m).padStart(2, '0')}`;
+      // FIX: Ensure 24-hour format is padded
+      if (!includePeriod) return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 
       const period = h >= 12 ? 'PM' : 'AM';
       const hour12 = h % 12 || 12;
       return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
     }
 
-    function formatTimeUTC(date) {
+    // FIX: Updated to accept optional 'includePeriod' for 24-hour format
+    function formatTimeUTC(date, includePeriod = true) {
         if (!date) return '';
         const d = new Date(date);
         const h = d.getUTCHours();
         const m = d.getUTCMinutes();
+
+        if (!includePeriod) {
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+        
         const period = h >= 12 ? 'PM' : 'AM';
         const hour12 = h % 12 || 12;
         return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
     }
+
 
     function eventDateToLocalDayString(date) {
         const pad = (num) => num.toString().padStart(2, '0');
