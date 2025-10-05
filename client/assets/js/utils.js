@@ -42,7 +42,8 @@ export function formatTime(timeStr, includePeriod = true) {
     m = timeStr.getMinutes();
   }
   
-  if (!includePeriod) return `${h}:${String(m).padStart(2, '0')}`;
+  // Correction: Ensure 24-hour format is padded
+  if (!includePeriod) return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   
   const period = h >= 12 ? 'PM' : 'AM';
   const hour12 = h % 12 || 12;
