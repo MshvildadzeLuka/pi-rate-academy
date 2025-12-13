@@ -1,4 +1,4 @@
-// notes.js (Updated to fix authentication issues, use server proxy for downloads to ensure authorization, and handle full uncompressed PDF downloads via blob streaming)
+// notes.js (Pagination Visibility Fixed)
 const API_BASE_URL = '/api';
 const NOTES_PER_PAGE = 12;
 
@@ -148,9 +148,7 @@ const apiService = {
     
     async fetchInitialData() {
         try {
-            // CORRECTED: Fetches the user's profile which now includes their groups
             const user = await this.fetch('/users/profile');
-            // This assumes the groups are populated in the user profile response
             const userGroups = user.groups || []; 
             return { user, userGroups };
         } catch (error) {
@@ -274,7 +272,6 @@ const uiRenderer = {
             const notesResponse = await apiService.fetchNotes(state.selectedGroupId);
             let notes = notesResponse.data || notesResponse || [];
             
-            // CORRECTED: Added a sort to ensure newest notes are always first
             notes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             
             state.allNotesForGroup = notes;
@@ -323,6 +320,17 @@ const uiRenderer = {
             elements.pageInfo.textContent = `${lang.page} ${state.currentPage} ${lang.of} ${state.totalPages}`;
         }
         
+        // =========================================================
+        // FIX: Control Visibility of Pagination Buttons
+        // =========================================================
+        if (elements.paginationControls) {
+            if (state.totalPages > 1) {
+                elements.paginationControls.style.display = 'flex'; // Make buttons visible
+            } else {
+                elements.paginationControls.style.display = 'none'; // Hide if only 1 page
+            }
+        }
+        
         if (elements.prevPageBtn) {
             elements.prevPageBtn.disabled = state.currentPage === 1;
         }
@@ -344,6 +352,8 @@ const uiRenderer = {
                     <p>${state.selectedGroupId ? lang.noNotes : lang.pleaseSelectGroup}</p>
                 </div>
             `;
+            // Ensure controls are hidden if no notes
+            if (elements.paginationControls) elements.paginationControls.style.display = 'none';
             return;
         }
         
@@ -516,7 +526,6 @@ const eventHandlers = {
             elements.uploadBtn.addEventListener('click', () => uiRenderer.openModal());
         }
         
-        // CORRECTED: This properly handles closing the modal from multiple buttons
         if (elements.modalBackdrop) {
             elements.modalBackdrop.addEventListener('click', (e) => {
                 if (e.target === elements.modalBackdrop || e.target.closest('.close-modal-btn')) {
@@ -555,6 +564,7 @@ const eventHandlers = {
                     state.currentPage--;
                     uiRenderer.updatePagination();
                     uiRenderer.renderNotes();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
             });
         }
@@ -565,6 +575,7 @@ const eventHandlers = {
                     state.currentPage++;
                     uiRenderer.updatePagination();
                     uiRenderer.renderNotes();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
             });
         }
@@ -625,8 +636,6 @@ const eventHandlers = {
             formData.append('groupId', e.target.groupId.value);
             formData.append('file', fileWrapper.file);
             
-            // CORRECTED: This now uses the apiService.createNote function
-            // which correctly attaches the authentication token to the file upload request.
             await apiService.createNote(formData);
             
             fileWrapper.status = 'complete';
@@ -675,16 +684,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         
-        // CORRECTED: This now correctly unpacks the user and their groups
         const { user, userGroups } = await apiService.fetchInitialData();
         state.currentUser = user;
         state.userMemberGroups = userGroups;
         
-        // This part fetches all groups for Admins
         if (user.role === 'Admin') {
             const allGroupsResponse = await apiService.fetch('/groups');
             state.allSystemGroups = allGroupsResponse.data || allGroupsResponse || [];
-            // For admins, show all groups in the dropdown
             state.userMemberGroups = state.allSystemGroups;
         }
         
