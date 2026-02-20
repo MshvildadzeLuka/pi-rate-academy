@@ -27,9 +27,6 @@ const updateQuizStatuses = asyncHandler(async (req, res, next) => {
   next(); // Always call next, even if the updater fails, so the app doesn't hang.
 });
 
-// server/routes/quizRoutes.js
-
-// ✅ Ensure this route exists and is correct in your file.
 // @route   GET /api/quizzes/templates/:templateId/analytics
 // @desc    Get analytics for a specific quiz template
 // @access  Private
@@ -75,12 +72,14 @@ router.get('/templates/:templateId/analytics', protect, asyncHandler(async (req,
 
     res.json({ success: true, data: { classAveragePercentage: classAveragePercentage.toFixed(0) } });
 }));
+
 // @route   POST /api/quizzes
 // @desc    Create a new quiz
 // @access  Private/Teacher,Admin
 router.post('/', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async (req, res, next) => {
   const {
-    title, description, groupId, startTime, endTime, questions, timeLimit
+    title, description, groupId, startTime, endTime, questions, timeLimit,
+    isProtected, allowRetakes, retakePolicy // ✅ ADDED new fields
   } = req.body;
 
   if (!title || !groupId || !startTime || !endTime || !questions || !questions.length) {
@@ -101,7 +100,10 @@ router.post('/', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async (re
       title, description, courseId: [groupId], creatorId: req.user._id,
       startTime: new Date(startTime), endTime: new Date(endTime), questions: createdQuestions.map(q => q._id),
       points: totalPoints,
-      timeLimit
+      timeLimit,
+      isProtected: isProtected || false,          // ✅ ADDED logic
+      allowRetakes: allowRetakes || false,        // ✅ ADDED logic
+      retakePolicy: retakePolicy || 'highest'     // ✅ ADDED logic
     };
     
     const [newTemplate] = await QuizTemplate.create([templateData], { session });
@@ -124,7 +126,6 @@ router.post('/', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async (re
     session.endSession();
   }
 }));
-// server/routes/quizRoutes.js
 
 // @route   GET /api/quizzes/teacher/:groupId
 // @desc    Get all quizzes for a teacher/admin (Per-Student View)
@@ -146,9 +147,6 @@ router.get('/teacher/:groupId', protect, restrictTo('Teacher', 'Admin'), updateQ
   
   let query = { templateId: { $in: templateIds } };
   
-  // ✅ FIX: This now correctly handles the "completed,graded" string from the frontend.
-  // It splits the string by the comma and uses the $in operator to find documents
-  // that match ANY of the statuses in the resulting array.
   if (status && status !== 'all') {
     query.status = { $in: status.split(',') };
   }
@@ -173,7 +171,6 @@ router.get('/student', protect, restrictTo('Student'), updateQuizStatuses, async
   const { status } = req.query;
   const query = { studentId: req.user._id };
 
-  // ✅ FIX: This now handles comma-separated statuses (e.g., "completed,graded")
   if (status && status !== 'all') {
     query.status = { $in: status.split(',') };
   }
@@ -181,15 +178,13 @@ router.get('/student', protect, restrictTo('Student'), updateQuizStatuses, async
   const quizzes = await StudentQuiz.find(query)
     .populate({
       path: 'templateId',
-      select: 'title description points questions startTime endTime timeLimit requiresPassword',
+      select: 'title description points questions startTime endTime timeLimit isProtected allowRetakes retakePolicy requiresPassword', // ✅ Ensure new fields are selected
       populate: { path: 'questions' }
     })
     .sort({ dueDate: -1 });
 
   res.status(200).json({ success: true, data: quizzes });
 }));
-
-// server/routes/quizRoutes.js
 
 // @route   GET /api/quizzes/:id
 // @desc    Get a single StudentQuiz by its ID (Unified View)
@@ -199,11 +194,10 @@ router.get('/:id', protect, asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Invalid quiz ID', 400));
   }
   
-  // ✅ This query is now perfected to fetch everything the detail view needs.
   const studentQuiz = await StudentQuiz.findById(req.params.id)
     .populate({
       path: 'templateId',
-      select: 'title description points timeLimit questions',
+      select: 'title description points timeLimit isProtected allowRetakes retakePolicy questions', // ✅ Added new fields here
       populate: {
         path: 'questions',
         model: 'Question'
@@ -242,7 +236,7 @@ router.put('/:id', protect, restrictTo('Teacher', 'Admin'), checkOwnership('quiz
   try {
     session.startTransaction();
 
-    const { questions, ...updateData } = req.body;
+    const { questions, ...updateData } = req.body; // ✅ ...updateData automatically captures isProtected, allowRetakes, retakePolicy
     const template = await QuizTemplate.findById(req.params.id).session(session);
     if (!template) {
       throw new ErrorResponse('Quiz template not found', 404);
@@ -309,6 +303,87 @@ router.put('/:id', protect, restrictTo('Teacher', 'Admin'), checkOwnership('quiz
   }
 }));
 
+// ✅ NEW ROUTE: DUPLICATE QUIZ
+// @route   POST /api/quizzes/:id/duplicate
+// @desc    Duplicate a quiz template and assign it to a new group
+// @access  Private/Teacher,Admin
+router.post('/:id/duplicate', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async (req, res, next) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return next(new ErrorResponse('Invalid quiz ID format', 400));
+  }
+
+  const { groupId } = req.body;
+  if (!groupId || !mongoose.Types.ObjectId.isValid(groupId)) {
+    return next(new ErrorResponse('Valid group ID is required', 400));
+  }
+
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+
+    // 1. Find existing template
+    const originalTemplate = await QuizTemplate.findById(req.params.id).populate('questions').session(session);
+    if (!originalTemplate) {
+      throw new ErrorResponse('Original quiz template not found', 404);
+    }
+
+    // 2. Clone the questions so the new quiz is fully independent
+    const newQuestionsData = originalTemplate.questions.map(q => {
+      const qObj = q.toObject();
+      delete qObj._id;        // Remove old ID
+      delete qObj.createdAt;
+      delete qObj.updatedAt;
+      qObj.createdBy = req.user._id; // Assign to current user
+      return qObj;
+    });
+    
+    const newQuestions = await Question.insertMany(newQuestionsData, { session });
+    const newQuestionIds = newQuestions.map(q => q._id);
+    const totalPoints = newQuestions.reduce((sum, q) => sum + (q.points || 0), 0);
+
+    // 3. Create the new Quiz Template
+    const templateData = {
+      title: `${originalTemplate.title} (Copy)`,
+      description: originalTemplate.description,
+      courseId: [groupId],
+      creatorId: req.user._id,
+      startTime: originalTemplate.startTime,
+      endTime: originalTemplate.endTime,
+      questions: newQuestionIds,
+      points: totalPoints,
+      timeLimit: originalTemplate.timeLimit,
+      isProtected: originalTemplate.isProtected,
+      allowRetakes: originalTemplate.allowRetakes,
+      retakePolicy: originalTemplate.retakePolicy
+    };
+
+    const [newTemplate] = await QuizTemplate.create([templateData], { session });
+
+    // 4. Assign the quiz to the new group's students
+    const group = await Group.findById(groupId).populate('users').session(session);
+    if (!group) {
+      throw new ErrorResponse('Target group not found', 404);
+    }
+
+    const studentIds = group.users.filter(u => u.role === 'Student').map(u => u._id);
+    if (studentIds.length > 0) {
+      await StudentQuiz.createStudentQuizzes(newTemplate, studentIds, groupId, session);
+    }
+
+    await session.commitTransaction();
+    
+    // Return populated template
+    const populatedTemplate = await QuizTemplate.findById(newTemplate._id).populate('questions');
+    res.status(201).json({ success: true, data: populatedTemplate });
+
+  } catch (error) {
+    await session.abortTransaction();
+    next(error);
+  } finally {
+    session.endSession();
+  }
+}));
+
 // @route   DELETE /api/quizzes/:id
 // @desc    Delete a quiz template and associated student quizzes
 // @access  Private/Teacher,Admin
@@ -327,13 +402,8 @@ router.delete('/:id', protect, restrictTo('Teacher', 'Admin'), checkOwnership('q
   session.startTransaction();
   
   try {
-    // Delete associated questions
     await Question.deleteMany({ _id: { $in: template.questions } });
-    
-    // Delete associated student quizzes
     await StudentQuiz.deleteMany({ templateId: template._id });
-    
-    // Delete the template
     await QuizTemplate.findByIdAndDelete(req.params.id);
     
     await session.commitTransaction();
@@ -350,8 +420,70 @@ router.delete('/:id', protect, restrictTo('Teacher', 'Admin'), checkOwnership('q
   }
 }));
 
+// ✅ NEW ROUTE: RETAKE QUIZ
+// @route   POST /api/quizzes/:id/retake
+// @desc    Clear previous attempt and restart quiz
+// @access  Private/Student
+router.post('/:id/retake', protect, restrictTo('Student'), asyncHandler(async (req, res, next) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return next(new ErrorResponse('Invalid student quiz ID', 400));
+  }
+
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+
+    // 1. Find the StudentQuiz and populate template
+    const studentQuiz = await StudentQuiz.findById(req.params.id).populate('templateId').session(session);
+    
+    if (!studentQuiz) {
+      throw new ErrorResponse('Quiz assignment not found', 404);
+    }
+
+    // 2. Authorization check
+    if (studentQuiz.studentId.toString() !== req.user._id.toString()) {
+      throw new ErrorResponse('Not authorized to modify this quiz', 403);
+    }
+
+    // 3. Verify retakes are allowed
+    if (!studentQuiz.templateId.allowRetakes) {
+      throw new ErrorResponse('Retakes are not allowed for this quiz', 400);
+    }
+
+    // 4. Find all old attempts for this StudentQuiz to clear their ledger points
+    const oldAttempts = await QuizAttempt.find({ studentQuiz: studentQuiz._id }).session(session);
+    const oldAttemptIds = oldAttempts.map(attempt => attempt._id);
+
+    // 5. Delete PointsLedger associated with all prior attempts for this quiz
+    if (oldAttemptIds.length > 0) {
+      await PointsLedger.deleteMany({
+        sourceId: { $in: oldAttemptIds },
+        sourceType: 'quiz'
+      }).session(session);
+    }
+
+    // 6. Reset StudentQuiz to original state
+    studentQuiz.status = 'not-started';
+    studentQuiz.grade = undefined;
+    studentQuiz.submission = undefined;
+    studentQuiz.lastAttemptId = undefined; // Clear reference to last attempt
+
+    await studentQuiz.save({ session });
+    
+    await session.commitTransaction();
+    
+    res.status(200).json({ success: true, message: 'Quiz reset successfully. Ready for retake.', data: studentQuiz });
+
+  } catch (error) {
+    await session.abortTransaction();
+    next(error);
+  } finally {
+    session.endSession();
+  }
+}));
+
 // @route   POST /api/quizzes/:id/start
-// @desc    Start a quiz attempt (Per-Student Model)
+// @desc    Start a quiz attempt
 // @access  Private
 router.post('/:id/start', protect, asyncHandler(async (req, res, next) => {
   const studentQuiz = await StudentQuiz.findById(req.params.id).populate('templateId');
@@ -365,16 +497,23 @@ router.post('/:id/start', protect, asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Cannot start quiz at this time.', 400));
   }
   
-  const existingAttempts = await QuizAttempt.countDocuments({ studentQuiz: studentQuiz._id });
-  if (existingAttempts >= 1) { // Max attempts is always 1
-    return next(new ErrorResponse('You have already attempted this quiz.', 400));
+  // NOTE: Logic allows multiple attempts conceptually, but checks if currently in progress
+  const inProgressAttempt = await QuizAttempt.findOne({ 
+    studentQuiz: studentQuiz._id, 
+    status: 'in-progress' 
+  });
+  
+  if (inProgressAttempt) {
+     return res.status(200).json({ success: true, data: inProgressAttempt });
   }
+
+  const existingAttemptsCount = await QuizAttempt.countDocuments({ studentQuiz: studentQuiz._id });
 
   const attempt = new QuizAttempt({
     studentQuiz: studentQuiz._id,
     student: req.user._id,
     template: studentQuiz.templateId._id,
-    attemptNumber: existingAttempts + 1,
+    attemptNumber: existingAttemptsCount + 1,
   });
   await attempt.save();
   
@@ -402,33 +541,27 @@ router.post('/attempt/:attemptId/answer', protect, asyncHandler(async (req, res,
     return next(new ErrorResponse('Attempt not found', 404));
   }
   
-  // Check if attempt belongs to user
   if (attempt.student.toString() !== req.user._id.toString()) {
     return next(new ErrorResponse('Not authorized to access this attempt', 403));
   }
   
-  // Check if attempt is still in progress
   if (attempt.status !== 'in-progress') {
     return next(new ErrorResponse('Attempt is already submitted', 400));
   }
   
-  // Find the question
   const question = await Question.findById(questionId);
   if (!question) {
     return next(new ErrorResponse('Question not found', 404));
   }
   
-  // Check if answer already exists
   const existingAnswerIndex = attempt.answers.findIndex(
     a => a.question && a.question.toString() === questionId
   );
   
-  // Calculate points
   const isCorrect = question.options[selectedOptionIndex] && question.options[selectedOptionIndex].isCorrect;
   const pointsAwarded = isCorrect ? question.points : 0;
   
   if (existingAnswerIndex !== -1) {
-    // Update existing answer
     attempt.answers[existingAnswerIndex] = {
       question: questionId,
       selectedOptionIndex,
@@ -436,7 +569,6 @@ router.post('/attempt/:attemptId/answer', protect, asyncHandler(async (req, res,
       answeredAt: new Date()
     };
   } else {
-    // Add new answer
     attempt.answers.push({
       question: questionId,
       selectedOptionIndex,
@@ -446,24 +578,86 @@ router.post('/attempt/:attemptId/answer', protect, asyncHandler(async (req, res,
   }
   
   const updatedAttempt = await attempt.save();
-  
-  res.json({
-    success: true,
-    data: updatedAttempt
-  });
+  res.json({ success: true, data: updatedAttempt });
 }));
 
-// server/routes/quizRoutes.js
+// ✅ NEW ROUTE: AUTOSAVE QUIZ DRAFT
+// @route   PUT /api/quizzes/attempt/:attemptId/autosave
+// @desc    Auto-save draft answers without submitting
+// @access  Private/Student
+router.put('/attempt/:attemptId/autosave', protect, asyncHandler(async (req, res, next) => {
+  const { attemptId } = req.params;
+  const answers = req.body.answers || req.body; // Accepts array directly or wrapped in {answers: []}
+
+  if (!mongoose.Types.ObjectId.isValid(attemptId)) {
+    return next(new ErrorResponse('Invalid attempt ID', 400));
+  }
+
+  if (!Array.isArray(answers)) {
+    return next(new ErrorResponse('Answers data must be an array', 400));
+  }
+
+  const attempt = await QuizAttempt.findById(attemptId);
+  
+  if (!attempt) {
+    return next(new ErrorResponse('Attempt not found', 404));
+  }
+
+  if (attempt.student.toString() !== req.user._id.toString()) {
+    return next(new ErrorResponse('Not authorized', 403));
+  }
+
+  if (attempt.status !== 'in-progress') {
+    return next(new ErrorResponse('Cannot auto-save. Attempt is no longer in progress.', 400));
+  }
+
+  // Process all submitted answers in the array
+  for (const ans of answers) {
+    const { questionId, selectedOptionIndex } = ans;
+    
+    if (!mongoose.Types.ObjectId.isValid(questionId)) continue;
+    
+    const question = await Question.findById(questionId);
+    if (!question) continue;
+
+    const isCorrect = question.options[selectedOptionIndex] && question.options[selectedOptionIndex].isCorrect;
+    const pointsAwarded = isCorrect ? question.points : 0;
+
+    const existingAnswerIndex = attempt.answers.findIndex(
+      a => a.question && a.question.toString() === questionId.toString()
+    );
+
+    if (existingAnswerIndex !== -1) {
+      attempt.answers[existingAnswerIndex] = {
+        question: questionId,
+        selectedOptionIndex,
+        pointsAwarded,
+        answeredAt: new Date()
+      };
+    } else {
+      attempt.answers.push({
+        question: questionId,
+        selectedOptionIndex,
+        pointsAwarded,
+        answeredAt: new Date()
+      });
+    }
+  }
+
+  // ✅ CRITICAL: Just save the document. Do not change status or call autoGrade.
+  await attempt.save();
+  
+  res.status(200).json({ success: true, message: 'Draft answers saved successfully' });
+}));
 
 // @route   POST /api/quizzes/attempt/:attemptId/submit
-// @desc    Submit a quiz attempt (Per-Student Model)
+// @desc    Submit a quiz attempt
 // @access  Private
 router.post('/attempt/:attemptId/submit', protect, asyncHandler(async (req, res, next) => {
   if (!mongoose.Types.ObjectId.isValid(req.params.attemptId)) {
     return next(new ErrorResponse('Invalid attempt ID', 400));
   }
 
-  // ✅ FIX: Added retry logic for handling write conflicts
   const MAX_RETRIES = 3;
   for (let i = 0; i < MAX_RETRIES; i++) {
     const session = await mongoose.startSession();
@@ -480,7 +674,7 @@ router.post('/attempt/:attemptId/submit', protect, asyncHandler(async (req, res,
       attempt.endTime = new Date();
       attempt.timeTaken = (attempt.endTime - attempt.startTime) / 1000;
       
-      await attempt.autoGrade(); // This calculates and sets attempt.score
+      await attempt.autoGrade(); 
       
       const studentQuiz = await StudentQuiz.findById(attempt.studentQuiz).session(session);
       if (!studentQuiz) throw new ErrorResponse('Associated student quiz not found', 404);
@@ -492,7 +686,6 @@ router.post('/attempt/:attemptId/submit', protect, asyncHandler(async (req, res,
       };
       studentQuiz.grade = { score: attempt.score };
       studentQuiz.lastAttemptId = attempt._id;
-      // The pre-save hook will set the status to 'graded' or 'completed'
 
       await attempt.save({ session });
       await studentQuiz.save({ session });
@@ -512,27 +705,25 @@ router.post('/attempt/:attemptId/submit', protect, asyncHandler(async (req, res,
       await session.commitTransaction();
       session.endSession();
       
-      return res.json({ success: true, data: attempt }); // Success, exit the loop
+      return res.json({ success: true, data: attempt }); 
 
     } catch (error) {
       await session.abortTransaction();
       session.endSession();
       
-      // Check if the error is a write conflict and if we can still retry
       if (error.code === 112 && i < MAX_RETRIES - 1) {
         console.log(`Write conflict detected. Retrying submission (attempt ${i + 2})...`);
-        await new Promise(resolve => setTimeout(resolve, Math.random() * 100)); // Wait a bit before retrying
-        continue; // Go to the next loop iteration
+        await new Promise(resolve => setTimeout(resolve, Math.random() * 100)); 
+        continue; 
       }
       
-      // If it's not a write conflict or we've run out of retries, pass the error on
       return next(error);
     }
   }
 }));
 
 // @route   GET /api/quizzes/attempt/:attemptId/results
-// @desc    Get quiz results (Per-Student Model)
+// @desc    Get quiz results
 // @access  Private
 router.get('/attempt/:attemptId/results', protect, asyncHandler(async (req, res, next) => {
   if (!mongoose.Types.ObjectId.isValid(req.params.attemptId)) {
@@ -557,8 +748,9 @@ router.get('/attempt/:attemptId/results', protect, asyncHandler(async (req, res,
   
   res.json({ success: true, data: attempt });
 }));
+
 // @route   GET /api/quizzes/:id/analytics
-// @desc    Get quiz analytics (Per-Student Model)
+// @desc    Get quiz analytics
 // @access  Private/Teacher,Admin
 router.get('/:id/analytics', protect, restrictTo('Teacher', 'Admin'), checkOwnership('quizTemplate', 'creatorId'), asyncHandler(async (req, res, next) => {
   if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -576,14 +768,11 @@ router.get('/:id/analytics', protect, restrictTo('Teacher', 'Admin'), checkOwner
     return next(new ErrorResponse('Quiz template not found', 404));
   }
   
-  // Get all student quizzes for this template
   const studentQuizzes = await StudentQuiz.find({ templateId: templateId })
     .populate('studentId', 'firstName lastName email')
     .sort({ 'grade.score': -1 });
   
-  // Calculate analytics
   let totalStudents = 0;
-  // Count students across all groups associated with this quiz
   template.courseId.forEach(group => {
     totalStudents += group.users.filter(u => u.role === 'Student').length;
   });
@@ -601,7 +790,6 @@ router.get('/:id/analytics', protect, restrictTo('Teacher', 'Admin'), checkOwner
   
   const completionRate = totalStudents > 0 ? (attemptedCount / totalStudents) * 100 : 0;
   
-  // Get question-level analytics
   const questionAnalytics = [];
   if (template.questions && template.questions.length > 0) {
     for (const questionId of template.questions) {
@@ -643,18 +831,8 @@ router.get('/:id/analytics', protect, restrictTo('Teacher', 'Admin'), checkOwner
   res.json({
     success: true,
     data: {
-      participation: {
-        totalStudents,
-        attemptedCount,
-        completedCount,
-        completionRate
-      },
-      performance: {
-        averageScore,
-        highestScore,
-        lowestScore,
-        scores
-      },
+      participation: { totalStudents, attemptedCount, completedCount, completionRate },
+      performance: { averageScore, highestScore, lowestScore, scores },
       questionAnalytics,
       studentQuizzes
     }
@@ -669,19 +847,14 @@ router.post(
   protect, 
   restrictTo('Teacher', 'Admin'), 
   upload.single('image'), 
-  // ✅ Use the factory to create a specific uploader for this route
   createCloudinaryUploader('quiz-questions'), 
   (req, res) => {
     if (!req.file || !req.file.url) {
       return res.status(400).json({ success: false, message: 'Image upload failed.' });
     }
-    
     res.json({
       success: true,
-      data: {
-        imageUrl: req.file.url,
-        publicId: req.file.public_id
-      }
+      data: { imageUrl: req.file.url, publicId: req.file.public_id }
     });
   }
 );
@@ -693,13 +866,9 @@ router.get('/question-banks/:groupId', protect, restrictTo('Teacher', 'Admin'), 
   const { groupId } = req.params;
   
   if (!mongoose.Types.ObjectId.isValid(groupId)) {
-    return res.status(400).json({
-      success: false,
-      message: 'Invalid group ID'
-    });
+    return res.status(400).json({ success: false, message: 'Invalid group ID' });
   }
   
-  // Get question banks owned by the user or shared with the organization
   const QuestionBank = require('../models/questionBankModel');
   const questionBanks = await QuestionBank.find({
     $or: [
@@ -709,10 +878,7 @@ router.get('/question-banks/:groupId', protect, restrictTo('Teacher', 'Admin'), 
     ]
   }).populate('questions');
   
-  res.json({
-    success: true,
-    data: questionBanks
-  });
+  res.json({ success: true, data: questionBanks });
 }));
 
 // @route   PUT /api/quizzes/grade/:quizId
@@ -722,12 +888,9 @@ router.put('/grade/:quizId', protect, restrictTo('Teacher', 'Admin'), asyncHandl
   const { quizId } = req.params;
   const { score, feedback } = req.body;
 
-  const studentQuiz = await StudentQuiz.findById(quizId)
-    .populate('templateId', 'points title');
+  const studentQuiz = await StudentQuiz.findById(quizId).populate('templateId', 'points title');
 
-  if (!studentQuiz) {
-    return next(new ErrorResponse('Quiz not found', 404));
-  }
+  if (!studentQuiz) return next(new ErrorResponse('Quiz not found', 404));
 
   if (!['submitted', 'past-due'].includes(studentQuiz.status)) {
     return next(new ErrorResponse('Can only grade submitted or past-due quizzes', 400));
@@ -737,13 +900,7 @@ router.put('/grade/:quizId', protect, restrictTo('Teacher', 'Admin'), asyncHandl
     return next(new ErrorResponse(`Score must be between 0 and ${studentQuiz.templateId.points}`, 400));
   }
 
-  studentQuiz.grade = {
-    score,
-    feedback,
-    gradedBy: req.user._id,
-    gradedAt: new Date()
-  };
-
+  studentQuiz.grade = { score, feedback, gradedBy: req.user._id, gradedAt: new Date() };
   studentQuiz.status = 'graded';
   await studentQuiz.save();
 
@@ -767,14 +924,8 @@ router.put('/grade/:quizId', protect, restrictTo('Teacher', 'Admin'), asyncHandl
 // @desc    Get all quiz templates for the bank
 // @access  Private/Teacher,Admin
 router.get('/bank', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async (req, res) => {
-  const quizBank = await QuizTemplate.find({ 
-    creatorId: req.user._id 
-  }).select('title questions startTime endTime');
-  
-  res.json({
-    success: true,
-    data: quizBank
-  });
+  const quizBank = await QuizTemplate.find({ creatorId: req.user._id }).select('title questions startTime endTime');
+  res.json({ success: true, data: quizBank });
 }));
 
 // @route   POST /api/quizzes/:id/request-retake
@@ -784,27 +935,19 @@ router.post('/:id/request-retake', protect, restrictTo('Student'), asyncHandler(
   const { id } = req.params;
   const { reason } = req.body;
   
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return next(new ErrorResponse('Invalid quiz ID', 400));
-  }
+  if (!mongoose.Types.ObjectId.isValid(id)) return next(new ErrorResponse('Invalid quiz ID', 400));
   
   const studentQuiz = await StudentQuiz.findById(id);
+  if (!studentQuiz) return next(new ErrorResponse('Quiz not found', 404));
   
-  if (!studentQuiz) {
-    return next(new ErrorResponse('Quiz not found', 404));
-  }
-  
-  // Check if user is the student
   if (studentQuiz.studentId.toString() !== req.user._id.toString()) {
     return next(new ErrorResponse('Not authorized to request retake for this quiz', 403));
   }
   
-  // Check if retake is allowed
   if (!studentQuiz.templateId.allowRetakes) {
     return next(new ErrorResponse('Retakes are not allowed for this quiz', 400));
   }
   
-  // Create retake request
   const retakeRequest = new RetakeRequest({
     student: req.user._id,
     quiz: studentQuiz._id,
@@ -814,16 +957,9 @@ router.post('/:id/request-retake', protect, restrictTo('Student'), asyncHandler(
   
   await retakeRequest.save();
   
-  res.status(201).json({
-    success: true,
-    data: retakeRequest,
-    message: 'Retake request submitted successfully'
-  });
+  res.status(201).json({ success: true, data: retakeRequest, message: 'Retake request submitted successfully' });
 }));
 
-// server/routes/quizRoutes.js
-
-// ✅ ADD THIS ENTIRE NEW ROUTE for fetching master templates
 // @route   GET /api/quizzes/templates/:groupId
 // @desc    Get all quiz templates for a teacher/admin
 // @access  Private/Teacher,Admin
@@ -837,7 +973,6 @@ router.get('/templates/:groupId', protect, restrictTo('Teacher', 'Admin'), async
 
   const query = { courseId: { $in: [groupId] } };
   
-  // Filter templates by time-based status
   const now = new Date();
   if (status && status !== 'all') {
     if (status === 'upcoming') {
@@ -846,15 +981,11 @@ router.get('/templates/:groupId', protect, restrictTo('Teacher', 'Admin'), async
       query.startTime = { $lte: now };
       query.endTime = { $gte: now };
     } else if (status === 'completed') {
-      // For templates, 'completed' just means the end time has passed.
       query.endTime = { $lt: now };
     }
   }
 
-  const templates = await QuizTemplate.find(query)
-    .populate('courseId', 'name')
-    .sort({ startTime: -1 });
-    
+  const templates = await QuizTemplate.find(query).populate('courseId', 'name').sort({ startTime: -1 });
   res.json({ success: true, data: templates });
 }));
 
