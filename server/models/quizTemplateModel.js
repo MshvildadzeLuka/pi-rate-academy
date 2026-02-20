@@ -50,6 +50,20 @@ const quizTemplateSchema = new Schema({
   shuffleOptions: { 
     type: Boolean, 
     default: false 
+  },
+  // --- NEW FIELDS FOR ENHANCED QUIZ SYSTEM ---
+  isProtected: {
+    type: Boolean,
+    default: false
+  },
+  allowRetakes: {
+    type: Boolean,
+    default: false
+  },
+  retakePolicy: {
+    type: String,
+    enum: ['highest', 'latest', 'average'],
+    default: 'highest'
   }
 }, { 
   timestamps: true
