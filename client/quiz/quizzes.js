@@ -27,7 +27,11 @@ const QUIZ_ACTIONS = {
     ADD_FROM_BANK: 'add-from-bank',
     REQUEST_RETAKE: 'request-retake',
     REVIEW_QUIZ: 'review-quiz',
-    SELECT_QUIZ_FROM_BANK: 'select-quiz-from-bank'
+    SELECT_QUIZ_FROM_BANK: 'select-quiz-from-bank',
+    DUPLICATE_QUIZ: 'duplicate-quiz', // NEW
+    RETAKE_QUIZ: 'retake-quiz', // NEW
+    APPROVE_REQUEST: 'approve-request',
+    DENY_REQUEST: 'deny-request'
 };
 
 const QUIZ_STATUS = {
@@ -91,14 +95,11 @@ const utils = {
      */
     renderMath(element) {
         if (window.MathJax && window.MathJax.typesetPromise) {
-            // This clears any previous typesetting on the element before re-rendering.
-            // It prevents potential issues with content that changes rapidly.
             window.MathJax.startup.promise = window.MathJax.startup.promise
                 .then(() => window.MathJax.typesetPromise([element]))
                 .catch((err) => console.error('MathJax typeset error:', err));
         }
     },
-
 
     // Calculate quiz status with improved logic
     calculateQuizStatus(quiz) {
@@ -274,41 +275,6 @@ const utils = {
         return `${score}/${total} (${percentage}%)`;
     },
     
-    // Start timer with robust error handling
-    startTimer(duration, onTick, onComplete) {
-        try {
-            let timeLeft = duration;
-            onTick(timeLeft);
-            
-            return setInterval(() => {
-                timeLeft--;
-                onTick(timeLeft);
-                if (timeLeft <= 0) {
-                    clearInterval(state.quizTimer);
-                    onComplete();
-                }
-            }, 1000);
-        } catch (error) {
-            console.error('Error starting timer:', error);
-            return null;
-        }
-    },
-    
-    // Shuffle array (Fisher-Yates algorithm)
-    shuffleArray(array) {
-        try {
-            const newArray = [...array];
-            for (let i = newArray.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-            }
-            return newArray;
-        } catch (error) {
-            console.error('Error shuffling array:', error);
-            return array;
-        }
-    },
-    
     // Validate MongoDB ObjectId
     isValidObjectId(id) {
         return id && typeof id === 'string' && id.match(/^[0-9a-fA-F]{24}$/);
@@ -327,7 +293,6 @@ const utils = {
         };
     },
     
-    // Generate a unique ID for temporary elements
     generateTempId() {
         return `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
@@ -382,37 +347,29 @@ const apiService = {
     // Fetch initial data with error handling
     async fetchInitialData() {
         try {
-            // Promise.allSettled is great because it won't fail completely if one request fails.
             const [userResult, groupsResult] = await Promise.allSettled([
                 this.fetch('/users/profile'),
                 this.fetch('/groups')
             ]);
             
             if (userResult.status === 'rejected') {
-                // If fetching the user fails, it's a critical error.
                 throw new Error(`Failed to fetch user profile: ${userResult.reason.message}`);
             }
             
-            // ✅ Robustness: Explicitly assign the user object. The /users/profile route returns it directly.
             const user = userResult.value; 
-
-            // ✅ Robustness: Safely handle the groups response, which might have a .data wrapper.
             const groupsResponse = groupsResult.status === 'fulfilled' ? groupsResult.value : { data: [] };
             const groups = groupsResponse.data || groupsResponse || [];
 
             return { user, groups };
         } catch (error) {
             console.error('Failed to fetch initial data:', error);
-            // This will trigger the redirect to login if the token is invalid
             if (error.message.includes('Session expired')) {
                 return { user: null, groups: [] };
             }
-            // Return empty state on other errors
             return { user: null, groups: [] };
         }
     },
     
-    // Fetch student quizzes with status filtering
     async fetchStudentQuizzes(status) {
         try {
             let endpoint = '/quizzes/student';
@@ -427,7 +384,6 @@ const apiService = {
         }
     },
     
-    // Fetch quizzes for a specific group (teacher view)
     async fetchQuizzesForGroup(groupId, status) {
         try {
             if (!utils.isValidObjectId(groupId)) {
@@ -446,13 +402,10 @@ const apiService = {
         }
     },
     
-    // Fetch quiz by ID with validation
     async fetchQuizById(quizId, getRawResponse = false) {
-        // This helper function works perfectly with the new fetch function.
         return this.fetch(`/quizzes/${quizId}`, {}, getRawResponse);
     },
     
-    // Create a new quiz
     async createQuiz(quizData) {
         try {
             const validationErrors = utils.validateQuizData(quizData);
@@ -460,7 +413,6 @@ const apiService = {
                 throw new Error(validationErrors[0]);
             }
             
-            // Calculate total points
             quizData.totalPoints = quizData.questions.reduce((sum, question) => {
                 return sum + (parseInt(question.points) || 0);
             }, 0);
@@ -476,7 +428,6 @@ const apiService = {
         }
     },
     
-    // Update an existing quiz
     async updateQuiz(quizId, quizData) {
         try {
             if (!utils.isValidObjectId(quizId)) {
@@ -488,7 +439,6 @@ const apiService = {
                 throw new Error(validationErrors[0]);
             }
             
-            // Calculate total points
             quizData.totalPoints = quizData.questions.reduce((sum, question) => {
                 return sum + (parseInt(question.points) || 0);
             }, 0);
@@ -504,7 +454,6 @@ const apiService = {
         }
     },
     
-    // Delete a quiz
     async deleteQuiz(quizId) {
         try {
             if (!utils.isValidObjectId(quizId)) {
@@ -518,8 +467,34 @@ const apiService = {
             throw error;
         }
     },
+
+    // NEW: Duplicate Quiz Endpoint
+    async duplicateQuiz(quizId, groupId) {
+        try {
+            const response = await this.fetch(`/quizzes/${quizId}/duplicate`, {
+                method: 'POST',
+                body: JSON.stringify({ groupId })
+            });
+            return response.data || response;
+        } catch (error) {
+            console.error('Failed to duplicate quiz:', error);
+            throw error;
+        }
+    },
+
+    // NEW: Retake Quiz Endpoint
+    async retakeQuiz(studentQuizId) {
+        try {
+            const response = await this.fetch(`/quizzes/${studentQuizId}/retake`, {
+                method: 'POST'
+            });
+            return response.data || response;
+        } catch (error) {
+            console.error('Failed to request retake:', error);
+            throw error;
+        }
+    },
     
-    // Start a quiz attempt
     async startQuizAttempt(quizId, password = null) {
         try {
             if (!utils.isValidObjectId(quizId)) {
@@ -538,7 +513,6 @@ const apiService = {
         }
     },
     
-    // Submit an answer
     async submitAnswer(attemptId, questionId, selectedOptionIndex) {
         try {
             if (!utils.isValidObjectId(attemptId) || !utils.isValidObjectId(questionId)) {
@@ -558,8 +532,20 @@ const apiService = {
             throw error;
         }
     },
+
+    // NEW: Auto Save Answers Endpoint
+    async autoSaveAnswers(attemptId, answers) {
+        try {
+            return await this.fetch(`/quizzes/attempt/${attemptId}/autosave`, {
+                method: 'PUT',
+                body: JSON.stringify({ answers })
+            });
+        } catch (error) {
+            console.warn('Auto-save failed silently in background:', error);
+            // Don't throw to avoid disrupting UI
+        }
+    },
     
-    // Submit a quiz attempt
     async submitQuizAttempt(attemptId, answers) {
         try {
             if (!utils.isValidObjectId(attemptId)) {
@@ -576,7 +562,6 @@ const apiService = {
         }
     },
     
-    // Fetch quiz results
     async fetchQuizResults(attemptId) {
         try {
             if (!utils.isValidObjectId(attemptId)) {
@@ -591,7 +576,6 @@ const apiService = {
         }
     },
     
-    // Fetch quiz analytics
     async fetchQuizAnalytics(quizId) {
         try {
             if (!utils.isValidObjectId(quizId)) {
@@ -606,7 +590,6 @@ const apiService = {
         }
     },
     
-    // Upload question image
     async uploadQuestionImage(file) {
         try {
             if (!file || !(file instanceof File)) {
@@ -627,7 +610,6 @@ const apiService = {
         }
     },
     
-    // Fetch question banks
     async fetchQuestionBanks(groupId) {
         try {
             if (!utils.isValidObjectId(groupId)) {
@@ -642,7 +624,6 @@ const apiService = {
         }
     },
     
-    // Request a retake
     async requestRetake(quizId, reason) {
         try {
             if (!utils.isValidObjectId(quizId)) {
@@ -664,7 +645,6 @@ const apiService = {
         }
     },
     
-    // Fetch quiz bank
     async fetchQuizBank() {
         try {
             const response = await this.fetch('/quizzes/bank');
@@ -699,7 +679,6 @@ const apiService = {
 
 // UI Renderer with enhanced functionality
 const uiRenderer = {
-    // Initialize the UI based on user role
     init() {
         try {
             if (!state.currentUser) {
@@ -710,15 +689,9 @@ const uiRenderer = {
             if (elements.container) {
                 elements.container.classList.add(`role-${state.currentUser.role.toLowerCase()}`);
             }
-            
-            // ✅ DEBUGGING: Check the role right before the UI decision is made.
-            console.log('--- UI INIT: Checking role ---:', state.currentUser.role);
 
             if ([ROLES.TEACHER, ROLES.ADMIN].includes(state.currentUser.role)) {
-                console.log('SUCCESS: User is a Teacher or Admin. Rendering admin controls.');
                 this.renderTeacherAdminUI();
-            } else {
-                console.log('INFO: User is a Student. Skipping admin controls.');
             }
             
             this.renderTabs();
@@ -728,13 +701,9 @@ const uiRenderer = {
         }
     },
 
-    // Render teacher/admin specific UI
     renderTeacherAdminUI() {
         try {
-            if (!elements.teacherControls) {
-                console.error('Teacher controls element not found in HTML.');
-                return;
-            }
+            if (!elements.teacherControls) return;
             
             elements.teacherControls.style.display = 'flex';
             
@@ -755,7 +724,6 @@ const uiRenderer = {
         }
     },
 
-    // Render student specific UI
     renderStudentUI() {
         try {
             this.renderTabs();
@@ -764,20 +732,17 @@ const uiRenderer = {
         }
     },
 
-    // Render navigation tabs
     renderTabs() {
         try {
             if (!state.currentUser || !elements.tabsNav) return;
 
             const isTeacher = [ROLES.TEACHER, ROLES.ADMIN].includes(state.currentUser.role);
             
-            // Show or hide the requests tab based on role
             const requestsTab = document.getElementById('requests-tab');
             if (requestsTab) {
                 requestsTab.style.display = isTeacher ? 'inline-block' : 'none';
             }
             
-            // Highlight the correct active tab
             elements.tabsNav.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.tab === state.activeTab);
             });
@@ -795,7 +760,6 @@ const uiRenderer = {
             const status = quiz.status; 
             const statusClass = status.toLowerCase().replace(/\s+/g, '-');
             
-            // This logic correctly displays the score for completed/graded quizzes
             let statusDisplay = `<span class="quiz-item-status status-badge ${statusClass}">${status}</span>`;
             if ((status === 'completed' || status === 'graded') && quiz.grade && typeof quiz.grade.score === 'number') {
                 const scoreText = `${quiz.grade.score}/${quiz.templatePoints}`;
@@ -819,7 +783,6 @@ const uiRenderer = {
         }
     },
 
-    // ✅ ADD THIS NEW FUNCTION to render the requests list
     renderRequestsList(requests) {
         const container = elements.listView;
         if (!container) return;
@@ -845,14 +808,12 @@ const uiRenderer = {
         `).join('');
     },
 
-    // Update the current view based on state
     updateView() {
         try {
             if (!state.currentUser) return;
             
             this.renderTabs();
             
-            // Show/hide list and detail views
             if (elements.listView) {
                 elements.listView.style.display = state.currentView === 'list' ? 'block' : 'none';
             }
@@ -861,7 +822,6 @@ const uiRenderer = {
                 elements.detailView.style.display = state.currentView === 'detail' ? 'block' : 'none';
             }
             
-            // Render the appropriate view
             if (state.currentView === 'list') {
                 this.renderListView();
             } else if (state.currentView === 'detail') {
@@ -872,7 +832,6 @@ const uiRenderer = {
         }
     },
 
-    // Render the list view of quizzes
     renderListView() {
         const container = elements.listView;
         if (!container) return;
@@ -896,11 +855,8 @@ const uiRenderer = {
             .join('');
     },
 
-
-       // Render the detailed view of a quiz
     renderDetailView() {
         try {
-            // ✅ This is a safe check before attempting to render.
             if (!state.detailedQuiz) {
                 elements.detailView.innerHTML = `
                     <div class="error-message">
@@ -915,10 +871,8 @@ const uiRenderer = {
             const quiz = state.detailedQuiz;
             const status = quiz.status;
             
-            // This logic routes to the correct view based on the quiz status.
             if (status === 'completed' || status === 'graded') {
                 this.renderUnifiedResultsView(quiz);
-
             } else {
                 this.renderInstructionsView(quiz);
             }
@@ -928,7 +882,7 @@ const uiRenderer = {
             elements.detailView.innerHTML = `<div class="error-message"><p>A critical error occurred while displaying quiz details.</p></div>`;
         }
     },
-    // Render student-specific detail view
+
     async renderUnifiedResultsView(quiz) {
         const uniqueAnalyticsId = `analytics-${quiz.templateId._id}`;
         
@@ -953,6 +907,7 @@ const uiRenderer = {
                     </div>
                 </div>
                 <div class="results-actions">
+                    ${(quiz.templateId?.allowRetakes) ? `<button class="btn btn-warning" data-action="${QUIZ_ACTIONS.RETAKE_QUIZ}" data-quiz-id="${quiz._id}" style="margin-right:10px;"><i class="fas fa-redo"></i> Retake Quiz</button>` : ''}
                     ${quiz.lastAttemptId ? `<button class="btn btn-primary" data-action="${QUIZ_ACTIONS.REVIEW_QUIZ}" data-attempt-id="${quiz.lastAttemptId}">Review Answers</button>` : ''}
                 </div>
             </div>
@@ -975,14 +930,18 @@ const uiRenderer = {
             const timeLimit = quiz.templateId?.timeLimit || 'No time limit';
             const totalPoints = quiz.templatePoints || 0;
             const description = quiz.templateId?.description || 'No description provided';
+            const isProtected = quiz.templateId?.isProtected || false; // NEW
 
-            // ✅ This block contains the specific rules, translated into Georgian.
             const instructionsInGeorgian = `
                 <h3 style="color: var(--warning-accent);">ყურადღება! მნიშვნელოვანი ინსტრუქციები</h3>
                 <ul class="instructions-list">
-                    <li><i class="fas fa-arrows-alt"></i> ქვიზის დაწყებისას, გვერდი გადავა სრულ ეკრანზე.</li>
-                    <li><i class="fas fa-sign-out-alt"></i> სრული ეკრანიდან გასვლა ან სხვა ფანჯარაში გადასვლა გამოიწვევს ქვიზის ავტომატურ დასრულებას.</li>
-                    <li><i class="fas fa-camera"></i> სქრინშოთის გადაღება და კოპირება აკრძალულია.</li>
+                    ${isProtected ? `
+                        <li><i class="fas fa-arrows-alt"></i> ქვიზის დაწყებისას, გვერდი გადავა სრულ ეკრანზე.</li>
+                        <li><i class="fas fa-sign-out-alt"></i> სრული ეკრანიდან გასვლა ან სხვა ფანჯარაში გადასვლა გამოიწვევს ქვიზის ავტომატურ დასრულებას.</li>
+                        <li><i class="fas fa-camera"></i> სქრინშოთის გადაღება და კოპირება აკრძალულია.</li>
+                    ` : `
+                        <li><i class="fas fa-info-circle"></i> ეს არის ღია ქვიზი. შეგიძლიათ გამოიყენოთ სხვა რესურსები, მაგრამ დაიცავით აკადემიური კეთილსინდისიერება.</li>
+                    `}
                     <li><i class="fas fa-clock"></i> ქვიზი ავტომატურად დასრულდება დროის ამოწურვისას.</li>
                 </ul>
             `;
@@ -1004,6 +963,7 @@ const uiRenderer = {
                             <p><strong>Time Limit:</strong> ${timeLimit} ${typeof timeLimit === 'number' ? 'minutes' : ''}</p>
                             <p><strong>Available From:</strong> ${utils.formatDate(startTime)}</p>
                             <p><strong>Due Date:</strong> ${utils.formatDate(endTime)}</p>
+                            <p><strong>Security:</strong> ${isProtected ? '<span style="color:red">Protected (Anti-Cheat ON)</span>' : '<span style="color:green">Open (Anti-Cheat OFF)</span>'}</p>
                         </div>
                         
                         ${instructionsInGeorgian}
@@ -1038,7 +998,6 @@ const uiRenderer = {
         }
     },
 
-    // Render quiz statistics section
     renderQuizStats(quiz) {
         return `
             <div class="quiz-stats-container">
@@ -1064,34 +1023,22 @@ const uiRenderer = {
         `;
     },
 
-    // Load and display quiz analytics
     async loadQuizAnalytics(quizId) {
         try {
-            if (!utils.isValidObjectId(quizId)) {
-                console.error('Invalid quiz ID for analytics:', quizId);
-                return;
-            }
-            
+            if (!utils.isValidObjectId(quizId)) return;
             const analytics = await apiService.fetchQuizAnalytics(quizId);
-            if (!analytics) {
-                console.error('No analytics data received');
-                return;
-            }
+            if (!analytics) return;
             
-            // Update stats
             if (document.getElementById('total-students')) {
                 document.getElementById('total-students').textContent = analytics.participation?.totalStudents || 0;
             }
-            
             if (document.getElementById('completed-attempts')) {
                 document.getElementById('completed-attempts').textContent = analytics.participation?.attemptedCount || 0;
             }
-            
             if (document.getElementById('average-score')) {
                 document.getElementById('average-score').textContent = `${(analytics.performance?.averageScore || 0).toFixed(1)}%`;
             }
 
-            // Update student attempts list
             const studentList = document.getElementById('student-attempts-list');
             if (!studentList) return;
             
@@ -1124,20 +1071,9 @@ const uiRenderer = {
         } catch (error) {
             console.error('Failed to load quiz analytics:', error);
             this.showNotification('Failed to load quiz analytics', 'error');
-            
-            const studentList = document.getElementById('student-attempts-list');
-            if (studentList) {
-                studentList.innerHTML = `
-                    <div class="error-message">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <p>Failed to load analytics data.</p>
-                    </div>
-                `;
-            }
         }
     },
 
-    // Open a modal dialog
     openModal(type, data = null, isLayered = false) {
         try {
             const templateId = `template-${type}-modal`;
@@ -1156,10 +1092,7 @@ const uiRenderer = {
             const content = template.content.cloneNode(true);
             const modalElement = content.querySelector('.modal');
             
-            if (!modalElement) {
-                console.error('Modal element not found in template');
-                return;
-            }
+            if (!modalElement) return;
             
             modalElement.id = `modal-${type}-${Date.now()}`;
             elements.modalBackdrop.appendChild(content);
@@ -1173,21 +1106,14 @@ const uiRenderer = {
                     this.setupInstructionsModal(modalElement);
                     break;
                 case 'quiz-taking':
-                    // This block intentionally does NOT add event listeners for navigation.
-                    // The global handleGlobalClick function is the single source of truth for those actions.
                     this.setupQuizTakingModal(modalElement);
                     break;
                 case 'quiz-bank':
+                case 'question-bank': 
                     this.setupQuestionBankModal(modalElement);
                     break;
-                case 'question-bank': // Added for completeness from your file
-                    this.setupQuestionBankModal(modalElement);
-                    break;
-                default:
-                    console.warn(`Unknown modal type: ${type}`);
             }
 
-            // Add event listeners for all "close" buttons within the new modal
             modalElement.querySelectorAll(`[data-action="${QUIZ_ACTIONS.CLOSE_MODAL}"]`).forEach(btn => {
                 btn.addEventListener('click', () => this.closeModal());
             });
@@ -1198,19 +1124,13 @@ const uiRenderer = {
         }
     },
 
-    // Close the current modal
     closeModal() {
         try {
             if (state.modalStack.length > 0) {
                 const modalId = state.modalStack.pop();
                 const modalElement = document.getElementById(modalId);
-                
-                if (modalElement) {
-                    modalElement.remove();
-                }
+                if (modalElement) modalElement.remove();
             }
-            
-            // Hide backdrop if no modals left
             if (state.modalStack.length === 0) {
                 elements.modalBackdrop.style.display = 'none';
                 elements.modalBackdrop.innerHTML = '';
@@ -1220,7 +1140,6 @@ const uiRenderer = {
         }
     },
 
-    // Setup quiz creation/editing modal
     setupQuizModal(modalElement, data) {
         try {
             const groupSelect = modalElement.querySelector('#quiz-group');
@@ -1244,7 +1163,7 @@ const uiRenderer = {
             modalElement.querySelector('#quiz-start-time').value = utils.formatDateTimeLocal(now);
             modalElement.querySelector('#quiz-end-time').value = utils.formatDateTimeLocal(oneHourLater);
 
-            if (data) { // Prefill data if editing
+            if (data) { 
                 modalElement.querySelector('#modal-title').textContent = 'Edit Quiz';
                 modalElement.querySelector('#quiz-title').value = data.title || '';
                 modalElement.querySelector('#quiz-description').value = data.description || '';
@@ -1253,7 +1172,10 @@ const uiRenderer = {
                 modalElement.querySelector('#quiz-time-limit').value = data.timeLimit || 60;
                 modalElement.querySelector('#quiz-group').value = data.group?._id || data.groupId || data.courseId[0]?._id || '';
                 
-                // ✅ FIX: Removed pre-filling for deleted fields (maxAttempts, showResults, password, etc.)
+                // NEW: Populate advanced settings
+                if(modalElement.querySelector('#is-protected')) modalElement.querySelector('#is-protected').checked = data.isProtected || false;
+                if(modalElement.querySelector('#allow-retakes')) modalElement.querySelector('#allow-retakes').checked = data.allowRetakes || false;
+                if(modalElement.querySelector('#retake-policy')) modalElement.querySelector('#retake-policy').value = data.retakePolicy || 'highest';
                 
                 this.renderQuestions(data.questions, modalElement);
             } else {
@@ -1266,24 +1188,17 @@ const uiRenderer = {
                 }
             }, 300));
 
-            // ✅ FIX: Removed event listener for the deleted password checkbox.
-
             const addFromBankBtn = modalElement.querySelector('#add-from-quiz-bank-btn');
             if (addFromBankBtn) {
-                addFromBankBtn.addEventListener('click', () => {
-                    eventHandlers.handleAddFromQuizBank();
-                });
+                addFromBankBtn.addEventListener('click', () => eventHandlers.handleAddFromQuizBank());
             }
 
             const form = modalElement.querySelector('form');
             if (form) {
                 form.onsubmit = async (e) => {
                     e.preventDefault();
-                    if (data) {
-                        await eventHandlers.handleUpdateQuiz(data._id, form);
-                    } else {
-                        await eventHandlers.handleCreateQuiz(form);
-                    }
+                    if (data) await eventHandlers.handleUpdateQuiz(data._id, form);
+                    else await eventHandlers.handleCreateQuiz(form);
                 };
             }
         } catch (error) {
@@ -1291,16 +1206,8 @@ const uiRenderer = {
         }
     },
 
-    // Setup quiz instructions modal
     setupInstructionsModal(modalElement) {
         try {
-            if (state.detailedQuiz?.templateId?.requiresPassword) {
-                const passwordContainer = modalElement.querySelector('#password-field-container');
-                if (passwordContainer) {
-                    passwordContainer.style.display = 'block';
-                }
-            }
-            
             const instructionsText = modalElement.querySelector('#quiz-instructions-text');
             const instructionsTitle = modalElement.querySelector('.quiz-instructions-title');
             
@@ -1322,11 +1229,8 @@ const uiRenderer = {
                 });
                 
                 startButton.addEventListener('click', () => {
-                    const password = state.detailedQuiz.templateId?.requiresPassword ? 
-                        modalElement.querySelector('#quiz-password')?.value : null;
-                    
                     this.closeModal();
-                    eventHandlers.handleRealStartQuiz(state.detailedQuiz._id, password);
+                    eventHandlers.handleRealStartQuiz(state.detailedQuiz._id, null);
                 });
             }
         } catch (error) {
@@ -1334,7 +1238,7 @@ const uiRenderer = {
         }
     },
 
-    // Setup quiz taking modal
+    // NEW MAJOR REWRITE: SCROLLABLE FEED VIEW
     setupQuizTakingModal(modalElement) {
         try {
             const quiz = state.detailedQuiz;
@@ -1347,61 +1251,95 @@ const uiRenderer = {
                 return;
             }
             
-            const questionIndex = state.currentQuestionIndex;
-            const question = questions[questionIndex];
-            
-            if (!question) {
-                this.showNotification('Question not found.', 'error');
-                this.closeModal();
-                return;
-            }
-
             modalElement.querySelector('.quiz-title-taking').textContent = quiz.templateTitle;
-            modalElement.querySelector('#total-questions').textContent = questions.length;
-            modalElement.querySelector('#current-question-number').textContent = questionIndex + 1;
-            
-            const progress = ((questionIndex + 1) / questions.length) * 100;
-            modalElement.querySelector('.progress-fill').style.width = `${progress}%`;
-            
-            // --- FIX: Use innerHTML to ensure LaTeX delimiters are preserved ---
-            const questionTextElement = modalElement.querySelector('.question-text-taking');
-            questionTextElement.innerHTML = question.text; // Content from DB is assumed to be safe
-            
-            const imageContainer = modalElement.querySelector('.question-image-container');
-            if (question.imageUrl) {
-                imageContainer.querySelector('img').src = question.imageUrl;
-                imageContainer.style.display = 'flex';
-            } else {
-                imageContainer.style.display = 'none';
+            if(modalElement.querySelector('#total-questions-count')) {
+                modalElement.querySelector('#total-questions-count').textContent = questions.length;
             }
             
-            const optionsContainer = modalElement.querySelector('.options-container-taking');
-            optionsContainer.innerHTML = '';
-            (question.options || []).forEach((option, index) => {
-                const optionElement = document.createElement('div');
-                optionElement.className = 'option-taking';
-                optionElement.dataset.optionIndex = index;
+            const container = modalElement.querySelector('#active-quiz-questions-container');
+            if(!container) return;
+            container.innerHTML = ''; 
+
+            // Render ALL questions vertically
+            questions.forEach((question, index) => {
+                const questionWrapper = document.createElement('div');
+                questionWrapper.className = 'question-feed-item';
+                questionWrapper.style.cssText = 'padding: 20px; background: #fafafa; border: 1px solid #eaeaea; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);';
                 
-                // --- FIX: Use innerHTML here as well for options with LaTeX ---
-                optionElement.innerHTML = `
-                    <span class="option-letter">${String.fromCharCode(65 + index)}</span>
-                    <span class="option-text">${option.text}</span>
-                `;
-                
-                const existingAnswer = attempt.answers?.find(a => a.question?.toString() === question._id.toString());
-                if (existingAnswer && existingAnswer.selectedOptionIndex === index) {
-                    optionElement.classList.add('selected');
+                let imageHtml = '';
+                if (question.imageUrl) {
+                    imageHtml = `
+                    <div class="question-image-container" style="margin-top: 15px; text-align: center;">
+                        <img src="${question.imageUrl}" alt="Question Image" style="max-width: 100%; border-radius: 8px; border: 1px solid #ddd;">
+                    </div>`;
                 }
 
-                optionElement.addEventListener('click', () => eventHandlers.handleSelectOption(index));
-                optionsContainer.appendChild(optionElement);
-            });
-            
-            modalElement.querySelector('.prev-question-btn').disabled = (questionIndex === 0);
-            modalElement.querySelector('.next-question-btn').style.display = (questionIndex === questions.length - 1) ? 'none' : 'block';
-            modalElement.querySelector('.finish-quiz-btn').style.display = (questionIndex === questions.length - 1) ? 'block' : 'none';
+                let optionsHtml = '<div class="options-container-taking" style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">';
+                
+                (question.options || []).forEach((opt, optIndex) => {
+                    const existingAnswer = attempt.answers?.find(a => a.question?.toString() === question._id.toString());
+                    const isSelected = existingAnswer && existingAnswer.selectedOptionIndex === optIndex ? 'selected' : '';
+                    
+                    optionsHtml += `
+                        <div class="option-taking ${isSelected}" data-question-id="${question._id}" data-option-index="${optIndex}" style="padding: 15px; border: 2px solid ${isSelected ? 'var(--primary-color)' : '#e0e0e0'}; border-radius: 8px; cursor: pointer; display: flex; align-items: center; background: ${isSelected ? 'var(--primary-light)' : '#fff'}; transition: all 0.2s;">
+                            <span class="option-letter" style="font-weight: bold; margin-right: 15px; background: ${isSelected ? 'var(--primary-color)' : '#eee'}; color: ${isSelected ? '#fff' : '#333'}; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">${String.fromCharCode(65 + optIndex)}</span>
+                            <span class="option-text">${opt.text}</span>
+                        </div>
+                    `;
+                });
+                optionsHtml += '</div>';
 
-            // --- FIX: Tell MathJax to render all the new math content in the modal ---
+                questionWrapper.innerHTML = `
+                    <div class="question-header" style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px;">
+                        <h3 style="margin: 0; color: var(--primary-color);">კითხვა ${index + 1}</h3>
+                        <span class="points-badge" style="background: #eee; padding: 4px 10px; border-radius: 20px; font-size: 0.9rem;">${question.points} ქულა</span>
+                    </div>
+                    <div class="question-text-taking" style="font-size: 1.1rem; line-height: 1.5;">${question.text}</div>
+                    ${imageHtml}
+                    ${optionsHtml}
+                `;
+                container.appendChild(questionWrapper);
+            });
+
+            // Bind click events for all options
+            const allOptions = modalElement.querySelectorAll('.option-taking');
+            allOptions.forEach(opt => {
+                opt.addEventListener('click', (e) => {
+                    const target = e.currentTarget;
+                    const qId = target.dataset.questionId;
+                    const optIdx = parseInt(target.dataset.optionIndex);
+                    
+                    const parentContainer = target.closest('.options-container-taking');
+                    parentContainer.querySelectorAll('.option-taking').forEach(sibling => {
+                        sibling.classList.remove('selected');
+                        sibling.style.border = '2px solid #e0e0e0';
+                        sibling.style.background = '#fff';
+                        sibling.querySelector('.option-letter').style.background = '#eee';
+                        sibling.querySelector('.option-letter').style.color = '#333';
+                    });
+                    
+                    target.classList.add('selected');
+                    target.style.border = '2px solid var(--primary-color)';
+                    target.style.background = 'var(--primary-light, #e6f0ff)';
+                    target.querySelector('.option-letter').style.background = 'var(--primary-color)';
+                    target.querySelector('.option-letter').style.color = '#fff';
+                    
+                    this.updateAnsweredCount(modalElement);
+                    eventHandlers.handleSelectOptionFeed(qId, optIdx); // Background autosave
+                });
+            });
+
+            this.updateAnsweredCount(modalElement);
+
+            const submitEntireBtn = modalElement.querySelector('#submit-entire-quiz-btn');
+            if (submitEntireBtn) {
+                submitEntireBtn.addEventListener('click', () => {
+                    if(confirm("დარწმუნებული ხართ რომ გსურთ ქვიზის დასრულება?")) {
+                        eventHandlers.handleFinishQuiz();
+                    }
+                });
+            }
+
             utils.renderMath(modalElement);
 
         } catch (error) {
@@ -1409,45 +1347,45 @@ const uiRenderer = {
         }
     },
 
-    // Setup question bank modal
+    // NEW: Function to update the sticky progress tracker efficiently
+    updateAnsweredCount(modalElement) {
+        const optionContainers = modalElement.querySelectorAll('.options-container-taking');
+        let answered = 0;
+        optionContainers.forEach(container => {
+            if (container.querySelector('.selected')) {
+                answered++;
+            }
+        });
+        const countSpan = modalElement.querySelector('#answered-count');
+        if (countSpan) countSpan.textContent = answered;
+    },
+
     setupQuestionBankModal(modalElement) {
         try {
             const groupSelect = document.querySelector('#quiz-group');
-            if (!groupSelect) {
-                this.showNotification('Please select a group first', 'error');
-                this.closeModal();
-                return;
-            }
-            
-            const groupId = groupSelect.value;
-            if (!groupId) {
+            if (!groupSelect || !groupSelect.value) {
                 this.showNotification('Please select a group first', 'error');
                 this.closeModal();
                 return;
             }
 
-            // Fetch question banks
-            apiService.fetchQuestionBanks(groupId)
+            apiService.fetchQuestionBanks(groupSelect.value)
                 .then(banks => {
                     state.questionBanks = banks;
-                    
                     const banksContainer = modalElement.querySelector('.quiz-bank-list');
                     if (!banksContainer) return;
                     
                     banksContainer.innerHTML = '';
-                    
                     if (banks.length === 0) {
-                        banksContainer.innerHTML = '<p class="empty-state">No question banks available for this group.</p>';
+                        banksContainer.innerHTML = '<p class="empty-state">No question banks available.</p>';
                         return;
                     }
                     
-                    // Render question banks
                     banks.forEach(bank => {
                         const bankElement = document.createElement('div');
                         bankElement.className = 'question-bank-item';
                         bankElement.innerHTML = `
                             <h4>${utils.escapeHTML(bank.name)}</h4>
-                            <p>${utils.escapeHTML(bank.description || 'No description')}</p>
                             <div class="bank-questions">
                                 ${bank.questions.map(q => `
                                     <div class="bank-question" data-question-id="${q._id}">
@@ -1469,43 +1407,31 @@ const uiRenderer = {
         }
     },
 
-    // Update LaTeX preview
     updateLatexPreview(inputElement) {
         try {
             const previewElement = inputElement.nextElementSibling;
             if (previewElement && previewElement.classList.contains('latex-preview')) {
-                // --- FIX: Directly set the raw value to innerHTML. ---
-                // MathJax needs the raw, un-escaped LaTeX string to process it.
-                // We trust this input because it's coming from a teacher/admin in the editor.
                 previewElement.innerHTML = inputElement.value;
-                
-                // --- FIX: Explicitly call the renderMath helper ---
                 utils.renderMath(previewElement);
             }
         } catch (error) {
             console.error('Error updating LaTeX preview:', error);
         }
     },
-    // Add a new question to the form
+
     addNewQuestion(modalElement) {
         try {
             const questionsContainer = modalElement.querySelector('#questions-container');
             const questionTemplate = document.getElementById('template-question-item');
             
-            if (!questionTemplate || !questionsContainer) {
-                console.error('Question item template or container not found');
-                return;
-            }
+            if (!questionTemplate || !questionsContainer) return;
 
-            // Clone question template
             const questionClone = questionTemplate.content.cloneNode(true);
             const questionItem = questionClone.querySelector('.question-item');
 
-            // Set question number
             const questionNumber = questionsContainer.children.length + 1;
             questionItem.querySelector('.question-number').textContent = `Question #${questionNumber}`;
             
-            // Setup image uploader
             const uploader = questionItem.querySelector('.question-image-uploader');
             const input = questionItem.querySelector('.question-image-input');
             const preview = questionItem.querySelector('.question-image-preview');
@@ -1513,13 +1439,8 @@ const uiRenderer = {
             
             if (uploader && input && preview && removeBtn) {
                 uploader.addEventListener('click', () => input.click());
-                uploader.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    uploader.classList.add('drag-over');
-                });
-                uploader.addEventListener('dragleave', () => {
-                    uploader.classList.remove('drag-over');
-                });
+                uploader.addEventListener('dragover', (e) => { e.preventDefault(); uploader.classList.add('drag-over'); });
+                uploader.addEventListener('dragleave', () => uploader.classList.remove('drag-over'));
                 uploader.addEventListener('drop', (e) => {
                     e.preventDefault();
                     uploader.classList.remove('drag-over');
@@ -1533,37 +1454,28 @@ const uiRenderer = {
                 removeBtn.addEventListener('click', () => this.removeImage(input, preview));
             }
             
-            // Add to container
             questionsContainer.appendChild(questionClone);
             
-            // Add default options
             const optionsContainer = questionItem.querySelector('.options-container');
             if (optionsContainer) {
-                for (let i = 0; i < 4; i++) {
-                    this.addNewOption(optionsContainer);
-                }
+                for (let i = 0; i < 4; i++) this.addNewOption(optionsContainer);
             }
 
-            // Renumber questions
             this.renumberQuestions(questionsContainer);
         } catch (error) {
             console.error('Error adding new question:', error);
         }
     },
     
-    // Handle image upload
     async handleImageUpload(input, preview) {
         try {
             const file = input.files[0];
             if (!file) return;
             
-            // Validate file type
             if (!file.type.startsWith('image/')) {
                 this.showNotification('Please select an image file', 'error');
                 return;
             }
-            
-            // Validate file size (max 5MB)
             if (file.size > 5 * 1024 * 1024) {
                 this.showNotification('Image must be less than 5MB', 'error');
                 return;
@@ -1581,26 +1493,19 @@ const uiRenderer = {
         }
     },
     
-    // Remove image
     removeImage(input, preview) {
         try {
             input.value = '';
-            if (preview) {
-                preview.style.display = 'none';
-            }
+            if (preview) preview.style.display = 'none';
         } catch (error) {
             console.error('Error removing image:', error);
         }
     },
 
-    // Add a new option to a question
     addNewOption(optionsContainer) {
         try {
             const optionTemplate = document.getElementById('template-option-item');
-            if (!optionTemplate || !optionsContainer) {
-                console.error('Option item template or container not found');
-                return;
-            }
+            if (!optionTemplate || !optionsContainer) return;
             
             const optionClone = optionTemplate.content.cloneNode(true);
             optionsContainer.appendChild(optionClone);
@@ -1610,7 +1515,6 @@ const uiRenderer = {
         }
     },
 
-    // Update option letters
     reletterOptions(container) {
         try {
             const questionItem = container.closest('.question-item');
@@ -1622,7 +1526,6 @@ const uiRenderer = {
             optionItems.forEach((item, index) => {
                 const letter = item.querySelector('.option-letter');
                 const radio = item.querySelector('.correct-option-radio');
-                
                 if (letter) letter.textContent = String.fromCharCode(65 + index);
                 if (radio) radio.name = `correct-option-${questionIndex}`;
             });
@@ -1631,7 +1534,6 @@ const uiRenderer = {
         }
     },
 
-    // Render questions in the form
     renderQuestions(questions, modalElement) {
         try {
             const questionsContainer = modalElement.querySelector('#questions-container');
@@ -1648,9 +1550,7 @@ const uiRenderer = {
                         questionElement.querySelector('.question-text').value = question.text || '';
                         questionElement.querySelector('.question-points').value = question.points || 1;
                         questionElement.querySelector('.question-solution').value = question.solution || '';
-                        questionElement.querySelector('.question-type').value = question.type || 'multiple-choice';
 
-                        // Handle image
                         if (question.imageUrl) {
                             const preview = questionElement.querySelector('.question-image-preview');
                             const img = preview.querySelector('img');
@@ -1658,23 +1558,16 @@ const uiRenderer = {
                             preview.style.display = 'block';
                         }
 
-                        // Handle options
                         const optionsContainer = questionElement.querySelector('.options-container');
                         if (optionsContainer && question.options) {
                             optionsContainer.innerHTML = '';
-
-                            question.options.forEach((option, optIndex) => {
+                            question.options.forEach((option) => {
                                 const optionTemplate = document.getElementById('template-option-item');
                                 const optionClone = optionTemplate.content.cloneNode(true);
                                 optionClone.querySelector('.option-text').value = option.text || '';
-                                
-                                if (option.isCorrect) {
-                                    optionClone.querySelector('.correct-option-radio').checked = true;
-                                }
-                                
+                                if (option.isCorrect) optionClone.querySelector('.correct-option-radio').checked = true;
                                 optionsContainer.appendChild(optionClone);
                             });
-
                             this.reletterOptions(optionsContainer);
                         }
                     }
@@ -1687,13 +1580,11 @@ const uiRenderer = {
         }
     },
 
-    // Renumber questions
     renumberQuestions(questionsContainer) {
         try {
             Array.from(questionsContainer.children).forEach((question, index) => {
                 const numberElement = question.querySelector('.question-number');
                 if (numberElement) numberElement.textContent = `Question #${index + 1}`;
-                
                 question.dataset.questionIndex = index;
                 const optionsContainer = question.querySelector('.options-container');
                 if (optionsContainer) this.reletterOptions(optionsContainer);
@@ -1703,7 +1594,6 @@ const uiRenderer = {
         }
     },
 
-    // Render quiz results
     renderQuizResults(results) {
         try {
             const template = document.getElementById('template-quiz-results');
@@ -1721,6 +1611,13 @@ const uiRenderer = {
             clone.querySelector('.score-percentage').textContent = `${percentage}%`;
             clone.querySelector('.score-circle')?.style.setProperty('--percentage', `${percentage}%`);
             
+            // NEW: Retake Button Logic for View
+            const retakeBtn = clone.querySelector('#retake-quiz-btn');
+            if (retakeBtn && quizTemplate.allowRetakes) {
+                retakeBtn.style.display = 'inline-block';
+                retakeBtn.dataset.quizId = results.studentQuiz || state.detailedQuiz._id;
+            }
+
             const reviewContainer = clone.querySelector('.questions-review');
             if (reviewContainer && quizTemplate.questions) {
                 quizTemplate.questions.forEach((question, index) => {
@@ -1730,7 +1627,6 @@ const uiRenderer = {
                     const reviewClone = reviewItemTemplate.content.cloneNode(true);
                     const studentAnswer = results.answers.find(ans => ans.question?.toString() === question._id.toString());
 
-                    // --- FIX: Use innerHTML for all text that might contain LaTeX ---
                     reviewClone.querySelector('.question-number-review').textContent = `Question ${index + 1}`;
                     reviewClone.querySelector('.question-points-review').textContent = `${studentAnswer ? studentAnswer.pointsAwarded : 0} / ${question.points} Points`;
                     reviewClone.querySelector('.question-text-review').innerHTML = question.text;
@@ -1766,8 +1662,6 @@ const uiRenderer = {
 
             elements.detailView.innerHTML = '';
             elements.detailView.appendChild(clone);
-            
-            // --- FIX: Tell MathJax to render all the math on the results page ---
             utils.renderMath(elements.detailView);
             
         } catch (error) {
@@ -1775,7 +1669,6 @@ const uiRenderer = {
         }
     },
 
-    // Show notification
     showNotification(message, type = 'success') {
         try {
             const notification = document.createElement('div');
@@ -1789,58 +1682,32 @@ const uiRenderer = {
                     <i class="fas fa-times"></i>
                 </button>
             `;
-            
             document.body.appendChild(notification);
-            
-            // Auto remove after 5 seconds
-            setTimeout(() => {
-                if (notification.parentElement) {
-                    notification.remove();
-                }
-            }, 5000);
+            setTimeout(() => { if (notification.parentElement) notification.remove(); }, 5000);
         } catch (error) {
             console.error('Error showing notification:', error);
         }
     },
 
-    // Prefill quiz form from template
     prefillQuizForm(quizData) {
         try {
             const modal = document.querySelector('#modal-create-edit-quiz');
-            if (!modal) {
-                this.showNotification('Could not find the quiz form to prefill.', 'error');
-                return;
-            }
+            if (!modal) return;
 
-            // Prefill basic fields
             modal.querySelector('#quiz-title').value = (quizData.title || '') + ' (Copy)';
             modal.querySelector('#quiz-description').value = quizData.description || '';
             modal.querySelector('#quiz-time-limit').value = quizData.timeLimit || 60;
-            modal.querySelector('#quiz-max-attempts').value = quizData.maxAttempts || 1;
-            modal.querySelector('#quiz-show-results').value = quizData.showResults || 'after-submission';
-            modal.querySelector('#quiz-allow-retakes').checked = quizData.allowRetakes || false;
-
-            // Handle password field
-            const requiresPasswordField = modal.querySelector('#quiz-requires-password');
-            const passwordField = modal.querySelector('#quiz-password-field');
-            requiresPasswordField.checked = quizData.requiresPassword || false;
             
-            if (requiresPasswordField.checked) {
-                passwordField.style.display = 'block';
-                passwordField.value = quizData.password || '';
-            } else {
-                passwordField.style.display = 'none';
-                passwordField.value = '';
-            }
+            if(modal.querySelector('#is-protected')) modal.querySelector('#is-protected').checked = quizData.isProtected || false;
+            if(modal.querySelector('#allow-retakes')) modal.querySelector('#allow-retakes').checked = quizData.allowRetakes || false;
+            if(modal.querySelector('#retake-policy')) modal.querySelector('#retake-policy').value = quizData.retakePolicy || 'highest';
 
-            // Render questions
             this.renderQuestions(quizData.questions, modal);
         } catch (error) {
             console.error('Error prefilling quiz form:', error);
         }
     },
 
-    // Setup quiz bank modal
     async setupQuizBankModal(modalElement) {
         try {
             const listContainer = modalElement.querySelector('.quiz-bank-list');
@@ -1857,7 +1724,6 @@ const uiRenderer = {
                     return;
                 }
 
-                // Create list items
                 listContainer.innerHTML = quizBankTemplates.map(quiz => `
                     <div class="quiz-item" data-action="${QUIZ_ACTIONS.SELECT_QUIZ_FROM_BANK}" data-quiz-id="${quiz._id}">
                         <i class="fas fa-file-alt quiz-item-icon"></i>
@@ -1868,7 +1734,6 @@ const uiRenderer = {
                     </div>
                 `).join('');
 
-                // Save to state
                 state.quizBank = quizBankTemplates;
             } catch (error) {
                 console.error('Failed to load quiz bank:', error);
@@ -1880,14 +1745,12 @@ const uiRenderer = {
     }
 };
 
-// Event Handlers with robust error handling
+// Event Handlers
 const eventHandlers = {
-    // Initialize event handlers
     init() {
         try {
             if (!state.currentUser) return;
             
-            // Teacher/admin specific handlers
             if ([ROLES.TEACHER, ROLES.ADMIN].includes(state.currentUser.role)) {
                 if (elements.groupSelect) {
                     elements.groupSelect.addEventListener('change', this.handleGroupChange.bind(this));
@@ -1899,41 +1762,33 @@ const eventHandlers = {
                 }
             }
             
-            // Tab navigation
             if (elements.tabsNav) {
                 elements.tabsNav.addEventListener('click', this.handleTabClick.bind(this));
             }
             
-            // Global click handler
             document.body.addEventListener('click', this.handleGlobalClick.bind(this));
-            
-            // Keyboard shortcuts
             document.addEventListener('keydown', this.handleKeyboardShortcuts.bind(this));
         } catch (error) {
             console.error('Error initializing event handlers:', error);
         }
     },
 
-    // Handle group change
     async handleGroupChange(e) {
         try {
-            const groupId = e.target.value;
-            state.selectedGroupId = groupId;
+            state.selectedGroupId = e.target.value;
             await this.loadQuizzes();
         } catch (error) {
             console.error('Error handling group change:', error);
         }
     },
 
-    // Handle tab click
     async handleTabClick(e) {
         try {
             const tabBtn = e.target.closest('.tab-btn');
             if (!tabBtn) return;
             
-            const tab = tabBtn.dataset.tab;
             state.activeSubView = 'quizzes';
-            state.activeTab = tab;
+            state.activeTab = tabBtn.dataset.tab;
             state.currentView = 'list';
             await this.loadQuizzes();
         } catch (error) {
@@ -1941,14 +1796,9 @@ const eventHandlers = {
         }
     },
 
-       // Handle view detail
     async handleViewDetail(quizId) {
         try {
-            if (!quizId) {
-                console.error('handleViewDetail was called with an invalid ID.');
-                uiRenderer.showNotification('Cannot load quiz: The ID is missing.', 'error');
-                return;
-            }
+            if (!quizId) return;
 
             state.isLoading = true;
             uiRenderer.updateView();
@@ -1956,13 +1806,10 @@ const eventHandlers = {
             const responseData = await apiService.fetchQuizById(quizId);
             const quiz = responseData.data;
 
-            if (!quiz) {
-                throw new Error('Quiz data not found in server response.');
-            }
+            if (!quiz) throw new Error('Quiz data not found in server response.');
             
             state.detailedQuiz = quiz;
             state.currentView = 'detail';
-            
             state.isLoading = false;
             uiRenderer.updateView();
         } catch (error) {
@@ -1972,7 +1819,7 @@ const eventHandlers = {
             uiRenderer.updateView();
         }
     },
-    // Handle review quiz
+
     async handleReviewQuiz(attemptId) {
         try {
             const results = await apiService.fetchQuizResults(attemptId);
@@ -1983,18 +1830,19 @@ const eventHandlers = {
         }
     },
 
-    // Handle back to list
     handleBackToList() {
         try {
             state.currentView = 'list';
             state.detailedQuiz = null;
             state.activeQuizAttempt = null;
-            state.currentQuestionIndex = 0;
             
-            // Clear timer if exists
             if (state.quizTimer) {
                 clearInterval(state.quizTimer);
                 state.quizTimer = null;
+            }
+            if (state.quizDeadlineTimer) {
+                clearTimeout(state.quizDeadlineTimer);
+                state.quizDeadlineTimer = null;
             }
             
             uiRenderer.updateView();
@@ -2003,18 +1851,16 @@ const eventHandlers = {
         }
     },
 
-    // Handle edit quiz
     async handleEditQuiz(quizId) {
         try {
             const quiz = await apiService.fetchQuizById(quizId);
-            uiRenderer.openModal('create-edit-quiz', quiz);
+            uiRenderer.openModal('create-edit-quiz', quiz.data);
         } catch (error) {
             console.error('Failed to fetch quiz for editing:', error);
             uiRenderer.showNotification('Failed to load quiz for editing', 'error');
         }
     },
 
-    // Handle delete quiz
     async handleDeleteQuiz(quizId) {
         try {
             const confirmed = confirm('Are you sure you want to delete this quiz? This action cannot be undone.');
@@ -2030,33 +1876,64 @@ const eventHandlers = {
         }
     },
 
-    // Handle start quiz
-    async handleStartQuiz(quizId) {
+    // NEW: Handle Duplicate Quiz
+    async handleDuplicateQuiz(templateId) {
         try {
-            // ✅ This function now handles entering fullscreen mode.
-            const quizWrapper = document.getElementById('quiz-wrapper');
-            if (quizWrapper.requestFullscreen) {
-                await quizWrapper.requestFullscreen();
-            } else if (quizWrapper.webkitRequestFullscreen) { /* Safari */
-                await quizWrapper.webkitRequestFullscreen();
+            if (!state.selectedGroupId) {
+                uiRenderer.showNotification('Please select a target group from the dropdown first to duplicate the quiz into.', 'error');
+                return;
             }
-            // After entering fullscreen, the quiz will start.
-            await this.handleRealStartQuiz(quizId, null);
+            const confirmed = confirm('Are you sure you want to duplicate this quiz for the currently selected group?');
+            if (!confirmed) return;
+
+            await apiService.duplicateQuiz(templateId, state.selectedGroupId);
+            uiRenderer.showNotification('Quiz duplicated successfully!');
+            await this.loadQuizzes();
+            this.handleBackToList();
         } catch (error) {
-            console.error('Failed to enter fullscreen or start quiz:', error);
-            uiRenderer.showNotification('Could not start quiz. Please allow fullscreen mode.', 'error');
+            console.error('Failed to duplicate quiz:', error);
+            uiRenderer.showNotification('Failed to duplicate quiz', 'error');
         }
     },
 
-    // Handle real start quiz (with password)
+    // NEW: Handle Retake Quiz
+    async handleRetakeQuiz(studentQuizId) {
+        try {
+            const confirmed = confirm('Are you sure you want to clear your previous answers and restart this quiz?');
+            if (!confirmed) return;
+
+            await apiService.retakeQuiz(studentQuizId);
+            uiRenderer.showNotification('Quiz reset. Ready to start again!');
+            await this.handleViewDetail(studentQuizId);
+        } catch (error) {
+            console.error('Failed to process retake:', error);
+            uiRenderer.showNotification(error.data?.message || 'Failed to restart quiz', 'error');
+        }
+    },
+
+    async handleStartQuiz(quizId) {
+        try {
+            const isProtected = state.detailedQuiz?.templateId?.isProtected || state.detailedQuiz?.isProtected || false;
+            if (isProtected) {
+                const quizWrapper = document.getElementById('quiz-wrapper');
+                if (quizWrapper.requestFullscreen) {
+                    await quizWrapper.requestFullscreen();
+                } else if (quizWrapper.webkitRequestFullscreen) {
+                    await quizWrapper.webkitRequestFullscreen();
+                }
+            }
+            await this.handleRealStartQuiz(quizId, null);
+        } catch (error) {
+            console.error('Failed to enter fullscreen or start quiz:', error);
+            uiRenderer.showNotification('Could not start protected quiz. Please allow fullscreen mode.', 'error');
+        }
+    },
+
     async handleRealStartQuiz(quizId, password = null) {
         try {
             const attempt = await apiService.startQuizAttempt(quizId, password);
             state.activeQuizAttempt = attempt;
-            state.currentQuestionIndex = 0;
             
-            // This timeout provides a brief moment for the DOM to update after the API call,
-            // ensuring the modal and its elements are ready.
             setTimeout(() => {
                 uiRenderer.openModal('quiz-taking');
                 
@@ -2066,7 +1943,6 @@ const eventHandlers = {
                 if (timeLimit && Number(timeLimit) > 0) {
                     this.startQuizTimers(Number(timeLimit), deadline);
                 } else {
-                    // If there's no time limit, hide the timer element completely.
                     const countdownElement = document.querySelector('#quiz-countdown');
                     if (countdownElement) {
                        countdownElement.parentElement.style.display = 'none';
@@ -2077,55 +1953,37 @@ const eventHandlers = {
             uiRenderer.showNotification(error.data?.message || 'Failed to start quiz', 'error');
         }
     },
-    // Start quiz timer
+
     startQuizTimers(durationInMinutes, deadlineDate) {
-        // Clear any previous timers to prevent memory leaks.
         if (state.quizTimer) clearInterval(state.quizTimer);
         if (state.quizDeadlineTimer) clearTimeout(state.quizDeadlineTimer);
 
         const countdownElement = document.querySelector('#quiz-countdown');
-
-        // --- FIX 1: Robustness Check ---
-        // This check prevents the entire function from crashing if the countdown
-        // element is somehow not found in the DOM.
-        if (!countdownElement) {
-            console.error('CRITICAL: Could not find the #quiz-countdown element to display the timer.');
-            return;
-        }
+        if (!countdownElement) return;
         
-        // Ensure the timer container is visible.
         countdownElement.parentElement.style.display = 'flex';
-
         let timeLeftInSeconds = durationInMinutes * 60;
 
-        // Helper function to update the timer display, avoiding code repetition.
         const updateTimerDisplay = () => {
             if (timeLeftInSeconds < 0) timeLeftInSeconds = 0;
             const minutes = Math.floor(timeLeftInSeconds / 60);
             const seconds = timeLeftInSeconds % 60;
             countdownElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            
-            // Add a visual warning when time is low.
             if (timeLeftInSeconds <= 60) {
                 countdownElement.parentElement.classList.add('critical');
             }
         };
 
-        // --- FIX 2: Immediate Display ---
-        // This line is crucial. It displays the starting time immediately,
-        // so you don't have to wait one full second for the first update.
         updateTimerDisplay();
 
-        // 1. Countdown Timer (updates every second)
         state.quizTimer = setInterval(() => {
             timeLeftInSeconds--;
             updateTimerDisplay();
             if (timeLeftInSeconds <= 0) {
-                this.handleFinishQuiz(); // Automatically submits the quiz when time runs out.
+                this.handleFinishQuiz();
             }
         }, 1000);
 
-        // 2. Hard Deadline Timer (a failsafe for the quiz due date)
         const timeUntilDeadline = new Date(deadlineDate) - new Date();
         if (timeUntilDeadline > 0) {
             state.quizDeadlineTimer = setTimeout(() => {
@@ -2134,183 +1992,69 @@ const eventHandlers = {
             }, timeUntilDeadline);
         }
         
-        // 3. Anti-Cheating Event Listeners
-        this.beforeUnloadListener = (e) => { e.preventDefault(); e.returnValue = ''; };
-        this.visibilityChangeListener = () => {
-            if (document.hidden) {
-                uiRenderer.showNotification("You have left the page. The quiz will be submitted.", 'error');
-                this.handleFinishQuiz();
-            }
-        };
-        this.fullscreenChangeListener = () => {
-            if (!document.fullscreenElement) {
-                uiRenderer.showNotification("You have exited fullscreen. The quiz will be submitted.", 'error');
-                this.handleFinishQuiz();
-            }
-        };
-
-        window.addEventListener('beforeunload', this.beforeUnloadListener);
-        document.addEventListener('visibilitychange', this.visibilityChangeListener);
-        document.addEventListener('fullscreenchange', this.fullscreenChangeListener);
+        // NEW: Toggleable Security Check
+        const isProtected = state.detailedQuiz?.templateId?.isProtected || state.detailedQuiz?.isProtected || false;
+        if (isProtected) {
+            this.beforeUnloadListener = (e) => { e.preventDefault(); e.returnValue = ''; };
+            this.visibilityChangeListener = () => {
+                if (document.hidden) {
+                    uiRenderer.showNotification("You have left the page. The quiz will be submitted.", 'error');
+                    this.handleFinishQuiz();
+                }
+            };
+            this.fullscreenChangeListener = () => {
+                if (!document.fullscreenElement) {
+                    uiRenderer.showNotification("You have exited fullscreen. The quiz will be submitted.", 'error');
+                    this.handleFinishQuiz();
+                }
+            };
+            window.addEventListener('beforeunload', this.beforeUnloadListener);
+            document.addEventListener('visibilitychange', this.visibilityChangeListener);
+            document.addEventListener('fullscreenchange', this.fullscreenChangeListener);
+        }
     },
-    // Handle select option
-    async handleSelectOption(optionIndex) {
+
+    // NEW: Handle Select Option for Feed (Autosave)
+    async handleSelectOptionFeed(questionId, optionIndex) {
         try {
-            const quiz = state.detailedQuiz;
             const attempt = state.activeQuizAttempt;
-            
-            // Get questions
-            const questions = quiz.templateId?.questions || [];
-            
-            if (questions.length === 0) {
-                console.error('Quiz data is incomplete or missing questions');
-                uiRenderer.showNotification('Quiz data is incomplete. Please try again.', 'error');
-                return;
-            }
-            
-            const question = questions[state.currentQuestionIndex];
-            if (!question || !question._id) {
-                console.error('Question not found at index', state.currentQuestionIndex);
-                uiRenderer.showNotification('Question not found. Please try again.', 'error');
-                return;
-            }
-            
-            // Submit answer to server
-            await apiService.submitAnswer(attempt._id, question._id, optionIndex);
-            
-            // Update local attempt state
             const existingAnswerIndex = attempt.answers.findIndex(a => 
-                a.question && a.question.toString() === question._id.toString()
+                a.question && a.question.toString() === questionId.toString()
             );
             
             if (existingAnswerIndex !== -1) {
-                // Update existing answer
                 attempt.answers[existingAnswerIndex] = {
-                    question: question._id,
+                    question: questionId,
                     selectedOptionIndex: optionIndex,
                     answeredAt: new Date()
                 };
             } else {
-                // Add new answer
                 attempt.answers.push({
-                    question: question._id,
+                    question: questionId,
                     selectedOptionIndex: optionIndex,
                     answeredAt: new Date()
                 });
             }
-            
-            // Update UI
-            const options = document.querySelectorAll('.option-taking');
-            options.forEach(opt => opt.classList.remove('selected'));
-            
-            const selectedOption = document.querySelector(`.option-taking[data-option-index="${optionIndex}"]`);
-            if (selectedOption) {
-                selectedOption.classList.add('selected');
-            }
-            
+            apiService.autoSaveAnswers(attempt._id, attempt.answers);
         } catch (error) {
-            console.error('Failed to submit answer:', error);
-            uiRenderer.showNotification('Failed to submit answer', 'error');
+            console.error('Failed to auto-save answer:', error);
         }
     },
 
-    // Handle next question
-    async handleNextQuestion() {
-        try {
-            const questions = state.detailedQuiz?.templateId?.questions || [];
-            if (state.currentQuestionIndex < questions.length - 1) {
-                state.currentQuestionIndex++;
-                const modal = document.querySelector('.quiz-taking-container');
-                if (modal) {
-                    uiRenderer.setupQuizTakingModal(modal);
-                }
-            }
-        } catch (error) {
-            console.error('Error handling next question:', error);
-        }
-    },
-
-    async handlePrevQuestion() {
-        try {
-            if (state.currentQuestionIndex > 0) {
-                state.currentQuestionIndex--;
-                const modal = document.querySelector('.quiz-taking-container');
-                if (modal) {
-                    uiRenderer.setupQuizTakingModal(modal);
-                }
-            }
-        } catch (error) {
-            console.error('Error handling previous question:', error);
-        }
-    },
-    async saveCurrentAnswer() {
-        try {
-            const quiz = state.detailedQuiz;
-            const attempt = state.activeQuizAttempt;
-            const questions = quiz.templateId?.questions || [];
-            
-            if (questions.length === 0 || state.currentQuestionIndex >= questions.length) {
-                return; // No questions or invalid index
-            }
-            
-            const currentQuestion = questions[state.currentQuestionIndex];
-            const selectedOption = document.querySelector('.option-taking.selected');
-            
-            if (selectedOption && currentQuestion && currentQuestion._id) {
-                const selectedIndex = parseInt(selectedOption.dataset.optionIndex);
-                
-                // Submit answer to server
-                await apiService.submitAnswer(attempt._id, currentQuestion._id, selectedIndex);
-                
-                // Also update local attempt state
-                const existingAnswerIndex = attempt.answers.findIndex(a => 
-                    a.question && a.question.toString() === currentQuestion._id.toString()
-                );
-                
-                if (existingAnswerIndex !== -1) {
-                    // Update existing answer
-                    attempt.answers[existingAnswerIndex] = {
-                        question: currentQuestion._id,
-                        selectedOptionIndex: selectedIndex,
-                        answeredAt: new Date()
-                    };
-                } else {
-                    // Add new answer
-                    attempt.answers.push({
-                        question: currentQuestion._id,
-                        selectedOptionIndex: selectedIndex,
-                        answeredAt: new Date()
-                    });
-                }
-            }
-        } catch (error) {
-            console.error('Error saving current answer:', error);
-            // Don't show error to avoid disrupting quiz flow
-        }
-    },
-    // Handle finish quiz
     async handleFinishQuiz() {
         try {
-            // ✅ This function now cleans up all timers and anti-cheating listeners.
-            console.log('Finishing quiz...');
-            
-            // Cleanup anti-cheating listeners
             window.removeEventListener('beforeunload', this.beforeUnloadListener);
             document.removeEventListener('visibilitychange', this.visibilityChangeListener);
             document.removeEventListener('fullscreenchange', this.fullscreenChangeListener);
 
-            // Cleanup timers
             if (state.quizTimer) clearInterval(state.quizTimer);
             if (state.quizDeadlineTimer) clearTimeout(state.quizDeadlineTimer);
             state.quizTimer = null;
             state.quizDeadlineTimer = null;
 
-            // Exit fullscreen if still in it
-            if (document.fullscreenElement) {
-                document.exitFullscreen();
-            }
+            if (document.fullscreenElement) document.exitFullscreen();
 
-            const finishBtn = document.querySelector('.finish-quiz-btn, .btn-warning');
+            const finishBtn = document.querySelector('#submit-entire-quiz-btn');
             if (finishBtn) {
                 finishBtn.disabled = true;
                 finishBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
@@ -2328,36 +2072,32 @@ const eventHandlers = {
         } catch (error) {
             console.error('Failed to finish quiz:', error);
             uiRenderer.showNotification(error.data?.message || 'Failed to submit quiz', 'error');
+            const finishBtn = document.querySelector('#submit-entire-quiz-btn');
+            if (finishBtn) {
+                finishBtn.disabled = false;
+                finishBtn.innerHTML = '<i class="fas fa-paper-plane"></i> მთლიანი ქვიზის გაგზავნა';
+            }
         }
     },
 
-    // Handle add question
     handleAddQuestion(buttonElement) {
         try {
-            // Find the modal relative to the button that was clicked
             const modal = buttonElement.closest('.modal');
-            if (!modal) {
-                console.error('Could not find the create quiz modal to add a question to.');
-                uiRenderer.showNotification('Error: Could not find the quiz form.', 'error');
-                return;
-            }
+            if (!modal) return;
             uiRenderer.addNewQuestion(modal);
         } catch (error) {
             console.error('Error handling add question:', error);
         }
     },
 
-    // Handle delete question
     handleDeleteQuestion(questionElement) {
         try {
             if (!questionElement) return;
-            
             const questionsContainer = questionElement.parentElement;
             if (questionsContainer.children.length <= 1) {
                 uiRenderer.showNotification('A quiz must have at least one question', 'error');
                 return;
             }
-            
             questionElement.remove();
             uiRenderer.renumberQuestions(questionsContainer);
         } catch (error) {
@@ -2365,7 +2105,6 @@ const eventHandlers = {
         }
     },
 
-    // Handle move question up
     handleMoveQuestionUp(questionElement) {
         try {
             const questionsContainer = questionElement.parentElement;
@@ -2379,7 +2118,6 @@ const eventHandlers = {
         }
     },
 
-    // Handle move question down
     handleMoveQuestionDown(questionElement) {
         try {
             const questionsContainer = questionElement.parentElement;
@@ -2393,7 +2131,6 @@ const eventHandlers = {
         }
     },
 
-    // Handle add option
     handleAddOption(optionsContainer) {
         try {
             uiRenderer.addNewOption(optionsContainer);
@@ -2402,7 +2139,6 @@ const eventHandlers = {
         }
     },
 
-    // Handle delete option
     handleDeleteOption(optionElement) {
         try {
             const optionsContainer = optionElement.parentElement;
@@ -2410,7 +2146,6 @@ const eventHandlers = {
                 uiRenderer.showNotification('A question must have at least two options', 'error');
                 return;
             }
-            
             optionElement.remove();
             uiRenderer.reletterOptions(optionsContainer);
         } catch (error) {
@@ -2418,103 +2153,10 @@ const eventHandlers = {
         }
     },
 
-    // Handle view student attempt
-    async handleViewStudentAttempt(attemptId) {
-        try {
-            const results = await apiService.fetchQuizResults(attemptId);
-            
-            const modal = document.createElement('div');
-            modal.className = 'modal student-attempt-modal';
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>Student Attempt Details</h3>
-                        <button class="close-btn" data-action="${QUIZ_ACTIONS.CLOSE_MODAL}">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="student-info">
-                            <h4>${utils.escapeHTML(results.student?.firstName || '')} ${utils.escapeHTML(results.student?.lastName || '')}</h4>
-                            <p>${utils.escapeHTML(results.student?.email || '')}</p>
-                        </div>
-                        <div class="attempt-results">
-                            <div class="score-display">
-                                <span class="score">${results.score}</span>
-                                <span class="total">/ ${results.quiz?.totalPoints || 0}</span>
-                            </div>
-                        </div>
-                        <div class="question-review">
-                            ${results.answers.map((answer, index) => {
-                                const question = results.quiz.questions[index];
-                                const isCorrect = answer.selectedOptionIndex === question.correctOptionIndex;
-                                return `
-                                    <div class="review-question ${isCorrect ? 'correct' : 'incorrect'}">
-                                        <h5>Question ${index + 1}: ${utils.escapeHTML(question.text)}</h5>
-                                        <div class="student-answer">
-                                            Your answer: ${utils.escapeHTML(question.options[answer.selectedOptionIndex]?.text || 'No answer')}
-                                            ${isCorrect ? 
-                                                '<span class="result-icon correct"><i class="fas fa-check"></i></span>' : 
-                                                '<span class="result-icon incorrect"><i class="fas fa-times"></i></span>'}
-                                        </div>
-                                        ${!isCorrect ? `
-                                            <div class="correct-answer">
-                                                Correct answer: ${utils.escapeHTML(question.options[question.correctOptionIndex]?.text)}
-                                            </div>
-                                        ` : ''}
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            elements.modalBackdrop.innerHTML = '';
-            elements.modalBackdrop.appendChild(modal);
-            elements.modalBackdrop.style.display = 'flex';
-            
-        } catch (error) {
-            console.error('Failed to fetch student attempt:', error);
-            uiRenderer.showNotification('Failed to load student attempt details', 'error');
-        }
-    },
-
-    // Handle add from bank
-    async handleAddFromBank() {
-        try {
-            uiRenderer.openModal('question-bank');
-        } catch (error) {
-            console.error('Error handling add from bank:', error);
-        }
-    },
-
-    // Handle request retake
-    async handleRequestRetake(quizId, reason) {
-        try {
-            if (!reason) {
-                reason = prompt('Please provide a reason for requesting a retake:');
-                if (!reason) return;
-            }
-            
-            await apiService.requestRetake(quizId, reason);
-            uiRenderer.showNotification('Retake request submitted successfully');
-        } catch (error) {
-            console.error('Failed to request retake:', error);
-            uiRenderer.showNotification('Failed to submit retake request', 'error');
-        }
-    },
-
-    // Extract questions data from form
     extractQuestionsData(form) {
         try {
             const questions = [];
-            // This selector now correctly finds the question items inside the form.
             const questionElements = form.querySelectorAll('.question-item');
-
-            if (questionElements.length === 0) {
-                console.error("Error: No '.question-item' elements were found inside the form.");
-            }
 
             questionElements.forEach(questionElement => {
                 const options = [];
@@ -2541,21 +2183,18 @@ const eventHandlers = {
                     imagePublicId: imagePublicId
                 });
             });
-            
             return questions;
         } catch (error) {
             console.error('A critical error occurred in extractQuestionsData:', error);
-            // Return an empty array on error to trigger the validation message
             return [];
         }
     },
-    // Handle create quiz
+
     async handleCreateQuiz(form) {
         try {
             const startTimeValue = form.querySelector('#quiz-start-time').value;
             const endTimeValue = form.querySelector('#quiz-end-time').value;
             
-            // Prepare quiz data
             const quizData = {
                 title: form.querySelector('#quiz-title').value,
                 description: form.querySelector('#quiz-description').value,
@@ -2563,11 +2202,12 @@ const eventHandlers = {
                 startTime: new Date(startTimeValue).toISOString(),
                 endTime: new Date(endTimeValue).toISOString(),
                 timeLimit: parseInt(form.querySelector('#quiz-time-limit').value) || null,
-                // ✅ FIX: Removed keys for maxAttempts, showResults, password, etc.
+                isProtected: form.querySelector('#is-protected') ? form.querySelector('#is-protected').checked : false,
+                allowRetakes: form.querySelector('#allow-retakes') ? form.querySelector('#allow-retakes').checked : false,
+                retakePolicy: form.querySelector('#retake-policy') ? form.querySelector('#retake-policy').value : 'highest',
                 questions: this.extractQuestionsData(form)
             };
 
-            // Validate quiz data
             const validationErrors = utils.validateQuizData(quizData);
             if (validationErrors.length > 0) {
                 return uiRenderer.showNotification(validationErrors[0], 'error');
@@ -2588,7 +2228,6 @@ const eventHandlers = {
             const startTimeValue = form.querySelector('#quiz-start-time').value;
             const endTimeValue = form.querySelector('#quiz-end-time').value;
             
-            // Prepare quiz data
             const quizData = {
                 title: form.querySelector('#quiz-title').value,
                 description: form.querySelector('#quiz-description').value,
@@ -2596,11 +2235,12 @@ const eventHandlers = {
                 startTime: new Date(startTimeValue).toISOString(),
                 endTime: new Date(endTimeValue).toISOString(),
                 timeLimit: parseInt(form.querySelector('#quiz-time-limit').value) || null,
-                // ✅ FIX: Removed keys for maxAttempts, showResults, password, etc.
+                isProtected: form.querySelector('#is-protected') ? form.querySelector('#is-protected').checked : false,
+                allowRetakes: form.querySelector('#allow-retakes') ? form.querySelector('#allow-retakes').checked : false,
+                retakePolicy: form.querySelector('#retake-policy') ? form.querySelector('#retake-policy').value : 'highest',
                 questions: this.extractQuestionsData(form)
             };
 
-            // Validate quiz data
             const validationErrors = utils.validateQuizData(quizData);
             if (validationErrors.length > 0) {
                 return uiRenderer.showNotification(validationErrors[0], 'error');
@@ -2616,8 +2256,6 @@ const eventHandlers = {
         }
     },
 
-
-    // Load quizzes based on current state
     async loadQuizzes() {
         try {
             state.isLoading = true;
@@ -2626,7 +2264,6 @@ const eventHandlers = {
             let quizzes = [];
             let statusToFetch = state.activeTab;
 
-            // This logic correctly fetches 'completed' AND 'graded' statuses for the Completed tab
             if (state.activeTab === 'completed') {
                 statusToFetch = 'completed,graded';
             }
@@ -2638,7 +2275,6 @@ const eventHandlers = {
                     uiRenderer.updateView();
                     return;
                 }
-                
                 quizzes = await apiService.fetchQuizzesForGroup(state.selectedGroupId, statusToFetch);
             } else {
                 quizzes = await apiService.fetchStudentQuizzes(statusToFetch);
@@ -2655,7 +2291,7 @@ const eventHandlers = {
             uiRenderer.updateView();
         }
     },
-    // Handle global click events
+
     handleGlobalClick(e) {
         try {
             const actionElement = e.target.closest('[data-action]');
@@ -2677,19 +2313,16 @@ const eventHandlers = {
                     this.handleEditQuiz(quizId || state.detailedQuiz._id);
                     break;
                 case QUIZ_ACTIONS.DELETE_QUIZ:
-                    this.handleDeleteQuiz(quizId);
+                    this.handleDeleteQuiz(quizId || state.detailedQuiz._id);
+                    break;
+                case QUIZ_ACTIONS.DUPLICATE_QUIZ:
+                    this.handleDuplicateQuiz(quizId || state.detailedQuiz.templateId?._id || state.detailedQuiz._id);
+                    break;
+                case QUIZ_ACTIONS.RETAKE_QUIZ:
+                    this.handleRetakeQuiz(quizId || state.detailedQuiz._id);
                     break;
                 case QUIZ_ACTIONS.START_QUIZ:
                     this.handleStartQuiz(state.detailedQuiz._id);
-                    break;
-                case QUIZ_ACTIONS.NEXT_QUESTION:
-                    this.handleNextQuestion();
-                    break;
-                case QUIZ_ACTIONS.PREV_QUESTION:
-                    this.handlePrevQuestion();
-                    break;
-                case QUIZ_ACTIONS.FINISH_QUIZ:
-                    this.handleFinishQuiz();
                     break;
                 case QUIZ_ACTIONS.ADD_QUESTION:
                     this.handleAddQuestion(actionElement);
@@ -2713,7 +2346,7 @@ const eventHandlers = {
                     this.handleReviewQuiz(attemptId);
                     break;
                 case QUIZ_ACTIONS.ADD_FROM_BANK:
-                    this.handleAddFromQuizBank();
+                    uiRenderer.openModal('question-bank', null, true);
                     break;
                 case QUIZ_ACTIONS.SELECT_QUIZ_FROM_BANK:
                     this.handleSelectQuizFromBank(quizId);
@@ -2722,10 +2355,10 @@ const eventHandlers = {
                     this.handleRequestRetake(quizId);
                     break;
                 case QUIZ_ACTIONS.APPROVE_REQUEST:
-                    this.handleApproveRequest(requestId);
+                    if(typeof this.handleApproveRequest === 'function') this.handleApproveRequest(requestId);
                     break;
                 case QUIZ_ACTIONS.DENY_REQUEST:
-                    this.handleDenyRequest(requestId);
+                    if(typeof this.handleDenyRequest === 'function') this.handleDenyRequest(requestId);
                     break;
             }
         } catch (error) {
@@ -2733,22 +2366,16 @@ const eventHandlers = {
         }
     },
     
-    // Handle keyboard shortcuts
     handleKeyboardShortcuts(e) {
         try {
-            // ESC key to close modals
             if (e.key === 'Escape' && elements.modalBackdrop.style.display === 'flex') {
                 uiRenderer.closeModal();
             }
-            
-            // Ctrl+Enter to submit forms
             if (e.ctrlKey && e.key === 'Enter') {
                 const activeModal = document.querySelector('.modal:last-child');
                 if (activeModal) {
                     const submitButton = activeModal.querySelector('button[type="submit"]');
-                    if (submitButton) {
-                        submitButton.click();
-                    }
+                    if (submitButton) submitButton.click();
                 }
             }
         } catch (error) {
@@ -2756,37 +2383,35 @@ const eventHandlers = {
         }
     },
 
-    // Handle add from quiz bank
-    handleAddFromQuizBank() {
-        try {
-            uiRenderer.openModal('question-bank', null, true);
-        } catch (error) {
-            console.error('Error handling add from quiz bank:', error);
-        }
-    },
-
-    // Handle select quiz from bank
     handleSelectQuizFromBank(quizId) {
         try {
-            if (!state.quizBank) {
-                uiRenderer.showNotification('Quiz bank data is not loaded.', 'error');
-                return;
-            }
-            
+            if (!state.quizBank) return;
             const selectedQuiz = state.quizBank.find(q => q._id === quizId);
             if (selectedQuiz) {
                 uiRenderer.prefillQuizForm(selectedQuiz);
                 uiRenderer.closeModal();
-            } else {
-                uiRenderer.showNotification('Selected quiz could not be found.', 'error');
             }
         } catch (error) {
             console.error('Error handling select quiz from bank:', error);
         }
+    },
+
+    async handleRequestRetake(quizId, reason) {
+        try {
+            if (!reason) {
+                reason = prompt('Please provide a reason for requesting a retake:');
+                if (!reason) return;
+            }
+            
+            await apiService.requestRetake(quizId, reason);
+            uiRenderer.showNotification('Retake request submitted successfully');
+        } catch (error) {
+            console.error('Failed to request retake:', error);
+            uiRenderer.showNotification('Failed to submit retake request', 'error');
+        }
     }
 };
 
-// Initialize the application
 async function initQuizzes() {
     try {
         state.isLoading = true;
@@ -2799,36 +2424,23 @@ async function initQuizzes() {
         
         const { user, groups } = await apiService.fetchInitialData();
         
-        // ✅ DEBUGGING: Let's see the exact user object we receive.
-        console.log('--- USER DATA RECEIVED FROM SERVER ---:', user);
         if (user && user.role) {
-            console.log('User Role is:', user.role);
-            console.log('Is the Role exactly "Admin"?', user.role === ROLES.ADMIN);
-            console.log('Is the Role exactly "Teacher"?', user.role === ROLES.TEACHER);
+            state.currentUser = user;
+            state.groups = groups;
+            
+            uiRenderer.init();
+            eventHandlers.init();
+            
+            if (state.currentUser.role === ROLES.STUDENT) {
+                await eventHandlers.loadQuizzes();
+            } else {
+                state.isLoading = false;
+                uiRenderer.updateView();
+            }
         } else {
-            console.error('CRITICAL: User object is null or missing a role after fetch.');
-            uiRenderer.showNotification('Could not verify user role. Logging out.', 'error');
-            setTimeout(() => {
-                // Redirect if user data is invalid
-                localStorage.removeItem('piRateToken');
-                window.location.href = '/client/login/login.html';
-            }, 2000);
-            return;
+            localStorage.removeItem('piRateToken');
+            window.location.href = '/client/login/login.html';
         }
-        
-        state.currentUser = user;
-        state.groups = groups;
-        
-        uiRenderer.init();
-        eventHandlers.init();
-        
-        if (state.currentUser.role === ROLES.STUDENT) {
-            await eventHandlers.loadQuizzes();
-        } else {
-            state.isLoading = false;
-            uiRenderer.updateView();
-        }
-        
     } catch (error) {
         console.error('Failed to initialize quizzes:', error);
         uiRenderer.showNotification('A critical error occurred. Please try logging in again.', 'error');
@@ -2837,7 +2449,6 @@ async function initQuizzes() {
     }
 }
 
-// Start the application when DOM is loaded
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initQuizzes);
 } else {
