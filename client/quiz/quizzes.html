@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ka">
 <head>
@@ -58,6 +57,7 @@
 
         <div id="modal-backdrop" class="modal-backdrop" style="display: none;"></div>
     </div>
+
     <template id="template-create-edit-quiz-modal">
         <div class="modal" id="create-quiz-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
             <div class="modal-header">
@@ -95,7 +95,33 @@
                         </div>
                     </div>
 
-                    <div class="questions-section">
+                    <div class="form-row quiz-advanced-settings" style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
+                        <div class="form-group">
+                            <label class="agreement-checkbox">
+                                <input type="checkbox" id="is-protected" name="isProtected">
+                                <span class="checkmark"></span>
+                                დაცული ქვიზი (Anti-Cheat სისტემის ჩართვა)
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="agreement-checkbox">
+                                <input type="checkbox" id="allow-retakes" name="allowRetakes">
+                                <span class="checkmark"></span>
+                                სტუდენტებისთვის თავიდან გადაწერის უფლების მიცემა
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="retake-policy-group" style="margin-top: 10px;">
+                        <label for="retake-policy">გადაბარების შეფასების წესი</label>
+                        <select id="retake-policy" name="retakePolicy" class="form-control">
+                            <option value="highest">საუკეთესო ქულის შენარჩუნება</option>
+                            <option value="latest">ბოლო ქულის შენარჩუნება</option>
+                            <option value="average">მცდელობების საშუალო</option>
+                        </select>
+                    </div>
+
+                    <div class="questions-section" style="margin-top: 20px;">
                         <div class="section-header">
                             <h3>კითხვები</h3>
                             <div class="section-actions">
@@ -226,10 +252,9 @@
                     
                     <p>გთხოვთ, ყურადღებით წაიკითხოთ შემდეგი ზოგადი ინსტრუქციები:</p>
                     <ul class="instructions-list">
-                        <li><i class="fas fa-exclamation-circle"></i> ქვიზის გვერდიდან გასვლა ავტომატურად დაასრულებს ქვიზს.</li>
+                        <li><i class="fas fa-exclamation-circle"></i> დაცული ქვიზის შემთხვევაში, გვერდიდან გასვლა ავტომატურად დაასრულებს ქვიზს.</li>
                         <li><i class="fas fa-exclamation-circle"></i> ქვიზის დროს არ განაახლოთ გვერდი.</li>
                         <li><i class="fas fa-exclamation-circle"></i> ქვიზი ავტომატურად წარედგინება დასრულებისას.</li>
-                        <li><i class="fas fa-exclamation-circle"></i> გარე რესურსების გამოყენება მკაცრად აკრძალულია.</li>
                     </ul>
                     <div class="agreement-section">
                         <label class="agreement-checkbox">
@@ -249,34 +274,27 @@
     </template>
 
     <template id="template-quiz-taking-modal">
-        <div class="modal quiz-taking-container">
+        <div class="modal quiz-taking-container" style="max-height: 90vh; overflow-y: auto;">
             <div class="quiz-header">
-                <div class="quiz-title-taking"></div>
+                <div class="quiz-title-taking" style="font-size: 1.5rem; font-weight: bold;"></div>
                 <div class="quiz-timer">
                     <i class="fas fa-clock"></i>
                     <span id="quiz-countdown">00:00</span>
                 </div>
             </div>
-            <div class="quiz-progress">
-                <div class="progress-bar">
-                    <div class="progress-fill"></div>
-                </div>
-                <div class="progress-text">კითხვა <span id="current-question-number">1</span> / <span id="total-questions">0</span></div>
+            
+            <div id="quiz-progress" class="sticky-progress-tracker" style="position: sticky; top: 0; background: var(--bg-color, #fff); padding: 15px; border-bottom: 2px solid #ddd; z-index: 100; text-align: center; font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                პასუხგაცემული: <span id="answered-count">0</span> / <span id="total-questions-count">0</span>
             </div>
-            <div class="question-container">
+
+            <div class="question-container" id="active-quiz-questions-container" style="display: flex; flex-direction: column; gap: 40px; padding: 30px 20px;">
                 <div class="error-message" style="display: none;"></div>
-                <div class="question-text-taking"></div>
-                <div class="question-image-container" style="display: none;">
-                    <img src="" alt="კითხვის სურათი">
                 </div>
-                <div class="options-container-taking">
-                    </div>
-            </div>
-            <div class="quiz-navigation">
-                <button class="btn btn-secondary prev-question-btn" data-action="prev-question" disabled>წინა</button>
-                <button class="btn btn-warning" data-action="finish-quiz">დასრულება</button>
-                <button class="btn btn-primary next-question-btn" data-action="next-question">შემდეგი</button>
-                <button class="btn btn-danger finish-quiz-btn" data-action="finish-quiz" style="display: none;">ქვიზის დასრულება</button>
+            
+            <div class="quiz-submission-area" style="text-align: center; padding: 40px 20px; border-top: 2px solid #ddd; margin-top: 20px;">
+                <button id="submit-entire-quiz-btn" class="btn btn-primary" style="font-size: 1.2rem; padding: 15px 40px; width: 100%; max-width: 400px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+                    <i class="fas fa-paper-plane"></i> მთლიანი ქვიზის გაგზავნა
+                </button>
             </div>
         </div>
     </template>
@@ -299,6 +317,9 @@
             <div class="questions-review">
                 </div>
             <div class="results-actions">
+                <button id="retake-quiz-btn" class="btn btn-warning" data-action="retake-quiz" style="display: none;">
+                    <i class="fas fa-redo"></i> ქვიზის თავიდან გადაწერა
+                </button>
                 <button class="btn btn-primary" data-action="back-to-list">უკან ქვიზების სიაში</button>
             </div>
         </div>
@@ -333,6 +354,9 @@
                 <div class="teacher-quiz-actions">
                     <button class="btn btn-secondary edit-quiz-btn" data-action="edit-quiz">
                         <i class="fas fa-edit"></i> რედაქტირება
+                    </button>
+                    <button id="duplicate-quiz-btn" class="btn btn-secondary duplicate-quiz-btn" data-action="duplicate-quiz">
+                        <i class="fas fa-copy"></i> დუბლირება
                     </button>
                     <button class="btn btn-danger delete-quiz-btn" data-action="delete-quiz">
                         <i class="fas fa-trash"></i> წაშლა
