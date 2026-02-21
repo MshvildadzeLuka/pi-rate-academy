@@ -1,3 +1,4 @@
+
 // quizzes.js (Enhanced Version)
 // Comprehensive solution for Pi-Rate Academy Quiz System
 // =========================================================================
@@ -13,7 +14,7 @@ const QUIZ_ACTIONS = {
     CHANGE_TAB: 'change-tab',
     START_QUIZ: 'start-quiz',
     NEXT_QUESTION: 'next-question',
-    PREV_QUESTION: 'prev- question',
+    PREV_QUESTION: 'prev-question',
     FINISH_QUIZ: 'finish-quiz',
     SELECT_OPTION: 'select-option',
     ADD_QUESTION: 'add-question',
@@ -1429,10 +1430,13 @@ const uiRenderer = {
             }
 
             modalElement.querySelector('.quiz-title-taking').textContent = quiz.templateTitle;
+            
+            // --- FIX 3: Update Sticky Tracker total ---
             if(modalElement.querySelector('#total-questions-count')) {
                 modalElement.querySelector('#total-questions-count').textContent = questions.length;
             }
 
+            // --- FIX 1: Full-Height Container ---
             // Find container, ensuring it scrolls perfectly in your theme
             let scrollableContainer = modalElement.querySelector('#active-quiz-questions-container');
             if (!scrollableContainer) {
@@ -1442,9 +1446,15 @@ const uiRenderer = {
             if (!scrollableContainer) return;
 
             scrollableContainer.innerHTML = '';
-            scrollableContainer.style.overflowY = 'auto';
+            
+            // Force the modal body to be tall and scrollable
+            const modalBody = modalElement.querySelector('.modal-body') || scrollableContainer.parentElement;
+            if (modalBody) {
+                modalBody.style.maxHeight = 'calc(100vh - 150px)'; // 100vh minus header/footer space
+                modalBody.style.overflowY = 'auto';
+            }
+            
             scrollableContainer.style.height = '100%';
-            scrollableContainer.style.maxHeight = '70vh'; 
             scrollableContainer.style.padding = '10px 15px'; 
             
             // Loop through and render EVERY question
@@ -1503,10 +1513,25 @@ const uiRenderer = {
                     parentContainer.querySelectorAll('.option-taking').forEach(sibling => sibling.classList.remove('selected'));
                     target.classList.add('selected');
                     
+                    // --- FIX 3: Update answered count on click ---
+                    let answeredCount = 0;
+                    scrollableContainer.querySelectorAll('.options-container-taking').forEach(cont => {
+                        if (cont.querySelector('.selected')) answeredCount++;
+                    });
+                    const countEl = modalElement.querySelector('#answered-count');
+                    if (countEl) countEl.textContent = answeredCount;
+
                     // Autosave silently
                     eventHandlers.handleSelectOptionFeed(qId, optIdx);
                 });
             });
+
+            // Initial tracker update
+            let initialCount = 0;
+            scrollableContainer.querySelectorAll('.options-container-taking').forEach(cont => {
+                if (cont.querySelector('.selected')) initialCount++;
+            });
+            if(modalElement.querySelector('#answered-count')) modalElement.querySelector('#answered-count').textContent = initialCount;
 
             // Hide old pagination controls
             const nextBtn = modalElement.querySelector('.next-question-btn');
@@ -1514,10 +1539,11 @@ const uiRenderer = {
             if (nextBtn) nextBtn.style.display = 'none';
             if (prevBtn) prevBtn.style.display = 'none';
 
-            // Show submit button
-            const finishBtn = modalElement.querySelector('.finish-quiz-btn');
+            // --- FIX 2: Ensure Submit Button is perfectly wired up ---
+            const finishBtn = modalElement.querySelector('.finish-quiz-btn') || modalElement.querySelector('#submit-entire-quiz-btn');
             if (finishBtn) {
                 finishBtn.style.display = 'block';
+                // Clone and replace to prevent duplicate click listeners if reopened
                 const newFinishBtn = finishBtn.cloneNode(true);
                 finishBtn.parentNode.replaceChild(newFinishBtn, finishBtn);
                 newFinishBtn.addEventListener('click', () => {
@@ -1589,6 +1615,42 @@ const uiRenderer = {
                 });
         } catch (error) {
             console.error('Error setting up question bank modal:', error);
+        }
+    },
+
+    async loadTeacherLiveMonitoring(templateId) {
+        try {
+            const teacherStatsContainer = document.getElementById('teacher-live-stats');
+            if (!teacherStatsContainer) return;
+            
+            teacherStatsContainer.innerHTML = '<div class="loading-spinner"></div>';
+            
+            const analytics = await apiService.fetchQuizAnalytics(templateId);
+            const studentQuizzes = analytics.studentQuizzes || []; // Ensure your backend sends this
+            
+            let html = `<h3 style="margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:5px;">Student Live Statuses</h3>`;
+            if(studentQuizzes.length === 0) {
+                html += `<p>No students assigned to this quiz yet.</p>`;
+            } else {
+                html += `<div style="display:flex; flex-direction:column; gap:10px;">`;
+                studentQuizzes.forEach(sq => {
+                    const statusClass = sq.status === 'in-progress' ? 'active' : sq.status === 'completed' ? 'completed' : 'not-attempted';
+                    const isLive = sq.status === 'in-progress';
+                    html += `
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--background-secondary); padding:10px; border-radius:5px; border:1px solid var(--border-color);">
+                            <div>
+                                <strong>${utils.escapeHTML(sq.studentId?.firstName)} ${utils.escapeHTML(sq.studentId?.lastName)}</strong>
+                                <br><span style="font-size:0.85rem; color:var(--text-secondary);">Status: <span class="status-badge ${statusClass}">${sq.status}</span></span>
+                            </div>
+                            ${isLive ? `<span style="color:var(--primary-color); font-weight:bold;"><i class="fas fa-circle" style="animation: pulse 1.5s infinite;"></i> Live Now</span>` : ''}
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+            teacherStatsContainer.innerHTML = html;
+        } catch (err) {
+            console.error('Failed to load live monitoring:', err);
         }
     },
 
@@ -1983,43 +2045,7 @@ const uiRenderer = {
         } catch (error) {
             console.error('Error setting up quiz bank modal:', error);
         }
-    },
-
-    async loadTeacherLiveMonitoring(templateId) {
-        try {
-            const teacherStatsContainer = document.getElementById('teacher-live-stats');
-            if (!teacherStatsContainer) return;
-            
-            teacherStatsContainer.innerHTML = '<div class="loading-spinner"></div>';
-            
-            const analytics = await apiService.fetchQuizAnalytics(templateId);
-            const studentQuizzes = analytics.studentQuizzes || []; // Ensure your backend sends this
-            
-            let html = `<h3 style="margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:5px;">Student Live Statuses</h3>`;
-            if(studentQuizzes.length === 0) {
-                html += `<p>No students assigned to this quiz yet.</p>`;
-            } else {
-                html += `<div style="display:flex; flex-direction:column; gap:10px;">`;
-                studentQuizzes.forEach(sq => {
-                    const statusClass = sq.status === 'in-progress' ? 'active' : sq.status === 'completed' ? 'completed' : 'not-attempted';
-                    const isLive = sq.status === 'in-progress';
-                    html += `
-                        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--background-secondary); padding:10px; border-radius:5px; border:1px solid var(--border-color);">
-                            <div>
-                                <strong>${utils.escapeHTML(sq.studentId?.firstName)} ${utils.escapeHTML(sq.studentId?.lastName)}</strong>
-                                <br><span style="font-size:0.85rem; color:var(--text-secondary);">Status: <span class="status-badge ${statusClass}">${sq.status}</span></span>
-                            </div>
-                            ${isLive ? `<span style="color:var(--primary-color); font-weight:bold;"><i class="fas fa-circle" style="animation: pulse 1.5s infinite;"></i> Live Now</span>` : ''}
-                        </div>
-                    `;
-                });
-                html += `</div>`;
-            }
-            teacherStatsContainer.innerHTML = html;
-        } catch (err) {
-            console.error('Failed to load live monitoring:', err);
-        }
-    },
+    }
 };
 
 // Event Handlers with robust error handling
@@ -2149,7 +2175,7 @@ const eventHandlers = {
     async handleEditQuiz(quizId) {
         try {
             const quiz = await apiService.fetchQuizById(quizId);
-            uiRenderer.openModal('create-edit-quiz', quiz);
+            uiRenderer.openModal('create-edit-quiz', quiz.data);
         } catch (error) {
             console.error('Failed to fetch quiz for editing:', error);
             uiRenderer.showNotification('Failed to load quiz for editing', 'error');
@@ -2206,11 +2232,15 @@ const eventHandlers = {
     async handleStartQuiz(quizId) {
         try {
             // ✅ This function now handles entering fullscreen mode.
-            const quizWrapper = document.getElementById('quiz-wrapper');
-            if (quizWrapper.requestFullscreen) {
-                await quizWrapper.requestFullscreen();
-            } else if (quizWrapper.webkitRequestFullscreen) { /* Safari */
-                await quizWrapper.webkitRequestFullscreen();
+            const isProtected = state.detailedQuiz?.templateId?.isProtected || state.detailedQuiz?.isProtected || false;
+            
+            if (isProtected) {
+                const quizWrapper = document.getElementById('quiz-wrapper');
+                if (quizWrapper.requestFullscreen) {
+                    await quizWrapper.requestFullscreen();
+                } else if (quizWrapper.webkitRequestFullscreen) { /* Safari */
+                    await quizWrapper.webkitRequestFullscreen();
+                }
             }
             // After entering fullscreen, the quiz will start.
             await this.handleRealStartQuiz(quizId, null);
@@ -2329,6 +2359,33 @@ const eventHandlers = {
             document.addEventListener('fullscreenchange', this.fullscreenChangeListener);
         }
     },
+
+    async handleSelectOptionFeed(questionId, optionIndex) {
+        try {
+            const attempt = state.activeQuizAttempt;
+            const existingAnswerIndex = attempt.answers.findIndex(a => 
+                a.question && a.question.toString() === questionId.toString()
+            );
+            
+            if (existingAnswerIndex !== -1) {
+                attempt.answers[existingAnswerIndex] = {
+                    question: questionId,
+                    selectedOptionIndex: optionIndex,
+                    answeredAt: new Date()
+                };
+            } else {
+                attempt.answers.push({
+                    question: questionId,
+                    selectedOptionIndex: optionIndex,
+                    answeredAt: new Date()
+                });
+            }
+            apiService.autoSaveAnswers(attempt._id, attempt.answers);
+        } catch (error) {
+            console.error('Auto-save failed:', error);
+        }
+    },
+
     // Handle select option
     async handleSelectOption(optionIndex) {
         try {
@@ -2387,32 +2444,6 @@ const eventHandlers = {
         } catch (error) {
             console.error('Failed to submit answer:', error);
             uiRenderer.showNotification('Failed to submit answer', 'error');
-        }
-    },
-
-    async handleSelectOptionFeed(questionId, optionIndex) {
-        try {
-            const attempt = state.activeQuizAttempt;
-            const existingAnswerIndex = attempt.answers.findIndex(a => 
-                a.question && a.question.toString() === questionId.toString()
-            );
-            
-            if (existingAnswerIndex !== -1) {
-                attempt.answers[existingAnswerIndex] = {
-                    question: questionId,
-                    selectedOptionIndex: optionIndex,
-                    answeredAt: new Date()
-                };
-            } else {
-                attempt.answers.push({
-                    question: questionId,
-                    selectedOptionIndex: optionIndex,
-                    answeredAt: new Date()
-                });
-            }
-            apiService.autoSaveAnswers(attempt._id, attempt.answers);
-        } catch (error) {
-            console.error('Auto-save failed:', error);
         }
     },
 
