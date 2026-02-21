@@ -71,11 +71,10 @@ studentQuizSchema.methods.calculateStatus = function() {
   if (now >= this.startTime && now <= this.dueDate) return 'active';
   return 'upcoming';
 };
-
 studentQuizSchema.methods.canStart = function() {
-  // This function was missing, causing a TypeError.
   const currentStatus = this.calculateStatus();
-  return currentStatus === 'active';
+  // ✅ FIX: Explicitly allow quizzes that are 'in-progress' to be opened again!
+  return currentStatus === 'active' || currentStatus === 'in-progress';
 };
 
 studentQuizSchema.statics.updateAllStatuses = async function() {
