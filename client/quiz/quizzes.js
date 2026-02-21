@@ -1416,7 +1416,7 @@ const uiRenderer = {
         }
     },
 
-    // Setup quiz taking modal
+// Setup quiz taking modal
     setupQuizTakingModal(modalElement) {
         try {
             const quiz = state.detailedQuiz;
@@ -1429,15 +1429,12 @@ const uiRenderer = {
                 return;
             }
 
-            modalElement.querySelector('.quiz-title-taking').textContent = quiz.templateTitle;
+            const titleEl = modalElement.querySelector('.quiz-title-taking');
+            if (titleEl) titleEl.textContent = quiz.templateTitle;
             
-            // --- FIX 3: Update Sticky Tracker total ---
-            if(modalElement.querySelector('#total-questions-count')) {
-                modalElement.querySelector('#total-questions-count').textContent = questions.length;
-            }
+            const countEl = modalElement.querySelector('#total-questions-count');
+            if (countEl) countEl.textContent = questions.length;
 
-            // --- FIX 1: Full-Height Container ---
-            // Find container, ensuring it scrolls perfectly in your theme
             let scrollableContainer = modalElement.querySelector('#active-quiz-questions-container');
             if (!scrollableContainer) {
                 const textElement = modalElement.querySelector('.question-text-taking');
@@ -1445,25 +1442,27 @@ const uiRenderer = {
             }
             if (!scrollableContainer) return;
 
+            // FIX: Centered, narrower width, vertical answers, full height to bottom, dark-mode friendly
             scrollableContainer.innerHTML = '';
+            scrollableContainer.style.cssText = `
+                display: flex;
+                flex-direction: column;
+                gap: 40px;
+                max-width: 800px;
+                margin: 0 auto;
+                height: calc(100vh - 140px);
+                overflow-y: auto;
+                padding: 20px 15px 150px 15px; /* Padding bottom ensures it scrolls past the submit button */
+            `;
             
-            // Force the modal body to be tall and scrollable
-            const modalBody = modalElement.querySelector('.modal-body') || scrollableContainer.parentElement;
-            if (modalBody) {
-                modalBody.style.maxHeight = 'calc(100vh - 150px)'; // 100vh minus header/footer space
-                modalBody.style.overflowY = 'auto';
-            }
-            
-            scrollableContainer.style.height = '100%';
-            scrollableContainer.style.padding = '10px 15px'; 
-            
-            // Loop through and render EVERY question
             questions.forEach((question, index) => {
                 const questionBlock = document.createElement('div');
                 questionBlock.className = 'quiz-question-block';
-                questionBlock.style.marginBottom = '40px'; 
-                questionBlock.style.paddingBottom = '30px';
-                questionBlock.style.borderBottom = '1px solid var(--border-color)';
+                // Transparent border, no white backgrounds
+                questionBlock.style.cssText = `
+                    padding-bottom: 30px;
+                    border-bottom: 1px solid rgba(150, 150, 150, 0.2);
+                `;
 
                 let imageHtml = '';
                 if (question.imageUrl) {
@@ -1473,12 +1472,12 @@ const uiRenderer = {
                     </div>`;
                 }
 
-                let optionsHtml = '<div class="options-container-taking">';
+                // FIX: flex-direction: column makes answers stack vertically
+                let optionsHtml = '<div class="options-container-taking" style="display: flex; flex-direction: column; gap: 12px;">';
                 (question.options || []).forEach((opt, optIndex) => {
                     const existingAnswer = attempt.answers?.find(a => a.question?.toString() === question._id.toString());
                     const isSelected = existingAnswer && existingAnswer.selectedOptionIndex === optIndex ? 'selected' : '';
                     
-                    // Uses your EXACT original classes
                     optionsHtml += `
                         <div class="option-taking ${isSelected}" data-question-id="${question._id}" data-option-index="${optIndex}">
                             <span class="option-letter">${String.fromCharCode(65 + optIndex)}</span>
@@ -1488,10 +1487,11 @@ const uiRenderer = {
                 });
                 optionsHtml += '</div>';
 
+                // Transparent background for points to match dark theme
                 questionBlock.innerHTML = `
                     <div class="question-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <h3 style="margin: 0;">კითხვა ${index + 1}</h3>
-                        <span class="question-points" style="font-weight: bold; background: var(--background-secondary); padding: 5px 10px; border-radius: 5px;">${question.points} ქულა</span>
+                        <span class="question-points" style="font-weight: bold; background: rgba(128, 128, 128, 0.2); padding: 5px 10px; border-radius: 5px;">${question.points} ქულა</span>
                     </div>
                     <div class="question-text-taking" style="margin-bottom: 20px;">${question.text}</div>
                     ${imageHtml}
@@ -1513,7 +1513,7 @@ const uiRenderer = {
                     parentContainer.querySelectorAll('.option-taking').forEach(sibling => sibling.classList.remove('selected'));
                     target.classList.add('selected');
                     
-                    // --- FIX 3: Update answered count on click ---
+                    // FIX: Update answered count live
                     let answeredCount = 0;
                     scrollableContainer.querySelectorAll('.options-container-taking').forEach(cont => {
                         if (cont.querySelector('.selected')) answeredCount++;
@@ -1526,24 +1526,22 @@ const uiRenderer = {
                 });
             });
 
-            // Initial tracker update
+            // Initial tracker update on load
             let initialCount = 0;
             scrollableContainer.querySelectorAll('.options-container-taking').forEach(cont => {
                 if (cont.querySelector('.selected')) initialCount++;
             });
-            if(modalElement.querySelector('#answered-count')) modalElement.querySelector('#answered-count').textContent = initialCount;
+            const trackerEl = modalElement.querySelector('#answered-count');
+            if (trackerEl) trackerEl.textContent = initialCount;
 
-            // Hide old pagination controls
             const nextBtn = modalElement.querySelector('.next-question-btn');
             const prevBtn = modalElement.querySelector('.prev-question-btn');
             if (nextBtn) nextBtn.style.display = 'none';
             if (prevBtn) prevBtn.style.display = 'none';
 
-            // --- FIX 2: Ensure Submit Button is perfectly wired up ---
             const finishBtn = modalElement.querySelector('.finish-quiz-btn') || modalElement.querySelector('#submit-entire-quiz-btn');
             if (finishBtn) {
                 finishBtn.style.display = 'block';
-                // Clone and replace to prevent duplicate click listeners if reopened
                 const newFinishBtn = finishBtn.cloneNode(true);
                 finishBtn.parentNode.replaceChild(newFinishBtn, finishBtn);
                 newFinishBtn.addEventListener('click', () => {
@@ -1559,7 +1557,6 @@ const uiRenderer = {
             console.error('Error setting up quiz taking modal:', error);
         }
     },
-
     // Setup question bank modal
     setupQuestionBankModal(modalElement) {
         try {
@@ -2198,15 +2195,19 @@ const eventHandlers = {
         }
     },
 
-    async handleDuplicateQuiz(templateId) {
+async handleDuplicateQuiz(templateId) {
         try {
-            if (!state.selectedGroupId) {
-                return uiRenderer.showNotification('Please select a target group from the dropdown first to duplicate the quiz into.', 'error');
+            // FIX: If the dropdown wasn't clicked, fallback to the group the quiz currently belongs to.
+            const targetGroupId = state.selectedGroupId || state.detailedQuiz?.courseId?.[0] || state.detailedQuiz?.groupId;
+            
+            if (!targetGroupId) {
+                return uiRenderer.showNotification('Please select a target group from the top dropdown first.', 'error');
             }
-            const confirmed = confirm('Are you sure you want to duplicate this quiz for the currently selected group?');
+            
+            const confirmed = confirm('Are you sure you want to duplicate this quiz?');
             if (!confirmed) return;
 
-            await apiService.duplicateQuiz(templateId, state.selectedGroupId);
+            await apiService.duplicateQuiz(templateId, targetGroupId);
             uiRenderer.showNotification('Quiz duplicated successfully!');
             await this.loadQuizzes();
             this.handleBackToList();
@@ -2215,14 +2216,19 @@ const eventHandlers = {
         }
     },
 
-    async handleRetakeQuiz(studentQuizId) {
+async handleRetakeQuiz(studentQuizId) {
         try {
             const confirmed = confirm('Are you sure you want to clear your previous answers and restart this quiz?');
             if (!confirmed) return;
 
             await apiService.retakeQuiz(studentQuizId);
             uiRenderer.showNotification('Quiz reset. Ready to start again!');
-            await this.handleViewDetail(studentQuizId);
+            
+            // FIX: Properly refresh the view to show the start button again
+            this.handleBackToList();
+            setTimeout(() => {
+                this.handleViewDetail(studentQuizId);
+            }, 300);
         } catch (error) {
             uiRenderer.showNotification('Failed to restart quiz', 'error');
         }
@@ -2522,9 +2528,9 @@ const eventHandlers = {
         }
     },
     // Handle finish quiz
+// Handle finish quiz
     async handleFinishQuiz() {
         try {
-            // ✅ This function now cleans up all timers and anti-cheating listeners.
             console.log('Finishing quiz...');
             
             // Cleanup anti-cheating listeners
@@ -2538,19 +2544,21 @@ const eventHandlers = {
             state.quizTimer = null;
             state.quizDeadlineTimer = null;
 
-            // Exit fullscreen if still in it
             if (document.fullscreenElement) {
                 document.exitFullscreen();
             }
 
-            const finishBtn = document.querySelector('.finish-quiz-btn, .btn-warning');
+            const finishBtn = document.querySelector('.finish-quiz-btn') || document.querySelector('#submit-entire-quiz-btn');
             if (finishBtn) {
                 finishBtn.disabled = true;
                 finishBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
             }
             
             const attempt = state.activeQuizAttempt;
-            const submissionResult = await apiService.submitQuizAttempt(attempt._id);
+            
+            // FIX: Pass attempt.answers! Without this, the backend grades an empty array and gives you 0 points.
+            const submissionResult = await apiService.submitQuizAttempt(attempt._id, attempt.answers);
+            
             const attemptId = submissionResult.data?._id || attempt._id;
             const results = await apiService.fetchQuizResults(attemptId);
             
