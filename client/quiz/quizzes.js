@@ -1,4 +1,3 @@
-
 // quizzes.js (Enhanced Version)
 // Comprehensive solution for Pi-Rate Academy Quiz System
 // =========================================================================
@@ -28,9 +27,7 @@ const QUIZ_ACTIONS = {
     ADD_FROM_BANK: 'add-from-bank',
     REQUEST_RETAKE: 'request-retake',
     REVIEW_QUIZ: 'review-quiz',
-    SELECT_QUIZ_FROM_BANK: 'select-quiz-from-bank',
-    DUPLICATE_QUIZ: 'duplicate-quiz',
-    RETAKE_QUIZ: 'retake-quiz'
+    SELECT_QUIZ_FROM_BANK: 'select-quiz-from-bank'
 };
 
 const QUIZ_STATUS = {
@@ -521,42 +518,6 @@ const apiService = {
             throw error;
         }
     },
-
-    // --- NEW: DUPLICATE, RETAKE, AND AUTOSAVE APIs ---
-    async duplicateQuiz(quizId, groupId) {
-        try {
-            const response = await this.fetch(`/quizzes/${quizId}/duplicate`, {
-                method: 'POST',
-                body: JSON.stringify({ groupId })
-            });
-            return response.data || response;
-        } catch (error) {
-            console.error('Failed to duplicate quiz:', error);
-            throw error;
-        }
-    },
-
-    async retakeQuiz(studentQuizId) {
-        try {
-            const response = await this.fetch(`/quizzes/${studentQuizId}/retake`, { method: 'POST' });
-            return response.data || response;
-        } catch (error) {
-            console.error('Failed to request retake:', error);
-            throw error;
-        }
-    },
-
-    async autoSaveAnswers(attemptId, answers) {
-        try {
-            return await this.fetch(`/quizzes/attempt/${attemptId}/autosave`, {
-                method: 'PUT',
-                body: JSON.stringify({ answers })
-            });
-        } catch (error) {
-            console.warn('Auto-save failed silently in background:', error);
-        }
-    },
-    // -------------------------------------------------
     
     // Start a quiz attempt
     async startQuizAttempt(quizId, password = null) {
@@ -809,16 +770,6 @@ const uiRenderer = {
             if (!state.currentUser || !elements.tabsNav) return;
 
             const isTeacher = [ROLES.TEACHER, ROLES.ADMIN].includes(state.currentUser.role);
-
-            // Add "In Progress" tab dynamically if it doesn't exist
-            if (!elements.tabsNav.querySelector('[data-tab="in-progress"]')) {
-                const inProgressBtn = document.createElement('button');
-                inProgressBtn.className = 'tab-btn';
-                inProgressBtn.dataset.action = 'change-tab';
-                inProgressBtn.dataset.tab = 'in-progress';
-                inProgressBtn.textContent = 'მიმდინარე (In Progress)';
-                elements.tabsNav.appendChild(inProgressBtn);
-            }
             
             // Show or hide the requests tab based on role
             const requestsTab = document.getElementById('requests-tab');
@@ -1024,21 +975,14 @@ const uiRenderer = {
             const timeLimit = quiz.templateId?.timeLimit || 'No time limit';
             const totalPoints = quiz.templatePoints || 0;
             const description = quiz.templateId?.description || 'No description provided';
-            const isProtected = quiz.templateId?.isProtected || false;
-            
-            // Check if student is resuming
-            const startBtnText = quiz.status === 'in-progress' ? 'ქვიზის გაგრძელება (Resume)' : 'ქვიზის დაწყება (Start)';
 
+            // ✅ This block contains the specific rules, translated into Georgian.
             const instructionsInGeorgian = `
                 <h3 style="color: var(--warning-accent);">ყურადღება! მნიშვნელოვანი ინსტრუქციები</h3>
                 <ul class="instructions-list">
-                    ${isProtected ? `
-                        <li><i class="fas fa-arrows-alt"></i> ქვიზის დაწყებისას, გვერდი გადავა სრულ ეკრანზე.</li>
-                        <li><i class="fas fa-sign-out-alt"></i> სრული ეკრანიდან გასვლა ან სხვა ფანჯარაში გადასვლა გამოიწვევს ქვიზის ავტომატურ დასრულებას.</li>
-                        <li><i class="fas fa-camera"></i> სქრინშოთის გადაღება და კოპირება აკრძალულია.</li>
-                    ` : `
-                        <li><i class="fas fa-info-circle"></i> ეს არის ღია ქვიზი. შეგიძლიათ გამოიყენოთ სხვა რესურსები, მაგრამ დაიცავით აკადემიური კეთილსინდისიერება.</li>
-                    `}
+                    <li><i class="fas fa-arrows-alt"></i> ქვიზის დაწყებისას, გვერდი გადავა სრულ ეკრანზე.</li>
+                    <li><i class="fas fa-sign-out-alt"></i> სრული ეკრანიდან გასვლა ან სხვა ფანჯარაში გადასვლა გამოიწვევს ქვიზის ავტომატურ დასრულებას.</li>
+                    <li><i class="fas fa-camera"></i> სქრინშოთის გადაღება და კოპირება აკრძალულია.</li>
                     <li><i class="fas fa-clock"></i> ქვიზი ავტომატურად დასრულდება დროის ამოწურვისას.</li>
                 </ul>
             `;
@@ -1048,12 +992,6 @@ const uiRenderer = {
                     <div class="detail-panel-header">
                         <button class="btn back-btn" data-action="${QUIZ_ACTIONS.BACK_TO_LIST}"><i class="fas fa-arrow-left"></i> Back</button>
                         <h2 class="quiz-title-detail">${quizTitle}</h2>
-                        
-                        ${!isStudent ? `
-                            <button class="btn btn-secondary duplicate-quiz-btn" data-action="${QUIZ_ACTIONS.DUPLICATE_QUIZ}" data-quiz-id="${quiz.templateId?._id || quiz._id}" style="margin-left:auto;">
-                                <i class="fas fa-copy"></i> Duplicate
-                            </button>
-                        ` : ''}
                     </div>
                     <div class="quiz-instructions-content" style="padding: 20px;">
                         ${!isStudent ? `<p><strong>Student:</strong> ${utils.escapeHTML(quiz.studentId?.firstName)} ${utils.escapeHTML(quiz.studentId?.lastName)}</p>` : ''}
@@ -1066,12 +1004,11 @@ const uiRenderer = {
                             <p><strong>Time Limit:</strong> ${timeLimit} ${typeof timeLimit === 'number' ? 'minutes' : ''}</p>
                             <p><strong>Available From:</strong> ${utils.formatDate(startTime)}</p>
                             <p><strong>Due Date:</strong> ${utils.formatDate(endTime)}</p>
-                            <p><strong>Security:</strong> ${isProtected ? '<span style="color:red">Protected (Anti-Cheat ON)</span>' : '<span style="color:green">Open (Anti-Cheat OFF)</span>'}</p>
                         </div>
                         
                         ${instructionsInGeorgian}
                         
-                        ${isStudent && (quiz.status === 'active' || quiz.status === 'in-progress') ? `
+                        ${isStudent && quiz.status === 'active' ? `
                             <div class="agreement-section" style="margin-top: 20px;">
                                 <label class="agreement-checkbox">
                                     <input type="checkbox" id="quiz-agreement">
@@ -1080,16 +1017,14 @@ const uiRenderer = {
                                 </label>
                             </div>
                             <div class="modal-footer" style="padding-top: 15px;">
-                                <button class="btn btn-primary" id="start-quiz-btn-main" data-action="${QUIZ_ACTIONS.START_QUIZ}" disabled>${startBtnText}</button>
+                                <button class="btn btn-primary" id="start-quiz-btn-main" data-action="${QUIZ_ACTIONS.START_QUIZ}" disabled>ქვიზის დაწყება</button>
                             </div>
                         ` : ''}
-                        
-                        ${!isStudent ? `<div id="teacher-live-stats" style="margin-top: 20px;"></div>` : ''}
                     </div>
                 </div>
             `;
             
-            if (isStudent && (quiz.status === 'active' || quiz.status === 'in-progress')) {
+            if (isStudent && quiz.status === 'active') {
                 const agreementCheckbox = elements.detailView.querySelector('#quiz-agreement');
                 const startButton = elements.detailView.querySelector('#start-quiz-btn-main');
                 if (agreementCheckbox && startButton) {
@@ -1097,11 +1032,6 @@ const uiRenderer = {
                         startButton.disabled = !e.target.checked;
                     });
                 }
-            }
-
-            // Load Live View for Teachers
-            if (!isStudent) {
-                this.loadTeacherLiveMonitoring(quiz.templateId?._id || quiz._id);
             }
         } catch (error) {
             console.error('Error in renderInstructionsView:', error);
@@ -1334,11 +1264,6 @@ const uiRenderer = {
                      modalElement.querySelector('#quiz-group').value = ''; // Ensure no group is selected for cloning.
                 }
                 
-                // Safely prefill advanced settings if they exist in HTML
-                if(modalElement.querySelector('#is-protected')) modalElement.querySelector('#is-protected').checked = data.isProtected || false;
-                if(modalElement.querySelector('#allow-retakes')) modalElement.querySelector('#allow-retakes').checked = data.allowRetakes || false;
-                if(modalElement.querySelector('#retake-policy')) modalElement.querySelector('#retake-policy').value = data.retakePolicy || 'highest';
-                
                 this.renderQuestions(data.questions, modalElement);
             } else {
                 this.addNewQuestion(modalElement);
@@ -1416,7 +1341,7 @@ const uiRenderer = {
         }
     },
 
-// Setup quiz taking modal
+    // Setup quiz taking modal
     setupQuizTakingModal(modalElement) {
         try {
             const quiz = state.detailedQuiz;
@@ -1428,135 +1353,69 @@ const uiRenderer = {
                 this.closeModal();
                 return;
             }
-
-            const titleEl = modalElement.querySelector('.quiz-title-taking');
-            if (titleEl) titleEl.textContent = quiz.templateTitle;
             
-            const countEl = modalElement.querySelector('#total-questions-count');
-            if (countEl) countEl.textContent = questions.length;
-
-            let scrollableContainer = modalElement.querySelector('#active-quiz-questions-container');
-            if (!scrollableContainer) {
-                const textElement = modalElement.querySelector('.question-text-taking');
-                if (textElement) scrollableContainer = textElement.parentElement;
+            const questionIndex = state.currentQuestionIndex;
+            const question = questions[questionIndex];
+            
+            if (!question) {
+                this.showNotification('Question not found.', 'error');
+                this.closeModal();
+                return;
             }
-            if (!scrollableContainer) return;
 
-            // FIX: Centered, narrower width, vertical answers, full height to bottom, dark-mode friendly
-            scrollableContainer.innerHTML = '';
-            scrollableContainer.style.cssText = `
-                display: flex;
-                flex-direction: column;
-                gap: 40px;
-                max-width: 800px;
-                margin: 0 auto;
-                height: calc(100vh - 140px);
-                overflow-y: auto;
-                padding: 20px 15px 150px 15px; /* Padding bottom ensures it scrolls past the submit button */
-            `;
+            modalElement.querySelector('.quiz-title-taking').textContent = quiz.templateTitle;
+            modalElement.querySelector('#total-questions').textContent = questions.length;
+            modalElement.querySelector('#current-question-number').textContent = questionIndex + 1;
             
-            questions.forEach((question, index) => {
-                const questionBlock = document.createElement('div');
-                questionBlock.className = 'quiz-question-block';
-                // Transparent border, no white backgrounds
-                questionBlock.style.cssText = `
-                    padding-bottom: 30px;
-                    border-bottom: 1px solid rgba(150, 150, 150, 0.2);
-                `;
-
-                let imageHtml = '';
-                if (question.imageUrl) {
-                    imageHtml = `
-                    <div class="question-image-container" style="display: flex; justify-content: center; margin: 15px 0;">
-                        <img src="${question.imageUrl}" alt="Question Image" style="max-width: 100%; border-radius: 8px;">
-                    </div>`;
-                }
-
-                // FIX: flex-direction: column makes answers stack vertically
-                let optionsHtml = '<div class="options-container-taking" style="display: flex; flex-direction: column; gap: 12px;">';
-                (question.options || []).forEach((opt, optIndex) => {
-                    const existingAnswer = attempt.answers?.find(a => a.question?.toString() === question._id.toString());
-                    const isSelected = existingAnswer && existingAnswer.selectedOptionIndex === optIndex ? 'selected' : '';
-                    
-                    optionsHtml += `
-                        <div class="option-taking ${isSelected}" data-question-id="${question._id}" data-option-index="${optIndex}">
-                            <span class="option-letter">${String.fromCharCode(65 + optIndex)}</span>
-                            <span class="option-text">${opt.text}</span>
-                        </div>
-                    `;
-                });
-                optionsHtml += '</div>';
-
-                // Transparent background for points to match dark theme
-                questionBlock.innerHTML = `
-                    <div class="question-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 style="margin: 0;">კითხვა ${index + 1}</h3>
-                        <span class="question-points" style="font-weight: bold; background: rgba(128, 128, 128, 0.2); padding: 5px 10px; border-radius: 5px;">${question.points} ქულა</span>
-                    </div>
-                    <div class="question-text-taking" style="margin-bottom: 20px;">${question.text}</div>
-                    ${imageHtml}
-                    ${optionsHtml}
+            const progress = ((questionIndex + 1) / questions.length) * 100;
+            modalElement.querySelector('.progress-fill').style.width = `${progress}%`;
+            
+            // --- FIX: Use innerHTML to ensure LaTeX delimiters are preserved ---
+            const questionTextElement = modalElement.querySelector('.question-text-taking');
+            questionTextElement.innerHTML = question.text; // Content from DB is assumed to be safe
+            
+            const imageContainer = modalElement.querySelector('.question-image-container');
+            if (question.imageUrl) {
+                imageContainer.querySelector('img').src = question.imageUrl;
+                imageContainer.style.display = 'flex';
+            } else {
+                imageContainer.style.display = 'none';
+            }
+            
+            const optionsContainer = modalElement.querySelector('.options-container-taking');
+            optionsContainer.innerHTML = '';
+            (question.options || []).forEach((option, index) => {
+                const optionElement = document.createElement('div');
+                optionElement.className = 'option-taking';
+                optionElement.dataset.optionIndex = index;
+                
+                // --- FIX: Use innerHTML here as well for options with LaTeX ---
+                optionElement.innerHTML = `
+                    <span class="option-letter">${String.fromCharCode(65 + index)}</span>
+                    <span class="option-text">${option.text}</span>
                 `;
                 
-                scrollableContainer.appendChild(questionBlock);
+                const existingAnswer = attempt.answers?.find(a => a.question?.toString() === question._id.toString());
+                if (existingAnswer && existingAnswer.selectedOptionIndex === index) {
+                    optionElement.classList.add('selected');
+                }
+
+                optionElement.addEventListener('click', () => eventHandlers.handleSelectOption(index));
+                optionsContainer.appendChild(optionElement);
             });
+            
+            modalElement.querySelector('.prev-question-btn').disabled = (questionIndex === 0);
+            modalElement.querySelector('.next-question-btn').style.display = (questionIndex === questions.length - 1) ? 'none' : 'block';
+            modalElement.querySelector('.finish-quiz-btn').style.display = (questionIndex === questions.length - 1) ? 'block' : 'none';
 
-            // Bind click events to options for auto-saving
-            const allOptions = scrollableContainer.querySelectorAll('.option-taking');
-            allOptions.forEach(opt => {
-                opt.addEventListener('click', (e) => {
-                    const target = e.currentTarget;
-                    const qId = target.dataset.questionId;
-                    const optIdx = parseInt(target.dataset.optionIndex);
-                    
-                    const parentContainer = target.closest('.options-container-taking');
-                    parentContainer.querySelectorAll('.option-taking').forEach(sibling => sibling.classList.remove('selected'));
-                    target.classList.add('selected');
-                    
-                    // FIX: Update answered count live
-                    let answeredCount = 0;
-                    scrollableContainer.querySelectorAll('.options-container-taking').forEach(cont => {
-                        if (cont.querySelector('.selected')) answeredCount++;
-                    });
-                    const countEl = modalElement.querySelector('#answered-count');
-                    if (countEl) countEl.textContent = answeredCount;
-
-                    // Autosave silently
-                    eventHandlers.handleSelectOptionFeed(qId, optIdx);
-                });
-            });
-
-            // Initial tracker update on load
-            let initialCount = 0;
-            scrollableContainer.querySelectorAll('.options-container-taking').forEach(cont => {
-                if (cont.querySelector('.selected')) initialCount++;
-            });
-            const trackerEl = modalElement.querySelector('#answered-count');
-            if (trackerEl) trackerEl.textContent = initialCount;
-
-            const nextBtn = modalElement.querySelector('.next-question-btn');
-            const prevBtn = modalElement.querySelector('.prev-question-btn');
-            if (nextBtn) nextBtn.style.display = 'none';
-            if (prevBtn) prevBtn.style.display = 'none';
-
-            const finishBtn = modalElement.querySelector('.finish-quiz-btn') || modalElement.querySelector('#submit-entire-quiz-btn');
-            if (finishBtn) {
-                finishBtn.style.display = 'block';
-                const newFinishBtn = finishBtn.cloneNode(true);
-                finishBtn.parentNode.replaceChild(newFinishBtn, finishBtn);
-                newFinishBtn.addEventListener('click', () => {
-                    if(confirm("დარწმუნებული ხართ რომ გსურთ ქვიზის დასრულება? (Are you sure you want to submit?)")) {
-                        eventHandlers.handleFinishQuiz();
-                    }
-                });
-            }
-
-            utils.renderMath(scrollableContainer);
+            // --- FIX: Tell MathJax to render all the new math content in the modal ---
+            utils.renderMath(modalElement);
 
         } catch (error) {
             console.error('Error setting up quiz taking modal:', error);
         }
     },
+
     // Setup question bank modal
     setupQuestionBankModal(modalElement) {
         try {
@@ -1612,42 +1471,6 @@ const uiRenderer = {
                 });
         } catch (error) {
             console.error('Error setting up question bank modal:', error);
-        }
-    },
-
-    async loadTeacherLiveMonitoring(templateId) {
-        try {
-            const teacherStatsContainer = document.getElementById('teacher-live-stats');
-            if (!teacherStatsContainer) return;
-            
-            teacherStatsContainer.innerHTML = '<div class="loading-spinner"></div>';
-            
-            const analytics = await apiService.fetchQuizAnalytics(templateId);
-            const studentQuizzes = analytics.studentQuizzes || []; // Ensure your backend sends this
-            
-            let html = `<h3 style="margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:5px;">Student Live Statuses</h3>`;
-            if(studentQuizzes.length === 0) {
-                html += `<p>No students assigned to this quiz yet.</p>`;
-            } else {
-                html += `<div style="display:flex; flex-direction:column; gap:10px;">`;
-                studentQuizzes.forEach(sq => {
-                    const statusClass = sq.status === 'in-progress' ? 'active' : sq.status === 'completed' ? 'completed' : 'not-attempted';
-                    const isLive = sq.status === 'in-progress';
-                    html += `
-                        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--background-secondary); padding:10px; border-radius:5px; border:1px solid var(--border-color);">
-                            <div>
-                                <strong>${utils.escapeHTML(sq.studentId?.firstName)} ${utils.escapeHTML(sq.studentId?.lastName)}</strong>
-                                <br><span style="font-size:0.85rem; color:var(--text-secondary);">Status: <span class="status-badge ${statusClass}">${sq.status}</span></span>
-                            </div>
-                            ${isLive ? `<span style="color:var(--primary-color); font-weight:bold;"><i class="fas fa-circle" style="animation: pulse 1.5s infinite;"></i> Live Now</span>` : ''}
-                        </div>
-                    `;
-                });
-                html += `</div>`;
-            }
-            teacherStatsContainer.innerHTML = html;
-        } catch (err) {
-            console.error('Failed to load live monitoring:', err);
         }
     },
 
@@ -2172,7 +1995,7 @@ const eventHandlers = {
     async handleEditQuiz(quizId) {
         try {
             const quiz = await apiService.fetchQuizById(quizId);
-            uiRenderer.openModal('create-edit-quiz', quiz.data);
+            uiRenderer.openModal('create-edit-quiz', quiz);
         } catch (error) {
             console.error('Failed to fetch quiz for editing:', error);
             uiRenderer.showNotification('Failed to load quiz for editing', 'error');
@@ -2195,58 +2018,15 @@ const eventHandlers = {
         }
     },
 
-async handleDuplicateQuiz(templateId) {
-        try {
-            // FIX: If the dropdown wasn't clicked, fallback to the group the quiz currently belongs to.
-            const targetGroupId = state.selectedGroupId || state.detailedQuiz?.courseId?.[0] || state.detailedQuiz?.groupId;
-            
-            if (!targetGroupId) {
-                return uiRenderer.showNotification('Please select a target group from the top dropdown first.', 'error');
-            }
-            
-            const confirmed = confirm('Are you sure you want to duplicate this quiz?');
-            if (!confirmed) return;
-
-            await apiService.duplicateQuiz(templateId, targetGroupId);
-            uiRenderer.showNotification('Quiz duplicated successfully!');
-            await this.loadQuizzes();
-            this.handleBackToList();
-        } catch (error) {
-            uiRenderer.showNotification('Failed to duplicate quiz', 'error');
-        }
-    },
-
-async handleRetakeQuiz(studentQuizId) {
-        try {
-            const confirmed = confirm('Are you sure you want to clear your previous answers and restart this quiz?');
-            if (!confirmed) return;
-
-            await apiService.retakeQuiz(studentQuizId);
-            uiRenderer.showNotification('Quiz reset. Ready to start again!');
-            
-            // FIX: Properly refresh the view to show the start button again
-            this.handleBackToList();
-            setTimeout(() => {
-                this.handleViewDetail(studentQuizId);
-            }, 300);
-        } catch (error) {
-            uiRenderer.showNotification('Failed to restart quiz', 'error');
-        }
-    },
-
     // Handle start quiz
     async handleStartQuiz(quizId) {
         try {
             // ✅ This function now handles entering fullscreen mode.
-            const isProtected = state.detailedQuiz?.templateId?.isProtected || state.detailedQuiz?.isProtected || false;
-            
-            if (isProtected) {
-                const quizWrapper = document.getElementById('quiz-wrapper');
-                if (quizWrapper.requestFullscreen) {
-                    await quizWrapper.requestFullscreen();
-                } else if (quizWrapper.webkitRequestFullscreen) { /* Safari */
-                    await quizWrapper.webkitRequestFullscreen();
-                }
+            const quizWrapper = document.getElementById('quiz-wrapper');
+            if (quizWrapper.requestFullscreen) {
+                await quizWrapper.requestFullscreen();
+            } else if (quizWrapper.webkitRequestFullscreen) { /* Safari */
+                await quizWrapper.webkitRequestFullscreen();
             }
             // After entering fullscreen, the quiz will start.
             await this.handleRealStartQuiz(quizId, null);
@@ -2342,56 +2122,25 @@ async handleRetakeQuiz(studentQuizId) {
             }, timeUntilDeadline);
         }
         
-        // 3. Toggleable Security Check
-        const isProtected = state.detailedQuiz?.templateId?.isProtected || state.detailedQuiz?.isProtected || false;
-        
-        if (isProtected) {
-            this.beforeUnloadListener = (e) => { e.preventDefault(); e.returnValue = ''; };
-            this.visibilityChangeListener = () => {
-                if (document.hidden) {
-                    uiRenderer.showNotification("You have left the page. The quiz will be submitted.", 'error');
-                    this.handleFinishQuiz();
-                }
-            };
-            this.fullscreenChangeListener = () => {
-                if (!document.fullscreenElement) {
-                    uiRenderer.showNotification("You have exited fullscreen. The quiz will be submitted.", 'error');
-                    this.handleFinishQuiz();
-                }
-            };
-
-            window.addEventListener('beforeunload', this.beforeUnloadListener);
-            document.addEventListener('visibilitychange', this.visibilityChangeListener);
-            document.addEventListener('fullscreenchange', this.fullscreenChangeListener);
-        }
-    },
-
-    async handleSelectOptionFeed(questionId, optionIndex) {
-        try {
-            const attempt = state.activeQuizAttempt;
-            const existingAnswerIndex = attempt.answers.findIndex(a => 
-                a.question && a.question.toString() === questionId.toString()
-            );
-            
-            if (existingAnswerIndex !== -1) {
-                attempt.answers[existingAnswerIndex] = {
-                    question: questionId,
-                    selectedOptionIndex: optionIndex,
-                    answeredAt: new Date()
-                };
-            } else {
-                attempt.answers.push({
-                    question: questionId,
-                    selectedOptionIndex: optionIndex,
-                    answeredAt: new Date()
-                });
+        // 3. Anti-Cheating Event Listeners
+        this.beforeUnloadListener = (e) => { e.preventDefault(); e.returnValue = ''; };
+        this.visibilityChangeListener = () => {
+            if (document.hidden) {
+                uiRenderer.showNotification("You have left the page. The quiz will be submitted.", 'error');
+                this.handleFinishQuiz();
             }
-            apiService.autoSaveAnswers(attempt._id, attempt.answers);
-        } catch (error) {
-            console.error('Auto-save failed:', error);
-        }
-    },
+        };
+        this.fullscreenChangeListener = () => {
+            if (!document.fullscreenElement) {
+                uiRenderer.showNotification("You have exited fullscreen. The quiz will be submitted.", 'error');
+                this.handleFinishQuiz();
+            }
+        };
 
+        window.addEventListener('beforeunload', this.beforeUnloadListener);
+        document.addEventListener('visibilitychange', this.visibilityChangeListener);
+        document.addEventListener('fullscreenchange', this.fullscreenChangeListener);
+    },
     // Handle select option
     async handleSelectOption(optionIndex) {
         try {
@@ -2528,9 +2277,9 @@ async handleRetakeQuiz(studentQuizId) {
         }
     },
     // Handle finish quiz
-// Handle finish quiz
     async handleFinishQuiz() {
         try {
+            // ✅ This function now cleans up all timers and anti-cheating listeners.
             console.log('Finishing quiz...');
             
             // Cleanup anti-cheating listeners
@@ -2544,21 +2293,19 @@ async handleRetakeQuiz(studentQuizId) {
             state.quizTimer = null;
             state.quizDeadlineTimer = null;
 
+            // Exit fullscreen if still in it
             if (document.fullscreenElement) {
                 document.exitFullscreen();
             }
 
-            const finishBtn = document.querySelector('.finish-quiz-btn') || document.querySelector('#submit-entire-quiz-btn');
+            const finishBtn = document.querySelector('.finish-quiz-btn, .btn-warning');
             if (finishBtn) {
                 finishBtn.disabled = true;
                 finishBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
             }
             
             const attempt = state.activeQuizAttempt;
-            
-            // FIX: Pass attempt.answers! Without this, the backend grades an empty array and gives you 0 points.
-            const submissionResult = await apiService.submitQuizAttempt(attempt._id, attempt.answers);
-            
+            const submissionResult = await apiService.submitQuizAttempt(attempt._id);
             const attemptId = submissionResult.data?._id || attempt._id;
             const results = await apiService.fetchQuizResults(attemptId);
             
@@ -2871,10 +2618,6 @@ async handleRetakeQuiz(studentQuizId) {
             if (state.activeTab === 'completed') {
                 statusToFetch = 'completed,graded';
             }
-            // Fetch in-progress
-            if (state.activeTab === 'in-progress') {
-                statusToFetch = 'in-progress';
-            }
             
             if ([ROLES.TEACHER, ROLES.ADMIN].includes(state.currentUser.role)) {
                 if (!state.selectedGroupId) {
@@ -2923,12 +2666,6 @@ async handleRetakeQuiz(studentQuizId) {
                     break;
                 case QUIZ_ACTIONS.DELETE_QUIZ:
                     this.handleDeleteQuiz(quizId);
-                    break;
-                case QUIZ_ACTIONS.DUPLICATE_QUIZ:
-                    this.handleDuplicateQuiz(quizId || state.detailedQuiz.templateId?._id || state.detailedQuiz._id);
-                    break;
-                case QUIZ_ACTIONS.RETAKE_QUIZ:
-                    this.handleRetakeQuiz(quizId || state.detailedQuiz._id);
                     break;
                 case QUIZ_ACTIONS.START_QUIZ:
                     this.handleStartQuiz(state.detailedQuiz._id);
