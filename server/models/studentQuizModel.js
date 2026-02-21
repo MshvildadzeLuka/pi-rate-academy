@@ -60,10 +60,14 @@ studentQuizSchema.pre('validate', async function(next) {
 
 studentQuizSchema.methods.calculateStatus = function() {
   const now = new Date();
+  // If the user submitted, it is immediately graded/completed
   if (this.grade && typeof this.grade.score === 'number') return 'graded';
   if (this.submission && this.submission.submittedAt) return 'completed';
+  
+  // ✅ FIX: If the time ran out, it MUST become past-due, even if they were in-progress
+  if (now > this.dueDate) return 'past-due'; 
+  
   if (this.status === 'in-progress') return 'in-progress';
-  if (now > this.dueDate) return 'past-due';
   if (now >= this.startTime && now <= this.dueDate) return 'active';
   return 'upcoming';
 };
@@ -76,7 +80,8 @@ studentQuizSchema.methods.canStart = function() {
 
 studentQuizSchema.statics.updateAllStatuses = async function() {
   const quizzesToUpdate = await this.find({
-    status: { $in: ['upcoming', 'active', 'past-due'] }
+    // ✅ FIX: Include 'in-progress' so expired quizzes are caught by the cron job
+    status: { $in: ['upcoming', 'active', 'in-progress', 'past-due'] } 
   });
   // The .save() call on each quiz will trigger the 'pre-validate' hook above.
   await Promise.all(quizzesToUpdate.map(quiz => quiz.save()));
