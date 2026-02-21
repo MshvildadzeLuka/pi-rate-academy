@@ -122,12 +122,6 @@
     100% { transform: rotate(360deg); }
 }
 
-.loading-overlay p {
-    margin: 0;
-    font-size: 1.1rem;
-}
-
-/* Local loading states */
 .content-area.loading {
     position: relative;
     min-height: 200px;
@@ -210,12 +204,12 @@
     flex-shrink: 0;
     border-bottom: 1px solid var(--border-color);
     overflow-x: auto;
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
 .tabs-nav::-webkit-scrollbar {
-    display: none; /* Chrome, Safari and Opera */
+    display: none;
 }
 
 .tab-btn {
@@ -311,9 +305,24 @@
     border-color: var(--danger-accent-hover);
 }
 
+.btn-success {
+    background-color: var(--success-accent);
+    color: white;
+    border-color: var(--success-accent);
+}
+
+.btn-success:hover:not(:disabled) {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
 .btn-icon {
     padding: 6px;
     min-width: auto;
+}
+
+.duplicate-quiz-btn {
+    margin-left: auto;
 }
 
 .form-group {
@@ -400,7 +409,7 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    min-width: 0; /* Prevent text overflow */
+    min-width: 0;
 }
 
 .quiz-item-title {
@@ -482,7 +491,38 @@
     opacity: 0.5;
 }
 
-/* ===== MODAL STYLES (Create/Edit, etc.) ===== */
+/* ===== REQUEST ITEMS ===== */
+.request-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background-color: var(--background-secondary);
+    border-radius: var(--border-radius-main);
+    border: 1px solid var(--border-color);
+    margin-bottom: 10px;
+}
+
+.request-info {
+    flex: 1;
+}
+
+.request-info strong {
+    color: var(--text-primary);
+}
+
+.request-reason {
+    margin: 5px 0 0;
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+.request-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* ===== MODAL STYLES ===== */
 .modal-backdrop {
     position: fixed;
     inset: 0;
@@ -554,7 +594,6 @@
     outline: 2px solid var(--primary-accent);
 }
 
-/* ENHANCEMENT: Entire modal body is scrollable */
 .modal-body {
     padding: 25px;
     overflow-y: auto;
@@ -562,8 +601,7 @@
     display: flex;
     flex-direction: column;
     gap: 20px;
-    /* Allow the modal body to scroll when content overflows */
-    max-height: calc(90vh - 130px); /* Account for header and footer */
+    max-height: calc(90vh - 130px);
 }
 
 .modal-footer {
@@ -685,7 +723,6 @@
     display: flex;
     flex-direction: column;
     gap: 20px;
-    /* Removed max-height and overflow properties to allow natural expansion */
     padding-right: 5px;
 }
 
@@ -939,12 +976,11 @@
     text-align: center;
 }
 
+/* Container for all questions in taking mode */
+#active-quiz-questions-container,
 .question-container {
     flex-grow: 1;
-    padding: 20px;
     overflow-y: auto;
-    display: flex;
-    flex-direction: column;
 }
 
 .question-container.with-image {
@@ -974,56 +1010,74 @@
     border-radius: var(--border-radius-main);
 }
 
+/* Options container uses column layout for vertical stacking */
 .options-container-taking {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-}
-
-.option-taking {
-    padding: 15px;
-    background-color: var(--background-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-main);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    display: flex;
-    align-items: center;
     gap: 12px;
 }
 
-.option-taking:hover {
-    background-color: var(--background-tertiary);
-    border-color: var(--primary-accent-light);
+.option-taking {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 15px;
+    background-color: var(--background-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-main);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    position: relative;
 }
 
-.option-taking:focus-visible {
-    outline: 2px solid var(--primary-accent);
+.option-taking:not(.selected):hover {
+    transform: translateY(-3px);
+    border-color: var(--primary-accent);
+    box-shadow: 0 4px 20px rgba(0, 123, 255, 0.25);
+}
+
+.option-taking .option-letter {
+    width: 28px;
+    height: 28px;
+    background-color: var(--background-tertiary);
+    border: 2px solid var(--border-color);
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 700;
+    transition: all 0.2s ease-in-out;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.option-taking .option-text {
+    color: var(--text-primary);
+    line-height: 1.5;
 }
 
 .option-taking.selected {
     background-color: var(--primary-accent-light);
     border-color: var(--primary-accent);
-    box-shadow: 0 0 0 2px var(--primary-accent-light);
-}
-
-.option-letter {
-    font-weight: 600;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--background-tertiary);
-    border-radius: 50%;
-    flex-shrink: 0;
+    box-shadow: 0 0 0 2px var(--primary-accent);
 }
 
 .option-taking.selected .option-letter {
     background-color: var(--primary-accent);
+    border-color: var(--primary-accent);
     color: white;
 }
 
+.option-taking.selected .option-letter::after {
+    content: '\f00c';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    font-size: 0.9rem;
+    position: absolute;
+    margin-left: 28px;
+}
+
+/* Quiz navigation */
 .quiz-navigation {
     display: flex;
     justify-content: space-between;
@@ -1172,6 +1226,9 @@
     border-radius: var(--border-radius-main);
     border: 1px solid var(--border-color);
     transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .option-review.correct {
@@ -1423,7 +1480,6 @@
     }
 }
 
-/* High contrast mode support */
 @media (prefers-contrast: high) {
     :root {
         --border-color: rgba(255, 255, 255, 0.3);
@@ -1439,148 +1495,14 @@
     }
 }
 
-/* Focus styles for keyboard navigation */
 *:focus-visible {
     outline: 2px solid var(--primary-accent);
     outline-offset: 2px;
 }
 
-/* Selection styles */
 ::selection {
     background-color: var(--primary-accent-light);
     color: var(--text-primary);
-}
-
-.modal.quiz-taking-container {
-    max-width: 100%;
-    max-height: 100%;
-    width: 100vw;   /* 100% of viewport width */
-    height: 100vh;  /* 100% of viewport height */
-    border-radius: 0;
-    margin: 0;
-    padding: 0;
-    animation: none; /* Disable the modal pop-in animation */
-}
-
-.modal-backdrop:has(.quiz-taking-container) {
-    padding: 0;
-    align-items: flex-start;
-    justify-content: flex-start;
-}
-
-/* --- Advanced Quiz Option Styling --- */
-
-/* Use a responsive grid for the options container */
-.options-container-taking {
-    display: grid;
-    /* This creates 1 or 2 columns based on available space */
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 15px;
-}
-
-.option-taking {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    padding: 12px 15px;
-    background-color: var(--background-secondary);
-    border: 2px solid var(--border-color);
-    border-radius: var(--border-radius-main);
-    cursor: pointer;
-    transition: all 0.2s ease-in-out;
-    position: relative; /* Needed for advanced styling */
-}
-
-/* A more pronounced but smooth hover effect */
-.option-taking:not(.selected):hover {
-    transform: translateY(-3px);
-    border-color: var(--primary-accent);
-    box-shadow: 0 4px 20px rgba(0, 123, 255, 0.25);
-}
-
-/* Style the letter circle to look like a custom radio button */
-.option-taking .option-letter {
-    width: 28px;
-    height: 28px;
-    background-color: var(--background-tertiary);
-    border: 2px solid var(--border-color);
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    font-weight: 700;
-    transition: all 0.2s ease-in-out;
-}
-
-/* Style for the answer text */
-.option-taking .option-text {
-    color: var(--text-primary);
-    line-height: 1.5;
-}
-
-
-/* --- The "Selected" State --- */
-
-.option-taking.selected {
-    background-color: var(--primary-accent-light);
-    border-color: var(--primary-accent);
-    box-shadow: 0 0 0 2px var(--primary-accent);
-}
-
-.option-taking.selected .option-letter {
-    background-color: var(--primary-accent);
-    border-color: var(--primary-accent);
-    color: white;
-}
-
-/* Add a checkmark icon to the selected option's letter */
-.option-taking.selected .option-letter::after {
-    content: '\f00c'; /* Font Awesome checkmark icon */
-    font-family: 'Font Awesome 6 Free';
-    font-weight: 900;
-    font-size: 0.9rem;
-}
-/* --- Quiz Editor Two-Column Layout --- */
-.question-item {
-    /* Add padding and a border to visually separate each question card */
-    padding: 20px;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-main);
-    background-color: var(--background-tertiary);
-}
-
-.question-item-body {
-    display: flex; /* Creates the two-column layout */
-    flex-direction: row;
-    gap: 25px; /* Space between the columns */
-    margin-top: 15px;
-}
-
-.question-content-left,
-.question-content-right {
-    flex: 1; /* This makes both columns take up 50% of the space */
-    min-width: 0; /* Prevents flexbox overflow issues */
-    display: flex;
-    flex-direction: column;
-    gap: 15px; /* Space between form groups within a column */
-}
-
-/* Make the image uploader take up the full height of its column */
-.question-content-right .form-group,
-.question-image-uploader {
-    height: 100%;
-}
-.question-image-uploader {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-
-/* --- Responsive Layout for Mobile --- */
-@media (max-width: 900px) {
-    .question-item-body {
-        flex-direction: column; /* Stack columns vertically on smaller screens */
-    }
 }
 
 /* ===== RESPONSIVE DESIGN ===== */
@@ -1799,10 +1721,9 @@
     }
 }
 
-/* Touch device optimizations */
 @media (hover: none) and (pointer: coarse) {
     .btn, .tab-btn, .option-taking {
-        min-height: 44px; /* Better touch targets */
+        min-height: 44px;
     }
     
     .quiz-item {
@@ -1813,7 +1734,6 @@
         padding: 16px;
     }
     
-    /* Increase spacing for touch */
     .list-container {
         gap: 16px;
     }
@@ -1823,7 +1743,6 @@
     }
 }
 
-/* Print styles */
 @media print {
     .quizzes-main-header,
     .tabs-nav,
@@ -1852,180 +1771,4 @@
     .question-review-item {
         break-inside: avoid;
     }
-}
-
-/* Add these styles to your existing styles.css file */
-
-/* Fix for datetime-local inputs to support AM/PM */
-input[type="datetime-local"] {
-    /* This ensures consistent styling across browsers */
-    padding: 8px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background: var(--background-primary);
-    color: var(--text-primary);
-    font-family: inherit;
-}
-
-/* Custom datetime picker styling */
-input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-    filter: invert(0.5);
-    cursor: pointer;
-}
-
-input[type="datetime-local"]::-webkit-datetime-edit {
-    color: var(--text-primary);
-}
-
-input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
-    background: var(--background-primary);
-}
-
-/* For Firefox */
-input[type="datetime-local"] {
-    /* Firefox specific styles */
-}
-
-/* Time input specific fixes */
-input[type="time"] {
-    padding: 8px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background: var(--background-primary);
-    color: var(--text-primary);
-}
-
-/* Quiz Bank Modal Styles */
-.quiz-bank-list {
-    max-height: 400px;
-    overflow-y: auto;
-    margin: 15px 0;
-}
-
-.quiz-bank-list .quiz-item {
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 8px;
-}
-
-.quiz-bank-list .quiz-item:hover {
-    background-color: var(--background-secondary);
-    border-color: var(--primary-color);
-    transform: translateY(-1px);
-}
-
-.quiz-bank-list .empty-state {
-    text-align: center;
-    padding: 40px 20px;
-    color: var(--text-secondary);
-}
-
-/* Loading states */
-.loading-spinner {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 2px solid var(--border-color);
-    border-radius: 50%;
-    border-top-color: var(--primary-color);
-    animation: spin 1s ease-in-out infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* Status badges */
-.status-badge {
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 0.8em;
-    font-weight: 600;
-}
-
-.status-badge.active {
-    background-color: var(--success-color);
-    color: white;
-}
-
-.status-badge.upcoming {
-    background-color: var(--warning-color);
-    color: white;
-}
-
-.status-badge.completed,
-.status-badge.graded {
-    background-color: var(--info-color);
-    color: white;
-}
-
-.status-badge.past-due {
-    background-color: var(--danger-color);
-    color: white;
-}
-
-/* Responsive datetime inputs */
-@media (max-width: 768px) {
-    input[type="datetime-local"],
-    input[type="time"] {
-        font-size: 16px; /* Prevents zoom on iOS */
-    }
-}
-
-/* Modal backdrop fixes */
-.modal-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-.modal-backdrop.active {
-    display: flex;
-}
-
-/* Form validation styles */
-.form-group input:invalid {
-    border-color: var(--danger-color);
-}
-
-.form-group input:valid {
-    border-color: var(--success-color);
-}
-
-/* Time limit input styling */
-#quiz-time-limit {
-    width: 100px;
-}
-
-/* Question bank item styling */
-.quiz-item-icon {
-    font-size: 1.5em;
-    color: var(--primary-color);
-    margin-right: 12px;
-}
-
-.quiz-item-info {
-    flex: 1;
-}
-
-.quiz-item-title {
-    font-weight: 600;
-    display: block;
-    margin-bottom: 4px;
-}
-
-.quiz-item-meta {
-    font-size: 0.9em;
-    color: var(--text-secondary);
-    display: block;
 }
