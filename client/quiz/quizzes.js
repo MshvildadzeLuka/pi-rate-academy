@@ -31,6 +31,7 @@ const QUIZ_ACTIONS = {
     DUPLICATE_QUIZ: 'duplicate-quiz',
     RETAKE_QUIZ: 'retake-quiz'
 };
+
 const QUIZ_STATUS = {
     UPCOMING: 'upcoming',
     ACTIVE: 'active',
@@ -84,22 +85,13 @@ const elements = {
 // Utility Functions with enhanced error handling
 const utils = {
 
-    /**
-     * A robust and centralized function to tell MathJax to render formulas
-     * within a specific HTML element. This is the key to rendering LaTeX
-     * in dynamically added content.
-     * @param {HTMLElement} element The parent element containing the new content to be rendered.
-     */
     renderMath(element) {
         if (window.MathJax && window.MathJax.typesetPromise) {
-            // This clears any previous typesetting on the element before re-rendering.
-            // It prevents potential issues with content that changes rapidly.
             window.MathJax.startup.promise = window.MathJax.startup.promise
                 .then(() => window.MathJax.typesetPromise([element]))
                 .catch((err) => console.error('MathJax typeset error:', err));
         }
     },
-
 
     // Calculate quiz status with improved logic
     calculateQuizStatus(quiz) {
@@ -111,15 +103,12 @@ const utils = {
             
             // Determine the source of dates based on quiz structure
             if (quiz.startTime && quiz.endTime) {
-                // Direct dates (template)
                 startTime = new Date(quiz.startTime);
                 endTime = new Date(quiz.endTime);
             } else if (quiz.templateId && quiz.templateId.startTime && quiz.templateId.endTime) {
-                // Dates from template
                 startTime = new Date(quiz.templateId.startTime);
                 endTime = new Date(quiz.templateId.endTime);
             } else if (quiz.dueDate) {
-                // Student quiz with due date
                 startTime = new Date(quiz.startTime || now);
                 endTime = new Date(quiz.dueDate);
             } else {
@@ -138,15 +127,12 @@ const utils = {
                 if (quiz.status && Object.values(QUIZ_STATUS).includes(quiz.status)) {
                     return quiz.status;
                 }
-                
                 if (quiz.grade && quiz.grade.score !== undefined && quiz.grade.score !== null) {
                     return QUIZ_STATUS.GRADED;
                 }
-                
                 if (quiz.submission && quiz.submission.submittedAt) {
                     return QUIZ_STATUS.COMPLETED;
                 }
-                
                 if (quiz.currentAttempt && quiz.currentAttempt.status === 'in-progress') {
                     return QUIZ_STATUS.IN_PROGRESS;
                 }
@@ -171,7 +157,6 @@ const utils = {
         try {
             if (!(date instanceof Date)) date = new Date(date);
             if (isNaN(date.getTime())) return '';
-            
             const pad = (num) => num.toString().padStart(2, '0');
             return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
         } catch (error) {
@@ -184,10 +169,8 @@ const utils = {
     formatDate(dateStr) {
         try {
             if (!dateStr) return 'Invalid Date';
-            
             const date = new Date(dateStr);
             if (isNaN(date.getTime())) return 'Invalid Date';
-            
             return date.toLocaleString('en-US', {
                 year: 'numeric',
                 month: 'short',
@@ -270,7 +253,6 @@ const utils = {
         if (score === undefined || score === null || total === undefined || total === null) {
             return 'N/A';
         }
-        
         const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
         return `${score}/${total} (${percentage}%)`;
     },
@@ -383,32 +365,26 @@ const apiService = {
     // Fetch initial data with error handling
     async fetchInitialData() {
         try {
-            // Promise.allSettled is great because it won't fail completely if one request fails.
             const [userResult, groupsResult] = await Promise.allSettled([
                 this.fetch('/users/profile'),
                 this.fetch('/groups')
             ]);
             
             if (userResult.status === 'rejected') {
-                // If fetching the user fails, it's a critical error.
                 throw new Error(`Failed to fetch user profile: ${userResult.reason.message}`);
             }
             
-            // ✅ Robustness: Explicitly assign the user object. The /users/profile route returns it directly.
             const user = userResult.value; 
 
-            // ✅ Robustness: Safely handle the groups response, which might have a .data wrapper.
             const groupsResponse = groupsResult.status === 'fulfilled' ? groupsResult.value : { data: [] };
             const groups = groupsResponse.data || groupsResponse || [];
 
             return { user, groups };
         } catch (error) {
             console.error('Failed to fetch initial data:', error);
-            // This will trigger the redirect to login if the token is invalid
             if (error.message.includes('Session expired')) {
                 return { user: null, groups: [] };
             }
-            // Return empty state on other errors
             return { user: null, groups: [] };
         }
     },
@@ -449,7 +425,6 @@ const apiService = {
     
     // Fetch quiz by ID with validation
     async fetchQuizById(quizId, getRawResponse = false) {
-        // This helper function works perfectly with the new fetch function.
         return this.fetch(`/quizzes/${quizId}`, {}, getRawResponse);
     },
     
@@ -519,6 +494,8 @@ const apiService = {
             throw error;
         }
     },
+
+    // --- NEW LOGIC ---
     async duplicateQuiz(quizId, groupId) {
         try {
             const response = await this.fetch(`/quizzes/${quizId}/duplicate`, {
@@ -551,7 +528,8 @@ const apiService = {
         } catch (error) {
             console.warn('Auto-save failed silently in background:', error);
         }
-    },    
+    },
+    
     // Start a quiz attempt
     async startQuizAttempt(quizId, password = null) {
         try {
@@ -571,7 +549,7 @@ const apiService = {
         }
     },
     
-    // Submit an answer
+    // Submit an answer (Legacy)
     async submitAnswer(attemptId, questionId, selectedOptionIndex) {
         try {
             if (!utils.isValidObjectId(attemptId) || !utils.isValidObjectId(questionId)) {
@@ -744,14 +722,8 @@ const uiRenderer = {
                 elements.container.classList.add(`role-${state.currentUser.role.toLowerCase()}`);
             }
             
-            // ✅ DEBUGGING: Check the role right before the UI decision is made.
-            console.log('--- UI INIT: Checking role ---:', state.currentUser.role);
-
             if ([ROLES.TEACHER, ROLES.ADMIN].includes(state.currentUser.role)) {
-                console.log('SUCCESS: User is a Teacher or Admin. Rendering admin controls.');
                 this.renderTeacherAdminUI();
-            } else {
-                console.log('INFO: User is a Student. Skipping admin controls.');
             }
             
             this.renderTabs();
@@ -765,7 +737,6 @@ const uiRenderer = {
     renderTeacherAdminUI() {
         try {
             if (!elements.teacherControls) {
-                console.error('Teacher controls element not found in HTML.');
                 return;
             }
             
@@ -803,7 +774,8 @@ const uiRenderer = {
             if (!state.currentUser || !elements.tabsNav) return;
 
             const isTeacher = [ROLES.TEACHER, ROLES.ADMIN].includes(state.currentUser.role);
-            // Dynamically add "In Progress" tab if it does not exist
+            
+            // Add "In Progress" tab dynamically if it doesn't exist
             if (!elements.tabsNav.querySelector('[data-tab="in-progress"]')) {
                 const inProgressBtn = document.createElement('button');
                 inProgressBtn.className = 'tab-btn';
@@ -811,7 +783,9 @@ const uiRenderer = {
                 inProgressBtn.dataset.tab = 'in-progress';
                 inProgressBtn.textContent = 'მიმდინარე (In Progress)';
                 elements.tabsNav.appendChild(inProgressBtn);
-            }            // Show or hide the requests tab based on role
+            }
+
+            // Show or hide the requests tab based on role
             const requestsTab = document.getElementById('requests-tab');
             if (requestsTab) {
                 requestsTab.style.display = isTeacher ? 'inline-block' : 'none';
@@ -859,7 +833,6 @@ const uiRenderer = {
         }
     },
 
-    // ✅ ADD THIS NEW FUNCTION to render the requests list
     renderRequestsList(requests) {
         const container = elements.listView;
         if (!container) return;
@@ -936,11 +909,9 @@ const uiRenderer = {
             .join('');
     },
 
-
-       // Render the detailed view of a quiz
+    // Render the detailed view of a quiz
     renderDetailView() {
         try {
-            // ✅ This is a safe check before attempting to render.
             if (!state.detailedQuiz) {
                 elements.detailView.innerHTML = `
                     <div class="error-message">
@@ -955,10 +926,9 @@ const uiRenderer = {
             const quiz = state.detailedQuiz;
             const status = quiz.status;
             
-            // This logic routes to the correct view based on the quiz status.
-            if (status === 'completed' || status === 'graded') {
+            // Ensure past-due routes to the results page where retake button lives
+            if (status === 'completed' || status === 'graded' || status === 'past-due') {
                 this.renderUnifiedResultsView(quiz);
-
             } else {
                 this.renderInstructionsView(quiz);
             }
@@ -968,6 +938,7 @@ const uiRenderer = {
             elements.detailView.innerHTML = `<div class="error-message"><p>A critical error occurred while displaying quiz details.</p></div>`;
         }
     },
+
     // Render student-specific detail view
     async renderUnifiedResultsView(quiz) {
         const uniqueAnalyticsId = `analytics-${quiz.templateId._id}`;
@@ -985,7 +956,7 @@ const uiRenderer = {
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Student's Score</div>
-                        <div class="stat-value score-value">${quiz.grade?.score ?? 'N/A'} / ${quiz.templatePoints} (${(quiz.templatePoints > 0 && quiz.grade?.score != null) ? ((quiz.grade.score / quiz.templatePoints) * 100).toFixed(0) : 0}%)</div>
+                        <div class="stat-value score-value">${quiz.grade?.score ?? '0'} / ${quiz.templatePoints} (${(quiz.templatePoints > 0 && quiz.grade?.score != null) ? ((quiz.grade.score / quiz.templatePoints) * 100).toFixed(0) : 0}%)</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Class Average</div>
@@ -993,6 +964,7 @@ const uiRenderer = {
                     </div>
                 </div>
                 <div class="results-actions">
+                    ${(quiz.templateId?.allowRetakes) ? `<button class="btn btn-warning" data-action="${QUIZ_ACTIONS.RETAKE_QUIZ}" data-quiz-id="${quiz._id}" style="margin-right:10px;"><i class="fas fa-redo"></i> Retake Quiz</button>` : ''}
                     ${quiz.lastAttemptId ? `<button class="btn btn-primary" data-action="${QUIZ_ACTIONS.REVIEW_QUIZ}" data-attempt-id="${quiz.lastAttemptId}">Review Answers</button>` : ''}
                 </div>
             </div>
@@ -1005,7 +977,7 @@ const uiRenderer = {
         }
     },
 
-renderInstructionsView(quiz) {
+    renderInstructionsView(quiz) {
         try {
             const quizTitle = utils.escapeHTML(quiz.templateTitle);
             const isStudent = state.currentUser.role === ROLES.STUDENT;
@@ -1100,10 +1072,11 @@ renderInstructionsView(quiz) {
         try {
             const teacherStatsContainer = document.getElementById('teacher-live-stats');
             if (!teacherStatsContainer) return;
+            
             teacherStatsContainer.innerHTML = '<div class="loading-spinner"></div>';
             
             const analytics = await apiService.fetchQuizAnalytics(templateId);
-            const studentQuizzes = analytics.studentQuizzes || [];
+            const studentQuizzes = analytics.studentQuizzes || []; 
             
             let html = `<h3 style="margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:5px;">Student Live Statuses</h3>`;
             if(studentQuizzes.length === 0) {
@@ -1119,7 +1092,7 @@ renderInstructionsView(quiz) {
                                 <strong>${utils.escapeHTML(sq.studentId?.firstName)} ${utils.escapeHTML(sq.studentId?.lastName)}</strong>
                                 <br><span style="font-size:0.85rem; color:var(--text-secondary);">Status: <span class="status-badge ${statusClass}">${sq.status}</span></span>
                             </div>
-                            ${isLive ? `<span style="color:var(--primary-color); font-weight:bold;"><i class="fas fa-circle"></i> Live Now</span>` : ''}
+                            ${isLive ? `<span style="color:var(--primary-color); font-weight:bold;"><i class="fas fa-circle" style="animation: pulse 1.5s infinite;"></i> Live Now</span>` : ''}
                         </div>
                     `;
                 });
@@ -1230,6 +1203,150 @@ renderInstructionsView(quiz) {
         }
     },
 
+    // Setup the scrollable feed view for taking the quiz
+    setupQuizTakingModal(modalElement) {
+        try {
+            const quiz = state.detailedQuiz;
+            const attempt = state.activeQuizAttempt;
+            const questions = quiz.templateId?.questions || [];
+            
+            if (questions.length === 0) {
+                this.showNotification('Quiz data is incomplete.', 'error');
+                this.closeModal();
+                return;
+            }
+
+            const titleEl = modalElement.querySelector('.quiz-title-taking');
+            if (titleEl) titleEl.textContent = quiz.templateTitle;
+            
+            const countEl = modalElement.querySelector('#total-questions-count');
+            if (countEl) countEl.textContent = questions.length;
+
+            let scrollableContainer = modalElement.querySelector('#active-quiz-questions-container');
+            if (!scrollableContainer) {
+                const textElement = modalElement.querySelector('.question-text-taking');
+                if (textElement) scrollableContainer = textElement.parentElement;
+            }
+            if (!scrollableContainer) return;
+
+            // FIX: Perfect Centered Styling & Proper Scroll Height, dark-mode safe
+            scrollableContainer.innerHTML = '';
+            scrollableContainer.style.cssText = `
+                display: flex;
+                flex-direction: column;
+                gap: 40px;
+                max-width: 800px;
+                margin: 0 auto;
+                height: calc(100vh - 140px);
+                overflow-y: auto;
+                padding: 20px 15px 150px 15px;
+            `;
+            
+            questions.forEach((question, index) => {
+                const questionBlock = document.createElement('div');
+                questionBlock.className = 'quiz-question-block';
+                // Transparent border instead of white background
+                questionBlock.style.cssText = `
+                    padding-bottom: 30px;
+                    border-bottom: 1px solid var(--border-color, rgba(150,150,150,0.2));
+                `;
+
+                let imageHtml = '';
+                if (question.imageUrl) {
+                    imageHtml = `
+                    <div class="question-image-container" style="display: flex; justify-content: center; margin: 15px 0;">
+                        <img src="${question.imageUrl}" alt="Question Image" style="max-width: 100%; border-radius: 8px;">
+                    </div>`;
+                }
+
+                // FIX: Column direction to stack options perfectly vertically
+                let optionsHtml = '<div class="options-container-taking" style="display: flex; flex-direction: column; gap: 12px;">';
+                (question.options || []).forEach((opt, optIndex) => {
+                    const existingAnswer = attempt.answers?.find(a => a.question?.toString() === question._id.toString());
+                    const isSelected = existingAnswer && existingAnswer.selectedOptionIndex === optIndex ? 'selected' : '';
+                    
+                    optionsHtml += `
+                        <div class="option-taking ${isSelected}" data-question-id="${question._id}" data-option-index="${optIndex}">
+                            <span class="option-letter">${String.fromCharCode(65 + optIndex)}</span>
+                            <span class="option-text">${opt.text}</span>
+                        </div>
+                    `;
+                });
+                optionsHtml += '</div>';
+
+                // Transparent points badge background
+                questionBlock.innerHTML = `
+                    <div class="question-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0;">კითხვა ${index + 1}</h3>
+                        <span class="question-points" style="font-weight: bold; background: var(--background-secondary, rgba(128,128,128,0.2)); padding: 5px 10px; border-radius: 5px;">${question.points} ქულა</span>
+                    </div>
+                    <div class="question-text-taking" style="margin-bottom: 20px;">${question.text}</div>
+                    ${imageHtml}
+                    ${optionsHtml}
+                `;
+                
+                scrollableContainer.appendChild(questionBlock);
+            });
+
+            // Bind click events to options
+            const allOptions = scrollableContainer.querySelectorAll('.option-taking');
+            allOptions.forEach(opt => {
+                opt.addEventListener('click', (e) => {
+                    const target = e.currentTarget;
+                    const qId = target.dataset.questionId;
+                    const optIdx = parseInt(target.dataset.optionIndex);
+                    
+                    const parentContainer = target.closest('.options-container-taking');
+                    parentContainer.querySelectorAll('.option-taking').forEach(sibling => sibling.classList.remove('selected'));
+                    target.classList.add('selected');
+                    
+                    // Update Tracker
+                    let answeredCount = 0;
+                    scrollableContainer.querySelectorAll('.options-container-taking').forEach(cont => {
+                        if (cont.querySelector('.selected')) answeredCount++;
+                    });
+                    const trackerEl = modalElement.querySelector('#answered-count');
+                    if (trackerEl) trackerEl.textContent = answeredCount;
+
+                    // Autosave silently
+                    eventHandlers.handleSelectOptionFeed(qId, optIdx);
+                });
+            });
+
+            // Initial tracker update
+            let initialCount = 0;
+            scrollableContainer.querySelectorAll('.options-container-taking').forEach(cont => {
+                if (cont.querySelector('.selected')) initialCount++;
+            });
+            const startTrackerEl = modalElement.querySelector('#answered-count');
+            if (startTrackerEl) startTrackerEl.textContent = initialCount;
+
+            // Hide old pagination
+            const nextBtn = modalElement.querySelector('.next-question-btn');
+            const prevBtn = modalElement.querySelector('.prev-question-btn');
+            if (nextBtn) nextBtn.style.display = 'none';
+            if (prevBtn) prevBtn.style.display = 'none';
+
+            // Show and bind submit button
+            const finishBtn = modalElement.querySelector('.finish-quiz-btn') || modalElement.querySelector('#submit-entire-quiz-btn');
+            if (finishBtn) {
+                finishBtn.style.display = 'block';
+                const newFinishBtn = finishBtn.cloneNode(true);
+                finishBtn.parentNode.replaceChild(newFinishBtn, finishBtn);
+                newFinishBtn.addEventListener('click', () => {
+                    if(confirm("დარწმუნებული ხართ რომ გსურთ ქვიზის დასრულება? (Are you sure you want to submit?)")) {
+                        eventHandlers.handleFinishQuiz();
+                    }
+                });
+            }
+
+            utils.renderMath(scrollableContainer);
+
+        } catch (error) {
+            console.error('Error setting up quiz taking modal:', error);
+        }
+    },
+
     // Open a modal dialog
     openModal(type, data = null, isLayered = false) {
         try {
@@ -1266,14 +1383,12 @@ renderInstructionsView(quiz) {
                     this.setupInstructionsModal(modalElement);
                     break;
                 case 'quiz-taking':
-                    // This block intentionally does NOT add event listeners for navigation.
-                    // The global handleGlobalClick function is the single source of truth for those actions.
                     this.setupQuizTakingModal(modalElement);
                     break;
                 case 'quiz-bank':
                     this.setupQuestionBankModal(modalElement);
                     break;
-                case 'question-bank': // Added for completeness from your file
+                case 'question-bank': 
                     this.setupQuestionBankModal(modalElement);
                     break;
                 default:
@@ -1342,20 +1457,24 @@ renderInstructionsView(quiz) {
             state.editingId = isEditing ? data._id : null;
 
 
-            if (data) { // Prefill data if editing OR cloning
-                modalElement.querySelector('#modal-title').textContent = isEditing ? 'Edit Quiz' : 'Clone Quiz from Bank'; // FIX 1: Set correct title
+            if (data) { 
+                modalElement.querySelector('#modal-title').textContent = isEditing ? 'Edit Quiz' : 'Clone Quiz from Bank';
                 modalElement.querySelector('#quiz-title').value = data.title || '';
                 modalElement.querySelector('#quiz-description').value = data.description || '';
                 modalElement.querySelector('#quiz-start-time').value = utils.formatDateTimeLocal(new Date(data.startTime || now));
                 modalElement.querySelector('#quiz-end-time').value = utils.formatDateTimeLocal(new Date(data.endTime || oneHourLater));
                 modalElement.querySelector('#quiz-time-limit').value = data.timeLimit || 60;
                 
-                // FIX 2: Only pre-select a group if editing. If cloning, the user must choose a new group.
                 if (isEditing) { 
                     modalElement.querySelector('#quiz-group').value = data.group?._id || data.groupId || data.courseId?.[0] || '';
                 } else {
-                     modalElement.querySelector('#quiz-group').value = ''; // Ensure no group is selected for cloning.
+                     modalElement.querySelector('#quiz-group').value = ''; 
                 }
+                
+                // Safely prefill advanced settings if they exist
+                if(modalElement.querySelector('#is-protected')) modalElement.querySelector('#is-protected').checked = data.isProtected || false;
+                if(modalElement.querySelector('#allow-retakes')) modalElement.querySelector('#allow-retakes').checked = data.allowRetakes || false;
+                if(modalElement.querySelector('#retake-policy')) modalElement.querySelector('#retake-policy').value = data.retakePolicy || 'highest';
                 
                 this.renderQuestions(data.questions, modalElement);
             } else {
@@ -1379,7 +1498,7 @@ renderInstructionsView(quiz) {
             if (form) {
                 form.onsubmit = async (e) => {
                     e.preventDefault();
-                    if (isEditing) { // FIX 3: Use the isEditing flag for accurate update/create selection
+                    if (isEditing) {
                         await eventHandlers.handleUpdateQuiz(data._id, form);
                     } else {
                         await eventHandlers.handleCreateQuiz(form);
@@ -1391,258 +1510,12 @@ renderInstructionsView(quiz) {
         }
     },
 
-    // Setup quiz instructions modal
-    setupInstructionsModal(modalElement) {
-        try {
-            if (state.detailedQuiz?.templateId?.requiresPassword) {
-                const passwordContainer = modalElement.querySelector('#password-field-container');
-                if (passwordContainer) {
-                    passwordContainer.style.display = 'block';
-                }
-            }
-            
-            const instructionsText = modalElement.querySelector('#quiz-instructions-text');
-            const instructionsTitle = modalElement.querySelector('.quiz-instructions-title');
-            
-            if (instructionsText && instructionsTitle && state.detailedQuiz) {
-                instructionsTitle.textContent = state.detailedQuiz.templateTitle || state.detailedQuiz.title;
-                instructionsText.innerHTML = utils.sanitizeHTML(
-                    state.detailedQuiz.templateId?.instructions || 
-                    state.detailedQuiz.instructions || 
-                    'No specific instructions provided for this quiz.'
-                );
-            }
-            
-            const agreementCheckbox = modalElement.querySelector('#quiz-agreement');
-            const startButton = modalElement.querySelector('#start-quiz-after-instructions');
-            
-            if (agreementCheckbox && startButton) {
-                agreementCheckbox.addEventListener('change', () => {
-                    startButton.disabled = !agreementCheckbox.checked;
-                });
-                
-                startButton.addEventListener('click', () => {
-                    const password = state.detailedQuiz.templateId?.requiresPassword ? 
-                        modalElement.querySelector('#quiz-password')?.value : null;
-                    
-                    this.closeModal();
-                    eventHandlers.handleRealStartQuiz(state.detailedQuiz._id, password);
-                });
-            }
-        } catch (error) {
-            console.error('Error setting up instructions modal:', error);
-        }
-    },
-
-setupQuizTakingModal(modalElement) {
-        try {
-            const quiz = state.detailedQuiz;
-            const attempt = state.activeQuizAttempt;
-            const questions = quiz.templateId?.questions || [];
-            
-            if (questions.length === 0) {
-                this.showNotification('Quiz data is incomplete.', 'error');
-                this.closeModal();
-                return;
-            }
-
-            modalElement.querySelector('.quiz-title-taking').textContent = quiz.templateTitle;
-            
-            const countEl = modalElement.querySelector('#total-questions-count');
-            if (countEl) countEl.textContent = questions.length;
-
-            let scrollableContainer = modalElement.querySelector('#active-quiz-questions-container');
-            if (!scrollableContainer) {
-                const textElement = modalElement.querySelector('.question-text-taking');
-                if (textElement) scrollableContainer = textElement.parentElement;
-            }
-            if (!scrollableContainer) return;
-
-            // FIX: Perfect Centered Styling & Proper Scroll Height
-            scrollableContainer.innerHTML = '';
-            scrollableContainer.style.cssText = `
-                display: flex;
-                flex-direction: column;
-                gap: 40px;
-                max-width: 800px;
-                margin: 0 auto;
-                height: calc(100vh - 140px);
-                overflow-y: auto;
-                padding: 20px 15px 150px 15px; /* Heavy bottom padding to scroll past the submit button */
-            `;
-            
-            questions.forEach((question, index) => {
-                const questionBlock = document.createElement('div');
-                questionBlock.className = 'quiz-question-block';
-                // Fix: No forced white backgrounds.
-                questionBlock.style.cssText = `
-                    padding-bottom: 30px;
-                    border-bottom: 1px solid var(--border-color, rgba(150,150,150,0.2));
-                `;
-
-                let imageHtml = '';
-                if (question.imageUrl) {
-                    imageHtml = `
-                    <div class="question-image-container" style="display: flex; justify-content: center; margin: 15px 0;">
-                        <img src="${question.imageUrl}" alt="Question Image" style="max-width: 100%; border-radius: 8px;">
-                    </div>`;
-                }
-
-                // FIX: Column direction to stack answers vertically
-                let optionsHtml = '<div class="options-container-taking" style="display: flex; flex-direction: column; gap: 12px;">';
-                (question.options || []).forEach((opt, optIndex) => {
-                    const existingAnswer = attempt.answers?.find(a => a.question?.toString() === question._id.toString());
-                    const isSelected = existingAnswer && existingAnswer.selectedOptionIndex === optIndex ? 'selected' : '';
-                    
-                    optionsHtml += `
-                        <div class="option-taking ${isSelected}" data-question-id="${question._id}" data-option-index="${optIndex}">
-                            <span class="option-letter">${String.fromCharCode(65 + optIndex)}</span>
-                            <span class="option-text">${opt.text}</span>
-                        </div>
-                    `;
-                });
-                optionsHtml += '</div>';
-
-                questionBlock.innerHTML = `
-                    <div class="question-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 style="margin: 0;">კითხვა ${index + 1}</h3>
-                        <span class="question-points" style="font-weight: bold; background: var(--background-secondary, rgba(128,128,128,0.2)); padding: 5px 10px; border-radius: 5px;">${question.points} ქულა</span>
-                    </div>
-                    <div class="question-text-taking" style="margin-bottom: 20px;">${question.text}</div>
-                    ${imageHtml}
-                    ${optionsHtml}
-                `;
-                
-                scrollableContainer.appendChild(questionBlock);
-            });
-
-            // Bind click events
-            const allOptions = scrollableContainer.querySelectorAll('.option-taking');
-            allOptions.forEach(opt => {
-                opt.addEventListener('click', (e) => {
-                    const target = e.currentTarget;
-                    const qId = target.dataset.questionId;
-                    const optIdx = parseInt(target.dataset.optionIndex);
-                    
-                    const parentContainer = target.closest('.options-container-taking');
-                    parentContainer.querySelectorAll('.option-taking').forEach(sibling => sibling.classList.remove('selected'));
-                    target.classList.add('selected');
-                    
-                    // Update Tracker
-                    let answeredCount = 0;
-                    scrollableContainer.querySelectorAll('.options-container-taking').forEach(cont => {
-                        if (cont.querySelector('.selected')) answeredCount++;
-                    });
-                    const trackerEl = modalElement.querySelector('#answered-count');
-                    if (trackerEl) trackerEl.textContent = answeredCount;
-
-                    // Autosave
-                    eventHandlers.handleSelectOptionFeed(qId, optIdx);
-                });
-            });
-
-            // Initial tracker update
-            let initialCount = 0;
-            scrollableContainer.querySelectorAll('.options-container-taking').forEach(cont => {
-                if (cont.querySelector('.selected')) initialCount++;
-            });
-            const startTrackerEl = modalElement.querySelector('#answered-count');
-            if (startTrackerEl) startTrackerEl.textContent = initialCount;
-
-            // Hide old pagination
-            const nextBtn = modalElement.querySelector('.next-question-btn');
-            const prevBtn = modalElement.querySelector('.prev-question-btn');
-            if (nextBtn) nextBtn.style.display = 'none';
-            if (prevBtn) prevBtn.style.display = 'none';
-
-            // Ensure Submit Button works
-            const finishBtn = modalElement.querySelector('.finish-quiz-btn') || modalElement.querySelector('#submit-entire-quiz-btn');
-            if (finishBtn) {
-                finishBtn.style.display = 'block';
-                const newFinishBtn = finishBtn.cloneNode(true);
-                finishBtn.parentNode.replaceChild(newFinishBtn, finishBtn);
-                newFinishBtn.addEventListener('click', () => {
-                    if(confirm("დარწმუნებული ხართ რომ გსურთ ქვიზის დასრულება? (Are you sure you want to submit?)")) {
-                        eventHandlers.handleFinishQuiz();
-                    }
-                });
-            }
-
-            utils.renderMath(scrollableContainer);
-
-        } catch (error) {
-            console.error('Error setting up quiz taking modal:', error);
-        }
-    },
-    // Setup question bank modal
-    setupQuestionBankModal(modalElement) {
-        try {
-            const groupSelect = document.querySelector('#quiz-group');
-            if (!groupSelect) {
-                this.showNotification('Please select a group first', 'error');
-                this.closeModal();
-                return;
-            }
-            
-            const groupId = groupSelect.value;
-            if (!groupId) {
-                this.showNotification('Please select a group first', 'error');
-                this.closeModal();
-                return;
-            }
-
-            // Fetch question banks
-            apiService.fetchQuizBank()
-                .then(banks => {
-                    state.quizBank = banks;
-                    
-                    const banksContainer = modalElement.querySelector('.quiz-bank-list');
-                    if (!banksContainer) return;
-                    
-                    banksContainer.innerHTML = '';
-                    
-                    if (banks.length === 0) {
-                        banksContainer.innerHTML = '<p class="empty-state">No saved quiz templates found.</p>';
-                        return;
-                    }
-                    
-                    // Render question banks
-                    banks.forEach(quiz => {
-                        const bankElement = document.createElement('div');
-                        bankElement.className = 'quiz-item';
-                        bankElement.dataset.action = QUIZ_ACTIONS.SELECT_QUIZ_FROM_BANK;
-                        bankElement.dataset.quizId = quiz._id;
-                        
-                        bankElement.innerHTML = `
-                            <i class="fas fa-file-alt quiz-item-icon"></i>
-                            <div class="quiz-item-info">
-                                <span class="quiz-item-title">${utils.escapeHTML(quiz.title)}</span>
-                                <span class="quiz-item-meta">${quiz.questions.length} questions, ${quiz.timeLimit ? quiz.timeLimit + ' min' : 'No limit'}</span>
-                            </div>
-                        `;
-                        banksContainer.appendChild(bankElement);
-                    });
-                })
-                .catch(error => {
-                    console.error('Failed to load quiz bank:', error);
-                    this.showNotification('Failed to load quiz bank', 'error');
-                });
-        } catch (error) {
-            console.error('Error setting up question bank modal:', error);
-        }
-    },
-
     // Update LaTeX preview
     updateLatexPreview(inputElement) {
         try {
             const previewElement = inputElement.nextElementSibling;
             if (previewElement && previewElement.classList.contains('latex-preview')) {
-                // --- FIX: Directly set the raw value to innerHTML. ---
-                // MathJax needs the raw, un-escaped LaTeX string to process it.
-                // We trust this input because it's coming from a teacher/admin in the editor.
                 previewElement.innerHTML = inputElement.value;
-                
-                // --- FIX: Explicitly call the renderMath helper ---
                 utils.renderMath(previewElement);
             }
         } catch (error) {
@@ -1811,7 +1684,7 @@ setupQuizTakingModal(modalElement) {
                         questionElement.querySelector('.question-text').value = question.text || '';
                         questionElement.querySelector('.question-points').value = question.points || 1;
                         questionElement.querySelector('.question-solution').value = question.solution || '';
-                        
+
                         // Handle image
                         if (question.imageUrl) {
                             const preview = questionElement.querySelector('.question-image-preview');
@@ -1892,7 +1765,7 @@ setupQuizTakingModal(modalElement) {
                     const reviewClone = reviewItemTemplate.content.cloneNode(true);
                     const studentAnswer = results.answers.find(ans => ans.question?.toString() === question._id.toString());
 
-                    // --- FIX: Use innerHTML for all text that might contain LaTeX ---
+                    // Use innerHTML for all text that might contain LaTeX
                     reviewClone.querySelector('.question-number-review').textContent = `Question ${index + 1}`;
                     reviewClone.querySelector('.question-points-review').textContent = `${studentAnswer ? studentAnswer.pointsAwarded : 0} / ${question.points} Points`;
                     reviewClone.querySelector('.question-text-review').innerHTML = question.text;
@@ -1929,7 +1802,6 @@ setupQuizTakingModal(modalElement) {
             elements.detailView.innerHTML = '';
             elements.detailView.appendChild(clone);
             
-            // --- FIX: Tell MathJax to render all the math on the results page ---
             utils.renderMath(elements.detailView);
             
         } catch (error) {
@@ -1953,8 +1825,6 @@ setupQuizTakingModal(modalElement) {
             `;
             
             document.body.appendChild(notification);
-            
-            // Auto remove after 5 seconds
             setTimeout(() => {
                 if (notification.parentElement) {
                     notification.remove();
@@ -1974,54 +1844,17 @@ setupQuizTakingModal(modalElement) {
                 return;
             }
 
-            // Prefill basic fields
             modal.querySelector('#quiz-title').value = (quizData.title || '') + ' (Copy)';
             modal.querySelector('#quiz-description').value = quizData.description || '';
             modal.querySelector('#quiz-time-limit').value = quizData.timeLimit || 60;
             
-            // Render questions
+            if(modal.querySelector('#is-protected')) modal.querySelector('#is-protected').checked = quizData.isProtected || false;
+            if(modal.querySelector('#allow-retakes')) modal.querySelector('#allow-retakes').checked = quizData.allowRetakes || false;
+            if(modal.querySelector('#retake-policy')) modal.querySelector('#retake-policy').value = quizData.retakePolicy || 'highest';
+
             this.renderQuestions(quizData.questions, modal);
         } catch (error) {
             console.error('Error prefilling quiz form:', error);
-        }
-    },
-
-    // Setup quiz bank modal
-    async setupQuizBankModal(modalElement) {
-        try {
-            const listContainer = modalElement.querySelector('.quiz-bank-list');
-            if (!listContainer) return;
-            
-            listContainer.innerHTML = '<div class="loading-spinner"></div>';
-            
-            try {
-                const quizBankTemplates = await apiService.fetchQuizBank();
-                listContainer.innerHTML = '';
-
-                if (quizBankTemplates.length === 0) {
-                    listContainer.innerHTML = '<p>No saved quiz templates found.</p>';
-                    return;
-                }
-
-                // Create list items
-                listContainer.innerHTML = quizBankTemplates.map(quiz => `
-                    <div class="quiz-item" data-action="${QUIZ_ACTIONS.SELECT_QUIZ_FROM_BANK}" data-quiz-id="${quiz._id}">
-                        <i class="fas fa-file-alt quiz-item-icon"></i>
-                        <div class="quiz-item-info">
-                            <span class="quiz-item-title">${utils.escapeHTML(quiz.title)}</span>
-                            <span class="quiz-item-meta">${quiz.questions.length} questions, ${quiz.timeLimit ? quiz.timeLimit + ' min' : 'No limit'}</span>
-                        </div>
-                    </div>
-                `).join('');
-
-                // Save to state
-                state.quizBank = quizBankTemplates;
-            } catch (error) {
-                console.error('Failed to load quiz bank:', error);
-                listContainer.innerHTML = '<p>Could not load quiz bank.</p>';
-            }
-        } catch (error) {
-            console.error('Error setting up quiz bank modal:', error);
         }
     }
 };
@@ -2033,7 +1866,6 @@ const eventHandlers = {
         try {
             if (!state.currentUser) return;
             
-            // Teacher/admin specific handlers
             if ([ROLES.TEACHER, ROLES.ADMIN].includes(state.currentUser.role)) {
                 if (elements.groupSelect) {
                     elements.groupSelect.addEventListener('change', this.handleGroupChange.bind(this));
@@ -2045,22 +1877,17 @@ const eventHandlers = {
                 }
             }
             
-            // Tab navigation
             if (elements.tabsNav) {
                 elements.tabsNav.addEventListener('click', this.handleTabClick.bind(this));
             }
             
-            // Global click handler
             document.body.addEventListener('click', this.handleGlobalClick.bind(this));
-            
-            // Keyboard shortcuts
             document.addEventListener('keydown', this.handleKeyboardShortcuts.bind(this));
         } catch (error) {
             console.error('Error initializing event handlers:', error);
         }
     },
 
-    // Handle group change
     async handleGroupChange(e) {
         try {
             const groupId = e.target.value;
@@ -2071,7 +1898,6 @@ const eventHandlers = {
         }
     },
 
-    // Handle tab click
     async handleTabClick(e) {
         try {
             const tabBtn = e.target.closest('.tab-btn');
@@ -2087,7 +1913,6 @@ const eventHandlers = {
         }
     },
 
-       // Handle view detail
     async handleViewDetail(quizId) {
         try {
             if (!quizId) {
@@ -2118,7 +1943,7 @@ const eventHandlers = {
             uiRenderer.updateView();
         }
     },
-    // Handle review quiz
+
     async handleReviewQuiz(attemptId) {
         try {
             const results = await apiService.fetchQuizResults(attemptId);
@@ -2129,7 +1954,6 @@ const eventHandlers = {
         }
     },
 
-    // Handle back to list
     handleBackToList() {
         try {
             state.currentView = 'list';
@@ -2137,10 +1961,13 @@ const eventHandlers = {
             state.activeQuizAttempt = null;
             state.currentQuestionIndex = 0;
             
-            // Clear timer if exists
             if (state.quizTimer) {
                 clearInterval(state.quizTimer);
                 state.quizTimer = null;
+            }
+            if (state.quizDeadlineTimer) {
+                clearTimeout(state.quizDeadlineTimer);
+                state.quizDeadlineTimer = null;
             }
             
             uiRenderer.updateView();
@@ -2149,18 +1976,16 @@ const eventHandlers = {
         }
     },
 
-    // Handle edit quiz
     async handleEditQuiz(quizId) {
         try {
             const quiz = await apiService.fetchQuizById(quizId);
-            uiRenderer.openModal('create-edit-quiz', quiz);
+            uiRenderer.openModal('create-edit-quiz', quiz.data);
         } catch (error) {
             console.error('Failed to fetch quiz for editing:', error);
             uiRenderer.showNotification('Failed to load quiz for editing', 'error');
         }
     },
 
-    // Handle delete quiz
     async handleDeleteQuiz(quizId) {
         try {
             const confirmed = confirm('Are you sure you want to delete this quiz? This action cannot be undone.');
@@ -2176,17 +2001,53 @@ const eventHandlers = {
         }
     },
 
-    // Handle start quiz
+    async handleDuplicateQuiz(templateId) {
+        try {
+            const targetGroupId = state.selectedGroupId || state.detailedQuiz?.courseId?.[0] || state.detailedQuiz?.groupId;
+            
+            if (!targetGroupId) {
+                return uiRenderer.showNotification('Please select a target group from the dropdown first.', 'error');
+            }
+            const confirmed = confirm('Are you sure you want to duplicate this quiz for the selected group?');
+            if (!confirmed) return;
+
+            await apiService.duplicateQuiz(templateId, targetGroupId);
+            uiRenderer.showNotification('Quiz duplicated successfully!');
+            await this.loadQuizzes();
+            this.handleBackToList();
+        } catch (error) {
+            uiRenderer.showNotification('Failed to duplicate quiz', 'error');
+        }
+    },
+
+    async handleRetakeQuiz(studentQuizId) {
+        try {
+            const confirmed = confirm('Are you sure you want to clear your previous answers and restart this quiz?');
+            if (!confirmed) return;
+
+            await apiService.retakeQuiz(studentQuizId);
+            uiRenderer.showNotification('Quiz reset. Ready to start again!');
+            
+            this.handleBackToList();
+            setTimeout(() => {
+                this.handleViewDetail(studentQuizId);
+            }, 200);
+        } catch (error) {
+            uiRenderer.showNotification('Failed to restart quiz', 'error');
+        }
+    },
+
     async handleStartQuiz(quizId) {
         try {
-            // ✅ This function now handles entering fullscreen mode.
-            const quizWrapper = document.getElementById('quiz-wrapper');
-            if (quizWrapper.requestFullscreen) {
-                await quizWrapper.requestFullscreen();
-            } else if (quizWrapper.webkitRequestFullscreen) { /* Safari */
-                await quizWrapper.webkitRequestFullscreen();
+            const isProtected = state.detailedQuiz?.templateId?.isProtected || state.detailedQuiz?.isProtected || false;
+            if (isProtected) {
+                const quizWrapper = document.getElementById('quiz-wrapper');
+                if (quizWrapper.requestFullscreen) {
+                    await quizWrapper.requestFullscreen();
+                } else if (quizWrapper.webkitRequestFullscreen) {
+                    await quizWrapper.webkitRequestFullscreen();
+                }
             }
-            // After entering fullscreen, the quiz will start.
             await this.handleRealStartQuiz(quizId, null);
         } catch (error) {
             console.error('Failed to enter fullscreen or start quiz:', error);
@@ -2194,15 +2055,12 @@ const eventHandlers = {
         }
     },
 
-    // Handle real start quiz (with password)
     async handleRealStartQuiz(quizId, password = null) {
         try {
             const attempt = await apiService.startQuizAttempt(quizId, password);
             state.activeQuizAttempt = attempt;
             state.currentQuestionIndex = 0;
             
-            // This timeout provides a brief moment for the DOM to update after the API call,
-            // ensuring the modal and its elements are ready.
             setTimeout(() => {
                 uiRenderer.openModal('quiz-taking');
                 
@@ -2212,7 +2070,6 @@ const eventHandlers = {
                 if (timeLimit && Number(timeLimit) > 0) {
                     this.startQuizTimers(Number(timeLimit), deadline);
                 } else {
-                    // If there's no time limit, hide the timer element completely.
                     const countdownElement = document.querySelector('#quiz-countdown');
                     if (countdownElement) {
                        countdownElement.parentElement.style.display = 'none';
@@ -2223,67 +2080,53 @@ const eventHandlers = {
             uiRenderer.showNotification(error.data?.message || 'Failed to start quiz', 'error');
         }
     },
-    // Start quiz timer
-    // Start quiz timer
+
     startQuizTimers(durationInMinutes, deadlineDate) {
-        // Clear any previous timers to prevent memory leaks.
         if (state.quizTimer) clearInterval(state.quizTimer);
         if (state.quizDeadlineTimer) clearTimeout(state.quizDeadlineTimer);
 
         const countdownElement = document.querySelector('#quiz-countdown');
 
-        // --- FIX 1: Robustness Check ---
-        // This check prevents the entire function from crashing if the countdown
-        // element is somehow not found in the DOM.
         if (!countdownElement) {
             console.error('CRITICAL: Could not find the #quiz-countdown element to display the timer.');
             return;
         }
         
-        // Ensure the timer container is visible.
         countdownElement.parentElement.style.display = 'flex';
 
         let timeLeftInSeconds = durationInMinutes * 60;
 
-        // ✅ FIX: If the user is resuming an in-progress quiz, calculate how much time they already spent!
+        // Deduct time if resuming
         const attemptStart = state.activeQuizAttempt?.startTime || state.activeQuizAttempt?.createdAt;
         if (attemptStart) {
             const elapsedSeconds = Math.floor((new Date() - new Date(attemptStart)) / 1000);
             if (elapsedSeconds > 0) {
                 timeLeftInSeconds -= elapsedSeconds;
             }
-            // If time is somehow negative, force it to 0
             if (timeLeftInSeconds < 0) timeLeftInSeconds = 0;
         }
 
-        // Helper function to update the timer display, avoiding code repetition.
         const updateTimerDisplay = () => {
             if (timeLeftInSeconds < 0) timeLeftInSeconds = 0;
             const minutes = Math.floor(timeLeftInSeconds / 60);
             const seconds = timeLeftInSeconds % 60;
             countdownElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             
-            // Add a visual warning when time is low.
             if (timeLeftInSeconds <= 60) {
                 countdownElement.parentElement.classList.add('critical');
             }
         };
 
-        // --- FIX 2: Immediate Display ---
-        // This line is crucial. It displays the starting time immediately,
-        // so you don't have to wait one full second for the first update.
         updateTimerDisplay();
 
-        // 1. Countdown Timer (updates every second)
         state.quizTimer = setInterval(() => {
             timeLeftInSeconds--;
             updateTimerDisplay();
             if (timeLeftInSeconds <= 0) {
-                this.handleFinishQuiz(); // Automatically submits the quiz when time runs out.
+                this.handleFinishQuiz();
             }
         }, 1000);
 
-        // 2. Hard Deadline Timer (a failsafe for the quiz due date)
         const timeUntilDeadline = new Date(deadlineDate) - new Date();
         if (timeUntilDeadline > 0) {
             state.quizDeadlineTimer = setTimeout(() => {
@@ -2292,7 +2135,7 @@ const eventHandlers = {
             }, timeUntilDeadline);
         }
         
-        // 3. Toggleable Security Check
+        // Toggleable Security Check
         const isProtected = state.detailedQuiz?.templateId?.isProtected || state.detailedQuiz?.isProtected || false;
         
         if (isProtected) {
@@ -2315,142 +2158,47 @@ const eventHandlers = {
             document.addEventListener('fullscreenchange', this.fullscreenChangeListener);
         }
     },
-    // Handle select option
-    async handleSelectOption(optionIndex) {
+
+    async handleSelectOptionFeed(questionId, optionIndex) {
         try {
-            const quiz = state.detailedQuiz;
             const attempt = state.activeQuizAttempt;
-            
-            // Get questions
-            const questions = quiz.templateId?.questions || [];
-            
-            if (questions.length === 0) {
-                console.error('Quiz data is incomplete or missing questions');
-                uiRenderer.showNotification('Quiz data is incomplete. Please try again.', 'error');
-                return;
-            }
-            
-            const question = questions[state.currentQuestionIndex];
-            if (!question || !question._id) {
-                console.error('Question not found at index', state.currentQuestionIndex);
-                uiRenderer.showNotification('Question not found. Please try again.', 'error');
-                return;
-            }
-            
-            // Submit answer to server
-            await apiService.submitAnswer(attempt._id, question._id, optionIndex);
-            
-            // Update local attempt state
             const existingAnswerIndex = attempt.answers.findIndex(a => 
-                a.question && a.question.toString() === question._id.toString()
+                a.question && a.question.toString() === questionId.toString()
             );
             
             if (existingAnswerIndex !== -1) {
-                // Update existing answer
                 attempt.answers[existingAnswerIndex] = {
-                    question: question._id,
+                    question: questionId,
                     selectedOptionIndex: optionIndex,
                     answeredAt: new Date()
                 };
             } else {
-                // Add new answer
                 attempt.answers.push({
-                    question: question._id,
+                    question: questionId,
                     selectedOptionIndex: optionIndex,
                     answeredAt: new Date()
                 });
             }
-            
-            // Update UI
-            const options = document.querySelectorAll('.option-taking');
-            options.forEach(opt => opt.classList.remove('selected'));
-            
-            const selectedOption = document.querySelector(`.option-taking[data-option-index="${optionIndex}"]`);
-            if (selectedOption) {
-                selectedOption.classList.add('selected');
-            }
-            
+            apiService.autoSaveAnswers(attempt._id, attempt.answers);
         } catch (error) {
-            console.error('Failed to submit answer:', error);
-            uiRenderer.showNotification('Failed to submit answer', 'error');
+            console.error('Auto-save failed:', error);
         }
     },
 
-    // Handle next question
+    // Handle select option (Legacy single-question logic removed, keeping method signature just in case)
+    async handleSelectOption(optionIndex) {
+        console.warn('handleSelectOption is deprecated. Use handleSelectOptionFeed.');
+    },
+
     async handleNextQuestion() {
-        try {
-            const questions = state.detailedQuiz?.templateId?.questions || [];
-            if (state.currentQuestionIndex < questions.length - 1) {
-                state.currentQuestionIndex++;
-                const modal = document.querySelector('.quiz-taking-container');
-                if (modal) {
-                    uiRenderer.setupQuizTakingModal(modal);
-                }
-            }
-        } catch (error) {
-            console.error('Error handling next question:', error);
-        }
+        console.warn('handleNextQuestion is deprecated in scrollable feed.');
     },
 
     async handlePrevQuestion() {
-        try {
-            if (state.currentQuestionIndex > 0) {
-                state.currentQuestionIndex--;
-                const modal = document.querySelector('.quiz-taking-container');
-                if (modal) {
-                    uiRenderer.setupQuizTakingModal(modal);
-                }
-            }
-        } catch (error) {
-            console.error('Error handling previous question:', error);
-        }
+        console.warn('handlePrevQuestion is deprecated in scrollable feed.');
     },
-    async saveCurrentAnswer() {
-        try {
-            const quiz = state.detailedQuiz;
-            const attempt = state.activeQuizAttempt;
-            const questions = quiz.templateId?.questions || [];
-            
-            if (questions.length === 0 || state.currentQuestionIndex >= questions.length) {
-                return; // No questions or invalid index
-            }
-            
-            const currentQuestion = questions[state.currentQuestionIndex];
-            const selectedOption = document.querySelector('.option-taking.selected');
-            
-            if (selectedOption && currentQuestion && currentQuestion._id) {
-                const selectedIndex = parseInt(selectedOption.dataset.optionIndex);
-                
-                // Submit answer to server
-                await apiService.submitAnswer(attempt._id, currentQuestion._id, selectedIndex);
-                
-                // Also update local attempt state
-                const existingAnswerIndex = attempt.answers.findIndex(a => 
-                    a.question && a.question.toString() === currentQuestion._id.toString()
-                );
-                
-                if (existingAnswerIndex !== -1) {
-                    // Update existing answer
-                    attempt.answers[existingAnswerIndex] = {
-                        question: currentQuestion._id,
-                        selectedOptionIndex: selectedIndex,
-                        answeredAt: new Date()
-                    };
-                } else {
-                    // Add new answer
-                    attempt.answers.push({
-                        question: currentQuestion._id,
-                        selectedOptionIndex: selectedIndex,
-                        answeredAt: new Date()
-                    });
-                }
-            }
-        } catch (error) {
-            console.error('Error saving current answer:', error);
-            // Don't show error to avoid disrupting quiz flow
-        }
-    },
-    
+
+    // PERFECT 0 POINTS FIX
     async handleFinishQuiz() {
         try {
             console.log('Finishing quiz...');
@@ -2464,7 +2212,9 @@ const eventHandlers = {
             state.quizTimer = null;
             state.quizDeadlineTimer = null;
 
-            if (document.fullscreenElement) document.exitFullscreen();
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            }
 
             const finishBtn = document.querySelector('.finish-quiz-btn') || document.querySelector('#submit-entire-quiz-btn');
             if (finishBtn) {
@@ -2473,9 +2223,24 @@ const eventHandlers = {
             }
             
             const attempt = state.activeQuizAttempt;
+            const finalAnswers = [];
             
-            // THE 0 POINTS FIX: We MUST pass attempt.answers in the API call so the backend can grade them!
-            const submissionResult = await apiService.submitQuizAttempt(attempt._id, attempt.answers);
+            // Scan the entire DOM for all selected options
+            document.querySelectorAll('.options-container-taking').forEach(cont => {
+                const sel = cont.querySelector('.option-taking.selected');
+                if (sel) {
+                    finalAnswers.push({
+                        questionId: sel.dataset.questionId,
+                        selectedOptionIndex: parseInt(sel.dataset.optionIndex),
+                        answeredAt: new Date()
+                    });
+                }
+            });
+
+            // Pass the explicitly scanned answers directly to the API
+            const answersToSubmit = finalAnswers.length > 0 ? finalAnswers : attempt.answers;
+            
+            const submissionResult = await apiService.submitQuizAttempt(attempt._id, answersToSubmit);
             
             const attemptId = submissionResult.data?._id || attempt._id;
             const results = await apiService.fetchQuizResults(attemptId);
@@ -2490,10 +2255,8 @@ const eventHandlers = {
         }
     },
 
-    // Handle add question
     handleAddQuestion(buttonElement) {
         try {
-            // Find the modal relative to the button that was clicked
             const modal = buttonElement.closest('.modal');
             if (!modal) {
                 console.error('Could not find the create quiz modal to add a question to.');
@@ -2506,17 +2269,14 @@ const eventHandlers = {
         }
     },
 
-    // Handle delete question
     handleDeleteQuestion(questionElement) {
         try {
             if (!questionElement) return;
-            
             const questionsContainer = questionElement.parentElement;
             if (questionsContainer.children.length <= 1) {
                 uiRenderer.showNotification('A quiz must have at least one question', 'error');
                 return;
             }
-            
             questionElement.remove();
             uiRenderer.renumberQuestions(questionsContainer);
         } catch (error) {
@@ -2524,7 +2284,6 @@ const eventHandlers = {
         }
     },
 
-    // Handle move question up
     handleMoveQuestionUp(questionElement) {
         try {
             const questionsContainer = questionElement.parentElement;
@@ -2538,7 +2297,6 @@ const eventHandlers = {
         }
     },
 
-    // Handle move question down
     handleMoveQuestionDown(questionElement) {
         try {
             const questionsContainer = questionElement.parentElement;
@@ -2552,7 +2310,6 @@ const eventHandlers = {
         }
     },
 
-    // Handle add option
     handleAddOption(optionsContainer) {
         try {
             uiRenderer.addNewOption(optionsContainer);
@@ -2561,7 +2318,6 @@ const eventHandlers = {
         }
     },
 
-    // Handle delete option
     handleDeleteOption(optionElement) {
         try {
             const optionsContainer = optionElement.parentElement;
@@ -2569,7 +2325,6 @@ const eventHandlers = {
                 uiRenderer.showNotification('A question must have at least two options', 'error');
                 return;
             }
-            
             optionElement.remove();
             uiRenderer.reletterOptions(optionsContainer);
         } catch (error) {
@@ -2577,7 +2332,6 @@ const eventHandlers = {
         }
     },
 
-    // Handle view student attempt
     async handleViewStudentAttempt(attemptId) {
         try {
             const results = await apiService.fetchQuizResults(attemptId);
@@ -2639,23 +2393,20 @@ const eventHandlers = {
         }
     },
 
-    // Handle add from bank
     async handleAddFromBank() {
         try {
-            uiRenderer.openModal('quiz-bank', null, true);
+            uiRenderer.openModal('question-bank', null, true);
         } catch (error) {
             console.error('Error handling add from bank:', error);
         }
     },
 
-    // Handle request retake
     async handleRequestRetake(quizId, reason) {
         try {
             if (!reason) {
                 reason = prompt('Please provide a reason for requesting a retake:');
                 if (!reason) return;
             }
-            
             await apiService.requestRetake(quizId, reason);
             uiRenderer.showNotification('Retake request submitted successfully');
         } catch (error) {
@@ -2664,11 +2415,9 @@ const eventHandlers = {
         }
     },
 
-    // Extract questions data from form
     extractQuestionsData(form) {
         try {
             const questions = [];
-            // This selector now correctly finds the question items inside the form.
             const questionElements = form.querySelectorAll('.question-item');
 
             if (questionElements.length === 0) {
@@ -2704,18 +2453,15 @@ const eventHandlers = {
             return questions;
         } catch (error) {
             console.error('A critical error occurred in extractQuestionsData:', error);
-            // Return an empty array on error to trigger the validation message
             return [];
         }
     },
-    // Handle create quiz
+
     async handleCreateQuiz(form) {
         try {
             const startTimeValue = form.querySelector('#quiz-start-time').value;
             const endTimeValue = form.querySelector('#quiz-end-time').value;
             
-            // Prepare quiz data
-// Prepare quiz data
             const quizData = {
                 title: form.querySelector('#quiz-title').value,
                 description: form.querySelector('#quiz-description').value,
@@ -2729,7 +2475,6 @@ const eventHandlers = {
                 questions: this.extractQuestionsData(form)
             };
 
-            // Validate quiz data
             const validationErrors = utils.validateQuizData(quizData);
             if (validationErrors.length > 0) {
                 return uiRenderer.showNotification(validationErrors[0], 'error');
@@ -2750,7 +2495,6 @@ const eventHandlers = {
             const startTimeValue = form.querySelector('#quiz-start-time').value;
             const endTimeValue = form.querySelector('#quiz-end-time').value;
             
-// Prepare quiz data
             const quizData = {
                 title: form.querySelector('#quiz-title').value,
                 description: form.querySelector('#quiz-description').value,
@@ -2763,7 +2507,7 @@ const eventHandlers = {
                 retakePolicy: form.querySelector('#retake-policy') ? form.querySelector('#retake-policy').value : 'highest',
                 questions: this.extractQuestionsData(form)
             };
-            // Validate quiz data
+
             const validationErrors = utils.validateQuizData(quizData);
             if (validationErrors.length > 0) {
                 return uiRenderer.showNotification(validationErrors[0], 'error');
@@ -2779,72 +2523,6 @@ const eventHandlers = {
         }
     },
 
-
-
-async handleDuplicateQuiz(templateId) {
-        try {
-            // FIX: Default to the existing group if dropdown wasn't clicked
-            const targetGroupId = state.selectedGroupId || state.detailedQuiz?.courseId?.[0] || state.detailedQuiz?.groupId;
-            
-            if (!targetGroupId) {
-                return uiRenderer.showNotification('Please select a target group from the dropdown.', 'error');
-            }
-            const confirmed = confirm('Are you sure you want to duplicate this quiz for the selected group?');
-            if (!confirmed) return;
-
-            await apiService.duplicateQuiz(templateId, targetGroupId);
-            uiRenderer.showNotification('Quiz duplicated successfully!');
-            await this.loadQuizzes();
-            this.handleBackToList();
-        } catch (error) {
-            uiRenderer.showNotification('Failed to duplicate quiz', 'error');
-        }
-    },
-
-    async handleRetakeQuiz(studentQuizId) {
-        try {
-            const confirmed = confirm('Are you sure you want to clear your previous answers and restart this quiz?');
-            if (!confirmed) return;
-
-            await apiService.retakeQuiz(studentQuizId);
-            uiRenderer.showNotification('Quiz reset. Ready to start again!');
-            
-            // UI refresh to show Start button again
-            this.handleBackToList();
-            setTimeout(() => {
-                this.handleViewDetail(studentQuizId);
-            }, 200);
-        } catch (error) {
-            uiRenderer.showNotification('Failed to restart quiz', 'error');
-        }
-    },
-
-    // AUTOSAVE LOGIC
-    async handleSelectOptionFeed(questionId, optionIndex) {
-        try {
-            const attempt = state.activeQuizAttempt;
-            const existingAnswerIndex = attempt.answers.findIndex(a => 
-                a.question && a.question.toString() === questionId.toString()
-            );
-            
-            if (existingAnswerIndex !== -1) {
-                attempt.answers[existingAnswerIndex] = {
-                    question: questionId,
-                    selectedOptionIndex: optionIndex,
-                    answeredAt: new Date()
-                };
-            } else {
-                attempt.answers.push({
-                    question: questionId,
-                    selectedOptionIndex: optionIndex,
-                    answeredAt: new Date()
-                });
-            }
-            apiService.autoSaveAnswers(attempt._id, attempt.answers);
-        } catch (error) {
-            console.error('Auto-save failed:', error);
-        }
-    },    // Load quizzes based on current state
     async loadQuizzes() {
         try {
             state.isLoading = true;
@@ -2853,14 +2531,13 @@ async handleDuplicateQuiz(templateId) {
             let quizzes = [];
             let statusToFetch = state.activeTab;
 
-            // This logic correctly fetches 'completed' AND 'graded' statuses for the Completed tab
             if (state.activeTab === 'completed') {
                 statusToFetch = 'completed,graded';
-                
             }
             if (state.activeTab === 'in-progress') {
                 statusToFetch = 'in-progress';
-            }            
+            }
+            
             if ([ROLES.TEACHER, ROLES.ADMIN].includes(state.currentUser.role)) {
                 if (!state.selectedGroupId) {
                     state.studentQuizzes = [];
@@ -2868,7 +2545,6 @@ async handleDuplicateQuiz(templateId) {
                     uiRenderer.updateView();
                     return;
                 }
-                
                 quizzes = await apiService.fetchQuizzesForGroup(state.selectedGroupId, statusToFetch);
             } else {
                 quizzes = await apiService.fetchStudentQuizzes(statusToFetch);
@@ -2885,7 +2561,7 @@ async handleDuplicateQuiz(templateId) {
             uiRenderer.updateView();
         }
     },
-    // Handle global click events
+
     handleGlobalClick(e) {
         try {
             const actionElement = e.target.closest('[data-action]');
@@ -2908,6 +2584,12 @@ async handleDuplicateQuiz(templateId) {
                     break;
                 case QUIZ_ACTIONS.DELETE_QUIZ:
                     this.handleDeleteQuiz(quizId);
+                    break;
+                case QUIZ_ACTIONS.DUPLICATE_QUIZ:
+                    this.handleDuplicateQuiz(quizId || state.detailedQuiz.templateId?._id || state.detailedQuiz._id);
+                    break;
+                case QUIZ_ACTIONS.RETAKE_QUIZ:
+                    this.handleRetakeQuiz(quizId || state.detailedQuiz._id);
                     break;
                 case QUIZ_ACTIONS.START_QUIZ:
                     this.handleStartQuiz(state.detailedQuiz._id);
@@ -2952,32 +2634,23 @@ async handleDuplicateQuiz(templateId) {
                     this.handleRequestRetake(quizId);
                     break;
                 case QUIZ_ACTIONS.APPROVE_REQUEST:
-                    this.handleApproveRequest(requestId);
+                    if(typeof this.handleApproveRequest === 'function') this.handleApproveRequest(requestId);
                     break;
                 case QUIZ_ACTIONS.DENY_REQUEST:
-                    this.handleDenyRequest(requestId);
+                    if(typeof this.handleDenyRequest === 'function') this.handleDenyRequest(requestId);
                     break;
-                case QUIZ_ACTIONS.DUPLICATE_QUIZ:
-                    this.handleDuplicateQuiz(quizId || state.detailedQuiz.templateId?._id || state.detailedQuiz._id);
-                    break;
-                case QUIZ_ACTIONS.RETAKE_QUIZ:
-                    this.handleRetakeQuiz(quizId || state.detailedQuiz._id);
-                    break;           
             }
         } catch (error) {
             console.error('Error handling global click:', error);
         }
     },
     
-    // Handle keyboard shortcuts
     handleKeyboardShortcuts(e) {
         try {
-            // ESC key to close modals
             if (e.key === 'Escape' && elements.modalBackdrop.style.display === 'flex') {
                 uiRenderer.closeModal();
             }
             
-            // Ctrl+Enter to submit forms
             if (e.ctrlKey && e.key === 'Enter') {
                 const activeModal = document.querySelector('.modal:last-child');
                 if (activeModal) {
@@ -2992,16 +2665,14 @@ async handleDuplicateQuiz(templateId) {
         }
     },
 
-    // Handle add from quiz bank
     handleAddFromQuizBank() {
         try {
-            uiRenderer.openModal('quiz-bank', null, true);
+            uiRenderer.openModal('question-bank', null, true);
         } catch (error) {
             console.error('Error handling add from quiz bank:', error);
         }
     },
 
-    // Handle select quiz from bank
     handleSelectQuizFromBank(quizId) {
         try {
             if (!state.quizBank) {
@@ -3011,20 +2682,14 @@ async handleDuplicateQuiz(templateId) {
             
             const selectedQuiz = state.quizBank.find(q => q._id === quizId);
             if (selectedQuiz) {
-                // --- CORE FIX: Clone and Clear ID to enable reuse ---
                 const clonedData = JSON.parse(JSON.stringify(selectedQuiz));
-                delete clonedData._id; // IMPORTANT: Deletes the ID to force creation of a NEW quiz
+                delete clonedData._id; 
                 delete clonedData.templateId;
-                delete clonedData.courseId; // Clear old course ID to force new selection
+                delete clonedData.courseId; 
                 
-                // Manually change the title to indicate cloning
                 clonedData.title = (clonedData.title || '') + ' (Copy)';
                 
-                // 1. Close the current modal (Quiz Bank)
                 uiRenderer.closeModal(); 
-                
-                // 2. Re-open the main modal with the cloned data
-                // This is the clean way to prefill the form for a new quiz creation
                 uiRenderer.openModal('create-edit-quiz', clonedData); 
             } else {
                 uiRenderer.showNotification('Selected quiz could not be found.', 'error');
@@ -3048,34 +2713,27 @@ async function initQuizzes() {
         
         const { user, groups } = await apiService.fetchInitialData();
         
-        // ✅ DEBUGGING: Let's see the exact user object we receive.
-        console.log('--- USER DATA RECEIVED FROM SERVER ---:', user);
         if (user && user.role) {
-            console.log('User Role is:', user.role);
-            console.log('Is the Role exactly "Admin"?', user.role === ROLES.ADMIN);
-            console.log('Is the Role exactly "Teacher"?', user.role === ROLES.TEACHER);
+            state.currentUser = user;
+            state.groups = groups;
+            
+            uiRenderer.init();
+            eventHandlers.init();
+            
+            if (state.currentUser.role === ROLES.STUDENT) {
+                await eventHandlers.loadQuizzes();
+            } else {
+                state.isLoading = false;
+                uiRenderer.updateView();
+            }
         } else {
             console.error('CRITICAL: User object is null or missing a role after fetch.');
             uiRenderer.showNotification('Could not verify user role. Logging out.', 'error');
             setTimeout(() => {
-                // Redirect if user data is invalid
                 localStorage.removeItem('piRateToken');
                 window.location.href = '/client/login/login.html';
             }, 2000);
             return;
-        }
-        
-        state.currentUser = user;
-        state.groups = groups;
-        
-        uiRenderer.init();
-        eventHandlers.init();
-        
-        if (state.currentUser.role === ROLES.STUDENT) {
-            await eventHandlers.loadQuizzes();
-        } else {
-            state.isLoading = false;
-            uiRenderer.updateView();
         }
         
     } catch (error) {
