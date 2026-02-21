@@ -2245,6 +2245,17 @@ const eventHandlers = {
 
         let timeLeftInSeconds = durationInMinutes * 60;
 
+        // ✅ FIX: If the user is resuming an in-progress quiz, calculate how much time they already spent!
+        const attemptStart = state.activeQuizAttempt?.startTime || state.activeQuizAttempt?.createdAt;
+        if (attemptStart) {
+            const elapsedSeconds = Math.floor((new Date() - new Date(attemptStart)) / 1000);
+            if (elapsedSeconds > 0) {
+                timeLeftInSeconds -= elapsedSeconds;
+            }
+            // If time is somehow negative, force it to 0
+            if (timeLeftInSeconds < 0) timeLeftInSeconds = 0;
+        }
+
         // Helper function to update the timer display, avoiding code repetition.
         const updateTimerDisplay = () => {
             if (timeLeftInSeconds < 0) timeLeftInSeconds = 0;
