@@ -1207,7 +1207,7 @@ const uiRenderer = {
         }
     },
 
-    // Setup the scrollable feed view for taking the quiz
+   // ✨ PERFECT FULL-SCREEN, DARK-MODE SAFE, BLUE-TRACKER QUIZ VIEW
     setupQuizTakingModal(modalElement) {
         try {
             const quiz = state.detailedQuiz;
@@ -1220,51 +1220,145 @@ const uiRenderer = {
                 return;
             }
 
-            const titleEl = modalElement.querySelector('.quiz-title-taking');
-            if (titleEl) titleEl.textContent = quiz.templateTitle;
-            
-            const countEl = modalElement.querySelector('#total-questions-count');
-            if (countEl) countEl.textContent = questions.length;
-
-            let scrollableContainer = modalElement.querySelector('#active-quiz-questions-container');
-            if (!scrollableContainer) {
-                const textElement = modalElement.querySelector('.question-text-taking');
-                if (textElement) scrollableContainer = textElement.parentElement;
-            }
-            if (!scrollableContainer) return;
-
-            // FIX: Perfect Centered Styling & Proper Scroll Height, dark-mode safe
-            scrollableContainer.innerHTML = '';
-            scrollableContainer.style.cssText = `
+            // 1. Force the Modal to be absolutely FULL SCREEN
+            modalElement.style.cssText = `
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                max-width: 100vw !important;
+                max-height: 100vh !important;
+                margin: 0 !important;
+                border-radius: 0 !important;
                 display: flex;
                 flex-direction: column;
-                gap: 40px;
-                max-width: 800px;
-                margin: 0 auto;
-                height: calc(100vh - 140px);
-                overflow-y: auto;
-                padding: 20px 15px 150px 15px;
+                background-color: var(--bg-color, #ffffff);
+                z-index: 99999 !important;
+                overflow: hidden;
             `;
-            
+
+            // 2. Inject custom professional styles for this session
+            const styleId = 'quiz-taking-styles';
+            if (!document.getElementById(styleId)) {
+                const styleEl = document.createElement('style');
+                styleEl.id = styleId;
+                styleEl.innerHTML = `
+                    .quiz-content-wrapper {
+                        max-width: 1000px; /* Wider on laptop, full on mobile */
+                        width: 100%;
+                        margin: 0 auto;
+                        padding: 40px 15px 150px 15px; /* Deep bottom padding to scroll past button */
+                        display: flex;
+                        flex-direction: column;
+                        gap: 60px; /* Great spacing between questions */
+                    }
+                    .option-taking {
+                        padding: 18px 20px;
+                        border: 2px solid var(--border-color, #e2e8f0);
+                        border-radius: 12px;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        transition: all 0.2s ease;
+                        background-color: var(--background-secondary, #ffffff);
+                        font-size: 1.1rem;
+                    }
+                    .option-taking:hover {
+                        border-color: #94a3b8;
+                        transform: translateY(-2px);
+                    }
+                    /* PERFECT DARK MODE FOR SELECTED ANSWER */
+                    .option-taking.selected {
+                        background-color: #0f172a !important; /* Deep Dark Background */
+                        color: #f8fafc !important; /* White Text */
+                        border-color: #000000 !important;
+                        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+                        transform: translateY(-2px);
+                    }
+                    .option-taking.selected .option-letter {
+                        background-color: rgba(255,255,255,0.2) !important;
+                        color: #ffffff !important;
+                    }
+                    .option-letter {
+                        font-weight: bold;
+                        margin-right: 20px;
+                        background: var(--background-modifier, #f1f5f9);
+                        color: var(--text-color, #333);
+                        min-width: 35px;
+                        height: 35px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        border-radius: 50%;
+                        font-size: 1.1rem;
+                        transition: all 0.2s ease;
+                    }
+                    /* PERFECT BLUE PROGRESS TRACKER */
+                    #quiz-progress-tracker {
+                        background-color: #2563eb !important; /* Professional Blue */
+                        color: #ffffff !important;
+                        padding: 15px 25px;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        font-size: 1.2rem;
+                        font-weight: bold;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                        z-index: 100;
+                    }
+                    /* Mobile font sizing for tracker */
+                    @media (max-width: 768px) {
+                        #quiz-progress-tracker { font-size: 1rem; padding: 12px 15px; flex-direction: column; gap: 5px; }
+                        .quiz-content-wrapper { gap: 40px; }
+                    }
+                `;
+                document.head.appendChild(styleEl);
+            }
+
+            // 3. Clear existing modal content and build the perfect layout
+            modalElement.innerHTML = `
+                <div id="quiz-progress-tracker">
+                    <div style="flex:1;">
+                        <span class="quiz-title-taking">${utils.escapeHTML(quiz.templateTitle)}</span>
+                    </div>
+                    <div id="quiz-timer-container" style="flex:1; text-align: center; font-size: 1.3rem;">
+                        <i class="fas fa-clock"></i> <span id="quiz-countdown">00:00</span>
+                    </div>
+                    <div style="flex:1; text-align: right;">
+                        შევსებული: <span id="answered-count">0</span> / <span id="total-questions-count">${questions.length}</span>
+                    </div>
+                </div>
+                
+                <div id="active-quiz-questions-container" style="flex: 1; overflow-y: auto; overflow-x: hidden; width: 100%;">
+                    <div class="quiz-content-wrapper"></div>
+                </div>
+                
+                <div class="quiz-submission-area" style="position: absolute; bottom: 0; left: 0; width: 100%; padding: 20px; background: var(--bg-color, #ffffff); border-top: 1px solid var(--border-color, #e2e8f0); text-align: center; box-shadow: 0 -4px 15px rgba(0,0,0,0.05); z-index: 101;">
+                    <button id="submit-entire-quiz-btn" class="btn btn-primary finish-quiz-btn" style="font-size: 1.25rem; padding: 15px 60px; border-radius: 30px; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);">
+                        <i class="fas fa-paper-plane"></i> ქვიზის დასრულება (Submit)
+                    </button>
+                </div>
+            `;
+
+            const wrapper = modalElement.querySelector('.quiz-content-wrapper');
+
+            // 4. Render Questions
             questions.forEach((question, index) => {
                 const questionBlock = document.createElement('div');
                 questionBlock.className = 'quiz-question-block';
-                // Transparent border instead of white background
-                questionBlock.style.cssText = `
-                    padding-bottom: 30px;
-                    border-bottom: 1px solid var(--border-color, rgba(150,150,150,0.2));
-                `;
+                questionBlock.style.borderBottom = '1px solid var(--border-color, rgba(150,150,150,0.2))';
+                questionBlock.style.paddingBottom = '30px';
 
                 let imageHtml = '';
                 if (question.imageUrl) {
                     imageHtml = `
-                    <div class="question-image-container" style="display: flex; justify-content: center; margin: 15px 0;">
-                        <img src="${question.imageUrl}" alt="Question Image" style="max-width: 100%; border-radius: 8px;">
+                    <div class="question-image-container" style="display: flex; justify-content: center; margin: 25px 0;">
+                        <img src="${question.imageUrl}" alt="Question" style="max-width: 100%; max-height: 400px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                     </div>`;
                 }
 
-                // FIX: Column direction to stack options perfectly vertically
-                let optionsHtml = '<div class="options-container-taking" style="display: flex; flex-direction: column; gap: 12px;">';
+                let optionsHtml = '<div class="options-container-taking" style="display: flex; flex-direction: column; gap: 15px;">';
                 (question.options || []).forEach((opt, optIndex) => {
                     const existingAnswer = attempt.answers?.find(a => a.question?.toString() === question._id.toString());
                     const isSelected = existingAnswer && existingAnswer.selectedOptionIndex === optIndex ? 'selected' : '';
@@ -1278,22 +1372,21 @@ const uiRenderer = {
                 });
                 optionsHtml += '</div>';
 
-                // Transparent points badge background
                 questionBlock.innerHTML = `
-                    <div class="question-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 style="margin: 0;">კითხვა ${index + 1}</h3>
-                        <span class="question-points" style="font-weight: bold; background: var(--background-secondary, rgba(128,128,128,0.2)); padding: 5px 10px; border-radius: 5px;">${question.points} ქულა</span>
+                    <div class="question-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0; font-size: 1.4rem; color: var(--primary-color);">კითხვა ${index + 1}</h3>
+                        <span class="question-points" style="font-weight: bold; background: var(--background-secondary, rgba(128,128,128,0.1)); padding: 6px 15px; border-radius: 20px; font-size: 1rem;">${question.points} ქულა</span>
                     </div>
-                    <div class="question-text-taking" style="margin-bottom: 20px;">${question.text}</div>
+                    <div class="question-text-taking" style="margin-bottom: 25px; font-size: 1.25rem; line-height: 1.6;">${question.text}</div>
                     ${imageHtml}
                     ${optionsHtml}
                 `;
                 
-                scrollableContainer.appendChild(questionBlock);
+                wrapper.appendChild(questionBlock);
             });
 
-            // Bind click events to options
-            const allOptions = scrollableContainer.querySelectorAll('.option-taking');
+            // 5. Bind click events to options for styling and autosaving
+            const allOptions = wrapper.querySelectorAll('.option-taking');
             allOptions.forEach(opt => {
                 opt.addEventListener('click', (e) => {
                     const target = e.currentTarget;
@@ -1304,47 +1397,38 @@ const uiRenderer = {
                     parentContainer.querySelectorAll('.option-taking').forEach(sibling => sibling.classList.remove('selected'));
                     target.classList.add('selected');
                     
-                    // Update Tracker
+                    // Live answered count update
                     let answeredCount = 0;
-                    scrollableContainer.querySelectorAll('.options-container-taking').forEach(cont => {
+                    wrapper.querySelectorAll('.options-container-taking').forEach(cont => {
                         if (cont.querySelector('.selected')) answeredCount++;
                     });
-                    const trackerEl = modalElement.querySelector('#answered-count');
-                    if (trackerEl) trackerEl.textContent = answeredCount;
+                    const countEl = modalElement.querySelector('#answered-count');
+                    if (countEl) countEl.textContent = answeredCount;
 
                     // Autosave silently
                     eventHandlers.handleSelectOptionFeed(qId, optIdx);
                 });
             });
 
-            // Initial tracker update
+            // 6. Initial tracker update on open
             let initialCount = 0;
-            scrollableContainer.querySelectorAll('.options-container-taking').forEach(cont => {
+            wrapper.querySelectorAll('.options-container-taking').forEach(cont => {
                 if (cont.querySelector('.selected')) initialCount++;
             });
             const startTrackerEl = modalElement.querySelector('#answered-count');
             if (startTrackerEl) startTrackerEl.textContent = initialCount;
 
-            // Hide old pagination
-            const nextBtn = modalElement.querySelector('.next-question-btn');
-            const prevBtn = modalElement.querySelector('.prev-question-btn');
-            if (nextBtn) nextBtn.style.display = 'none';
-            if (prevBtn) prevBtn.style.display = 'none';
-
-            // Show and bind submit button
-            const finishBtn = modalElement.querySelector('.finish-quiz-btn') || modalElement.querySelector('#submit-entire-quiz-btn');
+            // 7. Bind the Submit button
+            const finishBtn = modalElement.querySelector('#submit-entire-quiz-btn');
             if (finishBtn) {
-                finishBtn.style.display = 'block';
-                const newFinishBtn = finishBtn.cloneNode(true);
-                finishBtn.parentNode.replaceChild(newFinishBtn, finishBtn);
-                newFinishBtn.addEventListener('click', () => {
+                finishBtn.addEventListener('click', () => {
                     if(confirm("დარწმუნებული ხართ რომ გსურთ ქვიზის დასრულება? (Are you sure you want to submit?)")) {
                         eventHandlers.handleFinishQuiz();
                     }
                 });
             }
 
-            utils.renderMath(scrollableContainer);
+            utils.renderMath(wrapper);
 
         } catch (error) {
             console.error('Error setting up quiz taking modal:', error);
