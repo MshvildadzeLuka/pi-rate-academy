@@ -73,8 +73,14 @@ studentQuizSchema.methods.calculateStatus = function() {
 };
 studentQuizSchema.methods.canStart = function() {
   const currentStatus = this.calculateStatus();
-  // ✅ FIX: Explicitly allow quizzes that are 'in-progress' to be opened again!
-  return currentStatus === 'active' || currentStatus === 'in-progress';
+  
+  // Normal active or in-progress states
+  if (currentStatus === 'active' || currentStatus === 'in-progress') return true;
+  
+  // ✅ FIX: Allow starting a past-due quiz ONLY IF retakes are enabled on the template
+  if (currentStatus === 'past-due' && this.templateId && this.templateId.allowRetakes === true) return true;
+  
+  return false;
 };
 
 studentQuizSchema.statics.updateAllStatuses = async function() {
