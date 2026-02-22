@@ -910,6 +910,7 @@ const uiRenderer = {
     },
 
     // Render the detailed view of a quiz
+    // Render the detailed view of a quiz
     renderDetailView() {
         try {
             if (!state.detailedQuiz) {
@@ -926,14 +927,17 @@ const uiRenderer = {
             const quiz = state.detailedQuiz;
             const status = quiz.status;
             
-            // Ensure past-due routes to the results page where retake button lives
-            if (status === 'completed' || status === 'graded' || status === 'past-due') {
+            // ✅ FIX: Check if they actually have a submission. 
+            // If they just clicked "Retake", the submission is cleared, so we must show the Instructions View!
+            const hasSubmission = quiz.submission && quiz.submission.submittedAt;
+            const hasGrade = quiz.grade && typeof quiz.grade.score === 'number';
+            
+            if (status === 'completed' || status === 'graded' || (status === 'past-due' && (hasSubmission || hasGrade))) {
                 this.renderUnifiedResultsView(quiz);
             } else {
                 this.renderInstructionsView(quiz);
             }
-        } catch (error)
-        {
+        } catch (error) {
             console.error('Error rendering detail view:', error);
             elements.detailView.innerHTML = `<div class="error-message"><p>A critical error occurred while displaying quiz details.</p></div>`;
         }
@@ -1032,7 +1036,7 @@ const uiRenderer = {
                         
                         ${instructionsInGeorgian}
                         
-                        ${isStudent && (quiz.status === 'active' || quiz.status === 'in-progress') ? `
+                        ${isStudent && (quiz.status === 'active' || quiz.status === 'in-progress' || (quiz.status === 'past-due' && quiz.templateId?.allowRetakes)) ? `
                             <div class="agreement-section" style="margin-top: 20px;">
                                 <label class="agreement-checkbox">
                                     <input type="checkbox" id="quiz-agreement">
@@ -1050,7 +1054,7 @@ const uiRenderer = {
                 </div>
             `;
             
-            if (isStudent && (quiz.status === 'active' || quiz.status === 'in-progress')) {
+            if (isStudent && (quiz.status === 'active' || quiz.status === 'in-progress' || (quiz.status === 'past-due' && quiz.templateId?.allowRetakes))) {
                 const agreementCheckbox = elements.detailView.querySelector('#quiz-agreement');
                 const startButton = elements.detailView.querySelector('#start-quiz-btn-main');
                 if (agreementCheckbox && startButton) {
