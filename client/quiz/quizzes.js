@@ -1207,7 +1207,7 @@ const uiRenderer = {
         }
     },
 
-   // ✨ PERFECT FULL-SCREEN, DARK-MODE SAFE, BLUE-TRACKER QUIZ VIEW
+   // ✨ PERFECT FULL-SCREEN, DARK & BLUE THEME QUIZ VIEW
     setupQuizTakingModal(modalElement) {
         try {
             const quiz = state.detailedQuiz;
@@ -1220,7 +1220,7 @@ const uiRenderer = {
                 return;
             }
 
-            // 1. Force the Modal to be absolutely FULL SCREEN
+            // 1. Force the Modal to be absolutely FULL SCREEN with Deep Dark Blue/Black Background
             modalElement.style.cssText = `
                 position: fixed !important;
                 top: 0 !important;
@@ -1233,58 +1233,61 @@ const uiRenderer = {
                 border-radius: 0 !important;
                 display: flex;
                 flex-direction: column;
-                background-color: var(--bg-color, #ffffff);
+                background-color: #0b1121 !important; /* Deep Dark Space Blue/Black */
+                color: #f8fafc !important; /* Crisp White Text globally */
                 z-index: 99999 !important;
                 overflow: hidden;
             `;
 
-            // 2. Inject custom professional styles for this session
+            // 2. Inject custom professional Dark & Blue styles
             const styleId = 'quiz-taking-styles';
             if (!document.getElementById(styleId)) {
                 const styleEl = document.createElement('style');
                 styleEl.id = styleId;
                 styleEl.innerHTML = `
                     .quiz-content-wrapper {
-                        max-width: 1000px; /* Wider on laptop, full on mobile */
+                        max-width: 1000px;
                         width: 100%;
                         margin: 0 auto;
-                        padding: 40px 15px 150px 15px; /* Deep bottom padding to scroll past button */
+                        padding: 40px 15px 150px 15px;
                         display: flex;
                         flex-direction: column;
-                        gap: 60px; /* Great spacing between questions */
+                        gap: 60px;
                     }
                     .option-taking {
                         padding: 18px 20px;
-                        border: 2px solid var(--border-color, #e2e8f0);
+                        border: 2px solid #1e293b; /* Subtle dark slate border */
                         border-radius: 12px;
                         cursor: pointer;
                         display: flex;
                         align-items: center;
                         transition: all 0.2s ease;
-                        background-color: var(--background-secondary, #ffffff);
+                        background-color: #1e293b; /* Dark slate background for options */
+                        color: #e2e8f0; /* Soft white text */
                         font-size: 1.1rem;
                     }
                     .option-taking:hover {
-                        border-color: #94a3b8;
+                        border-color: #3b82f6; /* Bright blue border on hover */
+                        background-color: #25334a;
                         transform: translateY(-2px);
                     }
-                    /* PERFECT DARK MODE FOR SELECTED ANSWER */
+                    /* GLOWING BLUE FOR SELECTED ANSWER */
                     .option-taking.selected {
-                        background-color: #0f172a !important; /* Deep Dark Background */
-                        color: #f8fafc !important; /* White Text */
-                        border-color: #000000 !important;
-                        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+                        background-color: #1e3a8a !important; /* Deep Navy Blue */
+                        color: #ffffff !important; /* Pure White Text */
+                        border-color: #3b82f6 !important; /* Bright Blue Border */
+                        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.25); /* Blue Glow */
                         transform: translateY(-2px);
                     }
                     .option-taking.selected .option-letter {
-                        background-color: rgba(255,255,255,0.2) !important;
+                        background-color: #3b82f6 !important; /* Solid blue circle for letter */
                         color: #ffffff !important;
                     }
                     .option-letter {
                         font-weight: bold;
                         margin-right: 20px;
-                        background: var(--background-modifier, #f1f5f9);
-                        color: var(--text-color, #333);
+                        background: #334155; /* Dark grey-blue circle */
+                        color: #cbd5e1;
                         min-width: 35px;
                         height: 35px;
                         display: flex;
@@ -1294,9 +1297,9 @@ const uiRenderer = {
                         font-size: 1.1rem;
                         transition: all 0.2s ease;
                     }
-                    /* PERFECT BLUE PROGRESS TRACKER */
+                    /* PERFECT SOLID BLUE PROGRESS TRACKER */
                     #quiz-progress-tracker {
-                        background-color: #2563eb !important; /* Professional Blue */
+                        background-color: #2563eb !important; /* Professional Royal Blue */
                         color: #ffffff !important;
                         padding: 15px 25px;
                         display: flex;
@@ -1304,13 +1307,13 @@ const uiRenderer = {
                         align-items: center;
                         font-size: 1.2rem;
                         font-weight: bold;
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
                         z-index: 100;
                     }
                     /* Mobile font sizing for tracker */
                     @media (max-width: 768px) {
-                        #quiz-progress-tracker { font-size: 1rem; padding: 12px 15px; flex-direction: column; gap: 5px; }
-                        .quiz-content-wrapper { gap: 40px; }
+                        #quiz-progress-tracker { font-size: 1rem; padding: 12px 15px; flex-direction: column; gap: 5px; text-align: center; }
+                        .quiz-content-wrapper { gap: 40px; padding-top: 20px; }
                     }
                 `;
                 document.head.appendChild(styleEl);
@@ -1334,8 +1337,8 @@ const uiRenderer = {
                     <div class="quiz-content-wrapper"></div>
                 </div>
                 
-                <div class="quiz-submission-area" style="position: absolute; bottom: 0; left: 0; width: 100%; padding: 20px; background: var(--bg-color, #ffffff); border-top: 1px solid var(--border-color, #e2e8f0); text-align: center; box-shadow: 0 -4px 15px rgba(0,0,0,0.05); z-index: 101;">
-                    <button id="submit-entire-quiz-btn" class="btn btn-primary finish-quiz-btn" style="font-size: 1.25rem; padding: 15px 60px; border-radius: 30px; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);">
+                <div class="quiz-submission-area" style="position: absolute; bottom: 0; left: 0; width: 100%; padding: 20px; background: #0b1121; border-top: 1px solid #1e293b; text-align: center; box-shadow: 0 -4px 20px rgba(0,0,0,0.5); z-index: 101;">
+                    <button id="submit-entire-quiz-btn" class="btn btn-primary finish-quiz-btn" style="font-size: 1.25rem; padding: 15px 60px; border-radius: 30px; background-color: #2563eb; border: none; color: white; cursor: pointer; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4); font-weight: bold; transition: all 0.2s ease;">
                         <i class="fas fa-paper-plane"></i> ქვიზის დასრულება (Submit)
                     </button>
                 </div>
@@ -1347,14 +1350,15 @@ const uiRenderer = {
             questions.forEach((question, index) => {
                 const questionBlock = document.createElement('div');
                 questionBlock.className = 'quiz-question-block';
-                questionBlock.style.borderBottom = '1px solid var(--border-color, rgba(150,150,150,0.2))';
+                // Dark mode border separator
+                questionBlock.style.borderBottom = '1px solid #1e293b';
                 questionBlock.style.paddingBottom = '30px';
 
                 let imageHtml = '';
                 if (question.imageUrl) {
                     imageHtml = `
                     <div class="question-image-container" style="display: flex; justify-content: center; margin: 25px 0;">
-                        <img src="${question.imageUrl}" alt="Question" style="max-width: 100%; max-height: 400px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <img src="${question.imageUrl}" alt="Question" style="max-width: 100%; max-height: 400px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
                     </div>`;
                 }
 
@@ -1372,12 +1376,13 @@ const uiRenderer = {
                 });
                 optionsHtml += '</div>';
 
+                // Question Title and Points Badge
                 questionBlock.innerHTML = `
                     <div class="question-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h3 style="margin: 0; font-size: 1.4rem; color: var(--primary-color);">კითხვა ${index + 1}</h3>
-                        <span class="question-points" style="font-weight: bold; background: var(--background-secondary, rgba(128,128,128,0.1)); padding: 6px 15px; border-radius: 20px; font-size: 1rem;">${question.points} ქულა</span>
+                        <h3 style="margin: 0; font-size: 1.4rem; color: #60a5fa;">კითხვა ${index + 1}</h3>
+                        <span class="question-points" style="font-weight: bold; background: #1e293b; color: #94a3b8; padding: 6px 15px; border-radius: 20px; font-size: 1rem; border: 1px solid #334155;">${question.points} ქულა</span>
                     </div>
-                    <div class="question-text-taking" style="margin-bottom: 25px; font-size: 1.25rem; line-height: 1.6;">${question.text}</div>
+                    <div class="question-text-taking" style="margin-bottom: 25px; font-size: 1.25rem; line-height: 1.6; color: #f8fafc;">${question.text}</div>
                     ${imageHtml}
                     ${optionsHtml}
                 `;
@@ -1418,9 +1423,12 @@ const uiRenderer = {
             const startTrackerEl = modalElement.querySelector('#answered-count');
             if (startTrackerEl) startTrackerEl.textContent = initialCount;
 
-            // 7. Bind the Submit button
+            // Add slight hover effect to submit button via JS since it's inline
             const finishBtn = modalElement.querySelector('#submit-entire-quiz-btn');
             if (finishBtn) {
+                finishBtn.addEventListener('mouseenter', () => finishBtn.style.backgroundColor = '#1d4ed8');
+                finishBtn.addEventListener('mouseleave', () => finishBtn.style.backgroundColor = '#2563eb');
+                
                 finishBtn.addEventListener('click', () => {
                     if(confirm("დარწმუნებული ხართ რომ გსურთ ქვიზის დასრულება? (Are you sure you want to submit?)")) {
                         eventHandlers.handleFinishQuiz();
@@ -1434,7 +1442,6 @@ const uiRenderer = {
             console.error('Error setting up quiz taking modal:', error);
         }
     },
-
     // Open a modal dialog
     openModal(type, data = null, isLayered = false) {
         try {
