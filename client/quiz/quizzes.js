@@ -775,7 +775,6 @@ const uiRenderer = {
 
             const isTeacher = [ROLES.TEACHER, ROLES.ADMIN].includes(state.currentUser.role);
             
-            // Add "In Progress" tab dynamically if it doesn't exist
             if (!elements.tabsNav.querySelector('[data-tab="in-progress"]')) {
                 const inProgressBtn = document.createElement('button');
                 inProgressBtn.className = 'tab-btn';
@@ -785,13 +784,21 @@ const uiRenderer = {
                 elements.tabsNav.appendChild(inProgressBtn);
             }
 
-            // Show or hide the requests tab based on role
+            // ADD THE ADMIN/TEACHER "ALL QUIZZES" TAB
+            if (isTeacher && !elements.tabsNav.querySelector('[data-tab="all-quizzes"]')) {
+                const allQuizzesBtn = document.createElement('button');
+                allQuizzesBtn.className = 'tab-btn';
+                allQuizzesBtn.dataset.action = 'change-tab';
+                allQuizzesBtn.dataset.tab = 'all-quizzes';
+                allQuizzesBtn.textContent = 'ყველა ქვიზი (Admin)';
+                elements.tabsNav.appendChild(allQuizzesBtn);
+            }
+
             const requestsTab = document.getElementById('requests-tab');
             if (requestsTab) {
                 requestsTab.style.display = isTeacher ? 'inline-block' : 'none';
             }
             
-            // Highlight the correct active tab
             elements.tabsNav.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.tab === state.activeTab);
             });
@@ -983,17 +990,19 @@ const uiRenderer = {
 
     renderInstructionsView(quiz) {
         try {
-            const quizTitle = utils.escapeHTML(quiz.templateTitle);
+            const quizTitle = utils.escapeHTML(quiz.templateTitle || quiz.title);
             const isStudent = state.currentUser.role === ROLES.STUDENT;
+            const isTeacher = [ROLES.TEACHER, ROLES.ADMIN].includes(state.currentUser.role);
             
             const startTime = quiz.templateId?.startTime || quiz.startTime;
-            const endTime = quiz.templateId?.endTime || quiz.dueDate;
-            const timeLimit = quiz.templateId?.timeLimit || 'No time limit';
-            const totalPoints = quiz.templatePoints || 0;
-            const description = quiz.templateId?.description || 'No description provided';
-            const isProtected = quiz.templateId?.isProtected || false;
+            const endTime = quiz.templateId?.endTime || quiz.dueDate || quiz.endTime;
+            const timeLimit = quiz.templateId?.timeLimit || quiz.timeLimit || 'No time limit';
+            const totalPoints = quiz.templatePoints || quiz.points || 0;
+            const description = quiz.templateId?.description || quiz.description || 'No description provided';
+            const isProtected = quiz.templateId?.isProtected || quiz.isProtected || false;
             
             const startBtnText = quiz.status === 'in-progress' ? 'ქვიზის გაგრძელება (Resume)' : 'ქვიზის დაწყება (Start)';
+            const quizIdToUse = quiz.templateId?._id || quiz._id;
 
             const instructionsInGeorgian = `
                 <h3 style="color: var(--warning-accent);">ყურადღება! მნიშვნელოვანი ინსტრუქციები</h3>
@@ -1014,14 +1023,25 @@ const uiRenderer = {
                     <div class="detail-panel-header">
                         <button class="btn back-btn" data-action="${QUIZ_ACTIONS.BACK_TO_LIST}"><i class="fas fa-arrow-left"></i> Back</button>
                         <h2 class="quiz-title-detail">${quizTitle}</h2>
-                        ${!isStudent ? `
-                            <button class="btn btn-secondary duplicate-quiz-btn" data-action="${QUIZ_ACTIONS.DUPLICATE_QUIZ}" data-quiz-id="${quiz.templateId?._id || quiz._id}" style="margin-left:auto;">
-                                <i class="fas fa-copy"></i> Duplicate
-                            </button>
+                        ${isTeacher ? `
+                            <div class="teacher-actions" style="display: flex; gap: 10px; margin-left: auto; flex-wrap: wrap;">
+                                <button class="btn btn-primary" data-action="preview-quiz" data-template-id="${quizIdToUse}">
+                                    <i class="fas fa-eye"></i> Preview as Student
+                                </button>
+                                <button class="btn btn-secondary edit-quiz-btn" data-action="${QUIZ_ACTIONS.EDIT_QUIZ}" data-quiz-id="${quizIdToUse}">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                                <button class="btn btn-secondary duplicate-quiz-btn" data-action="${QUIZ_ACTIONS.DUPLICATE_QUIZ}" data-quiz-id="${quizIdToUse}">
+                                    <i class="fas fa-copy"></i> Duplicate
+                                </button>
+                                <button class="btn btn-danger delete-quiz-btn" data-action="${QUIZ_ACTIONS.DELETE_QUIZ}" data-quiz-id="${quizIdToUse}">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </div>
                         ` : ''}
                     </div>
                     <div class="quiz-instructions-content" style="padding: 20px;">
-                        ${!isStudent ? `<p><strong>Student:</strong> ${utils.escapeHTML(quiz.studentId?.firstName)} ${utils.escapeHTML(quiz.studentId?.lastName)}</p>` : ''}
+                        ${isStudent ? `<p><strong>Student:</strong> ${utils.escapeHTML(quiz.studentId?.firstName)} ${utils.escapeHTML(quiz.studentId?.lastName)}</p>` : ''}
                         
                         <div class="quiz-info-card" style="background-color: var(--background-secondary); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border-color);">
                             <h3 style="margin-top: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Quiz Information</h3>
@@ -1049,7 +1069,7 @@ const uiRenderer = {
                             </div>
                         ` : ''}
                         
-                        ${!isStudent ? `<div id="teacher-live-stats" style="margin-top: 20px;"></div>` : ''}
+                        ${isTeacher && state.activeTab !== 'all-quizzes' ? `<div id="teacher-live-stats" style="margin-top: 20px;"></div>` : ''}
                     </div>
                 </div>
             `;
@@ -1064,8 +1084,8 @@ const uiRenderer = {
                 }
             }
 
-            if (!isStudent) {
-                this.loadTeacherLiveMonitoring(quiz.templateId?._id || quiz._id);
+            if (isTeacher && state.activeTab !== 'all-quizzes') {
+                this.loadTeacherLiveMonitoring(quizIdToUse);
             }
         } catch (error) {
             console.error('Error in renderInstructionsView:', error);
@@ -2011,7 +2031,6 @@ const eventHandlers = {
     async handleViewDetail(quizId) {
         try {
             if (!quizId) {
-                console.error('handleViewDetail was called with an invalid ID.');
                 uiRenderer.showNotification('Cannot load quiz: The ID is missing.', 'error');
                 return;
             }
@@ -2019,16 +2038,26 @@ const eventHandlers = {
             state.isLoading = true;
             uiRenderer.updateView();
             
-            const responseData = await apiService.fetchQuizById(quizId);
-            const quiz = responseData.data;
-
-            if (!quiz) {
-                throw new Error('Quiz data not found in server response.');
+            if (state.activeTab === 'all-quizzes') {
+                // Fetch template details directly for Admin view
+                const responseData = await apiService.fetch(`/quizzes/templates/detail/${quizId}`);
+                const template = responseData.data;
+                state.detailedQuiz = {
+                    _id: template._id,
+                    templateId: template,
+                    templateTitle: template.title,
+                    status: 'active',
+                    templatePoints: template.points,
+                    dueDate: template.endTime,
+                    startTime: template.startTime,
+                    isTemplateView: true
+                };
+            } else {
+                const responseData = await apiService.fetchQuizById(quizId);
+                state.detailedQuiz = responseData.data;
             }
             
-            state.detailedQuiz = quiz;
             state.currentView = 'detail';
-            
             state.isLoading = false;
             uiRenderer.updateView();
         } catch (error) {
@@ -2223,11 +2252,15 @@ const eventHandlers = {
         }, 1000);
 
         const timeUntilDeadline = new Date(deadlineDate) - new Date();
-        if (timeUntilDeadline > 0) {
+        
+        // FIX: Prevent 32-bit signed integer overflow in setTimeout (~24.8 days max)
+        if (timeUntilDeadline > 0 && timeUntilDeadline <= 2147483647) {
             state.quizDeadlineTimer = setTimeout(() => {
                 uiRenderer.showNotification("The quiz deadline has passed. Submitting automatically.", 'warning');
                 this.handleFinishQuiz();
             }, timeUntilDeadline);
+        } else if (timeUntilDeadline > 2147483647) {
+            console.log("Deadline is far in the future, skipping deadline auto-submit timer.");
         }
         
         // Toggleable Security Check
@@ -2634,13 +2667,27 @@ const eventHandlers = {
             }
             
             if ([ROLES.TEACHER, ROLES.ADMIN].includes(state.currentUser.role)) {
-                if (!state.selectedGroupId) {
-                    state.studentQuizzes = [];
-                    state.isLoading = false;
-                    uiRenderer.updateView();
-                    return;
+                if (state.activeTab === 'all-quizzes') {
+                    // Admin/Teacher special tab to view all templates directly
+                    const response = await apiService.fetch('/quizzes/bank');
+                    quizzes = (response.data || response).map(q => ({
+                         _id: q._id,
+                         templateId: q,
+                         templateTitle: q.title, 
+                         status: 'active', // Show as active for template view
+                         dueDate: q.endTime,
+                         startTime: q.startTime,
+                         isTemplateView: true
+                    }));
+                } else {
+                    if (!state.selectedGroupId) {
+                        state.studentQuizzes = [];
+                        state.isLoading = false;
+                        uiRenderer.updateView();
+                        return;
+                    }
+                    quizzes = await apiService.fetchQuizzesForGroup(state.selectedGroupId, statusToFetch);
                 }
-                quizzes = await apiService.fetchQuizzesForGroup(state.selectedGroupId, statusToFetch);
             } else {
                 quizzes = await apiService.fetchStudentQuizzes(statusToFetch);
             }
@@ -2657,6 +2704,17 @@ const eventHandlers = {
         }
     },
 
+    async handlePreviewQuiz(templateId) {
+        try {
+            // Generates a mock StudentQuiz session so the Teacher can take it
+            const response = await apiService.fetch(`/quizzes/templates/${templateId}/preview`, { method: 'POST' });
+            const mockStudentQuiz = response.data;
+            await this.handleRealStartQuiz(mockStudentQuiz._id, null);
+        } catch (error) {
+            console.error('Preview error:', error);
+            uiRenderer.showNotification('Failed to start preview mode', 'error');
+        }
+    },
     handleGlobalClick(e) {
         try {
             const actionElement = e.target.closest('[data-action]');
@@ -2728,13 +2786,16 @@ const eventHandlers = {
                 case QUIZ_ACTIONS.REQUEST_RETAKE:
                     this.handleRequestRetake(quizId);
                     break;
+                    
                 case QUIZ_ACTIONS.APPROVE_REQUEST:
                     if(typeof this.handleApproveRequest === 'function') this.handleApproveRequest(requestId);
                     break;
                 case QUIZ_ACTIONS.DENY_REQUEST:
                     if(typeof this.handleDenyRequest === 'function') this.handleDenyRequest(requestId);
                     break;
-            }
+                case 'preview-quiz':
+                    this.handlePreviewQuiz(actionElement.dataset.templateId);
+                    break;            }
         } catch (error) {
             console.error('Error handling global click:', error);
         }
