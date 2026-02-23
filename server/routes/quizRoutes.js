@@ -1,4 +1,3 @@
-
 const express = require('express');
 const mongoose = require('mongoose');
 const router = express.Router();
@@ -776,20 +775,6 @@ router.put('/grade/:quizId', protect, restrictTo('Teacher', 'Admin'), asyncHandl
   res.status(200).json({ success: true, data: studentQuiz });
 }));
 
-// @route   GET /api/quizzes/bank
-// @desc    Get all quiz templates for the bank
-// @access  Private/Teacher,Admin
-router.get('/bank', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async (req, res) => {
-  const quizBank = await QuizTemplate.find({ 
-    creatorId: req.user._id 
-  }).select('title questions startTime endTime');
-  
-  res.json({
-    success: true,
-    data: quizBank
-  });
-}));
-
 // @route   POST /api/quizzes/:id/request-retake
 // @desc    Request a retake for a quiz
 // @access  Private/Student
@@ -867,8 +852,6 @@ router.get('/templates/:groupId', protect, restrictTo('Teacher', 'Admin'), async
     
   res.json({ success: true, data: templates });
 }));
-
-// ✅ NEW ROUTES ADDED HERE ✅
 
 // @route   PUT /api/quizzes/attempt/:attemptId/autosave
 // @desc    Auto-save draft answers without submitting
@@ -1012,6 +995,77 @@ router.post('/:id/retake', protect, restrictTo('Student'), asyncHandler(async (r
   } finally {
     session.endSession();
   }
+}));
+
+// ==========================================
+// Admin/Teacher All Quizzes View Capabilities
+// ==========================================
+
+// @route   GET /api/quizzes/bank
+// @desc    Get all quiz templates for the bank / admin view
+// @access  Private/Teacher,Admin
+router.get('/bank', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async (req, res) => {
+  let query = {};
+  // If role is Admin, fetch ALL templates. If Teacher, only fetch templates they created.
+  if (req.user.role !== 'Admin') {
+    query.creatorId = req.user._id;
+  }
+  
+  const quizBank = await QuizTemplate.find(query)
+    .populate('courseId', 'name')
+    .sort({ createdAt: -1 });
+  
+  res.json({
+    success: true,
+    data: quizBank
+  });
+}));
+
+// @route   GET /api/quizzes/templates/detail/:id
+// @desc    Get a single QuizTemplate by its ID directly for editing/previewing
+// @access  Private/Teacher,Admin
+router.get('/templates/detail/:id', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async (req, res, next) => {
+    const template = await QuizTemplate.findById(req.params.id)
+        .populate('questions')
+        .populate('courseId', 'name');
+        
+    if (!template) {
+        return next(new ErrorResponse('Quiz template not found', 404));
+    }
+    
+    res.json({ success: true, data: template });
+}));
+
+// @route   POST /api/quizzes/templates/:id/preview
+// @desc    Generate a mock StudentQuiz for Teacher to preview the quiz
+// @access  Private/Teacher,Admin
+router.post('/templates/:id/preview', protect, restrictTo('Teacher', 'Admin'), asyncHandler(async (req, res, next) => {
+    const template = await QuizTemplate.findById(req.params.id);
+    if (!template) return next(new ErrorResponse('Template not found', 404));
+    
+    // Create a mock StudentQuiz instance bound to the teacher so they can run through it
+    let studentQuiz = await StudentQuiz.findOne({ templateId: template._id, studentId: req.user._id });
+    
+    if (!studentQuiz) {
+        studentQuiz = await StudentQuiz.create({
+            studentId: req.user._id,
+            courseId: template.courseId[0] || null,
+            templateId: template._id,
+            status: 'active',
+            dueDate: template.endTime,
+            startTime: template.startTime,
+            templatePoints: template.points,
+            templateTitle: template.title
+        });
+    } else {
+        // Reset status if they want to preview again
+        studentQuiz.status = 'active';
+        studentQuiz.submission = undefined;
+        studentQuiz.grade = undefined;
+        await studentQuiz.save();
+    }
+    
+    res.status(200).json({ success: true, data: studentQuiz });
 }));
 
 module.exports = router;
